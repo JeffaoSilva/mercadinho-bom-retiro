@@ -3,17 +3,43 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import { useEffect } from "react";
 import { useCheckout } from "@/hooks/useCheckout";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setTabletId } = useCheckout();
+  const { setTabletId, setMercadinhoAtualId } = useCheckout();
 
   useEffect(() => {
-    const tabletIdParam = searchParams.get('tablet_id');
-    const tabletId = tabletIdParam || '1';
-    setTabletId(tabletId);
-  }, [searchParams, setTabletId]);
+    const loadTabletData = async () => {
+      const tabletIdParam = searchParams.get('tablet_id');
+      const tabletId = tabletIdParam || '1';
+      setTabletId(tabletId);
+
+      // Buscar mercadinho_id do tablet
+      try {
+        const { data, error } = await supabase
+          .from('tablets')
+          .select('mercadinho_id')
+          .eq('id', parseInt(tabletId))
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setMercadinhoAtualId(data.mercadinho_id);
+        } else {
+          toast.error('Tablet não encontrado');
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do tablet:', error);
+        toast.error('Erro ao carregar dados do tablet');
+      }
+    };
+
+    loadTabletData();
+  }, [searchParams, setTabletId, setMercadinhoAtualId]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
