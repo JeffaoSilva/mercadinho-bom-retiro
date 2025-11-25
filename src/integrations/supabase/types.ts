@@ -16,22 +16,25 @@ export type Database = {
     Tables: {
       clientes: {
         Row: {
-          created_at: string | null
-          id: string
-          mercadinho_id: string
+          criado_em: string
+          id: number
+          mercadinho_id: number
           nome: string
+          telefone: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          mercadinho_id: string
+          criado_em?: string
+          id?: number
+          mercadinho_id: number
           nome: string
+          telefone: string
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          mercadinho_id?: string
+          criado_em?: string
+          id?: number
+          mercadinho_id?: number
           nome?: string
+          telefone?: string
         }
         Relationships: [
           {
@@ -45,28 +48,34 @@ export type Database = {
       }
       compras: {
         Row: {
-          cliente_id: string | null
-          created_at: string | null
-          id: string
-          tablet_id: string
+          cliente_id: number | null
+          criado_em: string
+          data_compra: string
+          eh_visitante: boolean
+          id: number
+          mercadinho_id: number
           tipo_pagamento: string
-          total: number
+          valor_total: number
         }
         Insert: {
-          cliente_id?: string | null
-          created_at?: string | null
-          id?: string
-          tablet_id: string
-          tipo_pagamento: string
-          total: number
+          cliente_id?: number | null
+          criado_em?: string
+          data_compra?: string
+          eh_visitante?: boolean
+          id?: number
+          mercadinho_id: number
+          tipo_pagamento?: string
+          valor_total?: number
         }
         Update: {
-          cliente_id?: string | null
-          created_at?: string | null
-          id?: string
-          tablet_id?: string
+          cliente_id?: number | null
+          criado_em?: string
+          data_compra?: string
+          eh_visitante?: boolean
+          id?: number
+          mercadinho_id?: number
           tipo_pagamento?: string
-          total?: number
+          valor_total?: number
         }
         Relationships: [
           {
@@ -77,38 +86,41 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "compras_tablet_id_fkey"
-            columns: ["tablet_id"]
+            foreignKeyName: "compras_mercadinho_id_fkey"
+            columns: ["mercadinho_id"]
             isOneToOne: false
-            referencedRelation: "tablets"
+            referencedRelation: "mercadinhos"
             referencedColumns: ["id"]
           },
         ]
       }
       itens_compra: {
         Row: {
-          compra_id: string
-          created_at: string | null
-          id: string
-          preco_unitario: number
-          produto_id: string
+          compra_id: number
+          criado_em: string
+          id: number
+          produto_id: number
           quantidade: number
+          valor_total: number
+          valor_unitario: number
         }
         Insert: {
-          compra_id: string
-          created_at?: string | null
-          id?: string
-          preco_unitario: number
-          produto_id: string
+          compra_id: number
+          criado_em?: string
+          id?: number
+          produto_id: number
           quantidade?: number
+          valor_total?: number
+          valor_unitario: number
         }
         Update: {
-          compra_id?: string
-          created_at?: string | null
-          id?: string
-          preco_unitario?: number
-          produto_id?: string
+          compra_id?: number
+          criado_em?: string
+          id?: number
+          produto_id?: number
           quantidade?: number
+          valor_total?: number
+          valor_unitario?: number
         }
         Relationships: [
           {
@@ -129,46 +141,46 @@ export type Database = {
       }
       mercadinhos: {
         Row: {
-          created_at: string | null
-          id: string
+          criado_em: string
+          id: number
           nome: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
+          criado_em?: string
+          id?: number
           nome: string
         }
         Update: {
-          created_at?: string | null
-          id?: string
+          criado_em?: string
+          id?: number
           nome?: string
         }
         Relationships: []
       }
       pins: {
         Row: {
-          cliente_id: string
-          created_at: string | null
-          id: string
+          cliente_id: number
+          criado_em: string
+          id: number
           pin: string
         }
         Insert: {
-          cliente_id: string
-          created_at?: string | null
-          id?: string
+          cliente_id: number
+          criado_em?: string
+          id?: number
           pin: string
         }
         Update: {
-          cliente_id?: string
-          created_at?: string | null
-          id?: string
+          cliente_id?: number
+          criado_em?: string
+          id?: number
           pin?: string
         }
         Relationships: [
           {
             foreignKeyName: "pins_cliente_id_fkey"
             columns: ["cliente_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
@@ -176,56 +188,54 @@ export type Database = {
       }
       produtos: {
         Row: {
-          codigo_barras: string
-          created_at: string | null
-          id: string
-          mercadinho_id: string
+          ativo: boolean
+          codigo_barras: string | null
+          criado_em: string
+          id: number
           nome: string
-          preco: number
+          preco_compra: number
+          preco_venda: number
         }
         Insert: {
-          codigo_barras: string
-          created_at?: string | null
-          id?: string
-          mercadinho_id: string
+          ativo?: boolean
+          codigo_barras?: string | null
+          criado_em?: string
+          id?: number
           nome: string
-          preco: number
+          preco_compra: number
+          preco_venda: number
         }
         Update: {
-          codigo_barras?: string
-          created_at?: string | null
-          id?: string
-          mercadinho_id?: string
+          ativo?: boolean
+          codigo_barras?: string | null
+          criado_em?: string
+          id?: number
           nome?: string
-          preco?: number
+          preco_compra?: number
+          preco_venda?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "produtos_mercadinho_id_fkey"
-            columns: ["mercadinho_id"]
-            isOneToOne: false
-            referencedRelation: "mercadinhos"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tablets: {
         Row: {
-          created_at: string | null
-          id: string
-          mercadinho_id: string
+          ativo: boolean
+          criado_em: string
+          id: number
+          mercadinho_id: number
           nome: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          mercadinho_id: string
+          ativo?: boolean
+          criado_em?: string
+          id?: number
+          mercadinho_id: number
           nome: string
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          mercadinho_id?: string
+          ativo?: boolean
+          criado_em?: string
+          id?: number
+          mercadinho_id?: number
           nome?: string
         }
         Relationships: [
