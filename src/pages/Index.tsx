@@ -1,9 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
+import { useEffect } from "react";
+import { useCheckout } from "@/hooks/useCheckout";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { setTabletId } = useCheckout();
+
+  useEffect(() => {
+    const tabletIdParam = searchParams.get('tablet_id');
+    const tabletId = tabletIdParam || '1';
+    setTabletId(tabletId);
+  }, [searchParams, setTabletId]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">

@@ -34,8 +34,8 @@ const Cart = () => {
         addToCart({
           produto_id: data.id,
           nome: data.nome,
-          preco: data.preco,
-          codigo_barras: data.codigo_barras
+          preco: data.preco_venda,
+          codigo_barras: data.codigo_barras || ''
         });
         toast.success(`${data.nome} adicionado`);
       } else {

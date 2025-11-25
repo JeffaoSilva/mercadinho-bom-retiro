@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 interface CartItem {
-  produto_id: string;
+  produto_id: number;
   nome: string;
   preco: number;
   quantidade: number;
@@ -10,17 +10,18 @@ interface CartItem {
 
 interface CheckoutState {
   tabletId: string | null;
-  mercadinhoId: string | null;
-  clienteId: string | null;
+  mercadinhoId: number | null;
+  clienteId: number | null;
   clienteNome: string | null;
   isVisitante: boolean;
   cart: CartItem[];
-  setTablet: (tabletId: string, mercadinhoId: string) => void;
-  setCliente: (clienteId: string, nome: string) => void;
+  setTabletId: (tabletId: string) => void;
+  setTablet: (tabletId: string, mercadinhoId: number) => void;
+  setCliente: (clienteId: number, nome: string) => void;
   setVisitante: () => void;
   addToCart: (item: Omit<CartItem, 'quantidade'>) => void;
-  removeFromCart: (produto_id: string) => void;
-  updateQuantity: (produto_id: string, quantidade: number) => void;
+  removeFromCart: (produto_id: number) => void;
+  updateQuantity: (produto_id: number, quantidade: number) => void;
   getTotal: () => number;
   reset: () => void;
 }
@@ -32,6 +33,7 @@ export const useCheckout = create<CheckoutState>((set, get) => ({
   clienteNome: null,
   isVisitante: false,
   cart: [],
+  setTabletId: (tabletId) => set({ tabletId }),
   setTablet: (tabletId, mercadinhoId) => set({ tabletId, mercadinhoId }),
   setCliente: (clienteId, nome) => set({ clienteId, clienteNome: nome, isVisitante: false }),
   setVisitante: () => set({ isVisitante: true, clienteId: null, clienteNome: 'VISITANTE' }),
@@ -54,7 +56,7 @@ export const useCheckout = create<CheckoutState>((set, get) => ({
   updateQuantity: (produto_id, quantidade) => set((state) => ({
     cart: state.cart.map(i =>
       i.produto_id === produto_id ? { ...i, quantidade } : i
-    )
+    ).filter(i => i.quantidade > 0)
   })),
   getTotal: () => {
     const state = get();

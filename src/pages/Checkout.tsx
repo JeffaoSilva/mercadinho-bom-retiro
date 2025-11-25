@@ -22,9 +22,10 @@ const Checkout = () => {
         .from('compras')
         .insert({
           cliente_id: isVisitante ? null : clienteId,
-          tablet_id: 'tablet-id-temporario', // TODO: configurar tablet_id real
+          mercadinho_id: 1, // TODO: configurar mercadinho_id real
           tipo_pagamento: tipoPagamento,
-          total
+          valor_total: total,
+          eh_visitante: isVisitante
         })
         .select()
         .single();
@@ -35,7 +36,7 @@ const Checkout = () => {
       const itens = cart.map(item => ({
         compra_id: compra.id,
         produto_id: item.produto_id,
-        preco_unitario: item.preco,
+        valor_unitario: item.preco,
         quantidade: item.quantidade
       }));
 
