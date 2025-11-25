@@ -10,13 +10,13 @@ interface CartItem {
 
 interface CheckoutState {
   tabletId: string | null;
-  mercadinhoId: number | null;
+  mercadinhoAtualId: number | null;
   clienteId: number | null;
   clienteNome: string | null;
   isVisitante: boolean;
   cart: CartItem[];
   setTabletId: (tabletId: string) => void;
-  setTablet: (tabletId: string, mercadinhoId: number) => void;
+  setMercadinhoAtualId: (mercadinhoId: number) => void;
   setCliente: (clienteId: number, nome: string) => void;
   setVisitante: () => void;
   addToCart: (item: Omit<CartItem, 'quantidade'>) => void;
@@ -28,13 +28,13 @@ interface CheckoutState {
 
 export const useCheckout = create<CheckoutState>((set, get) => ({
   tabletId: null,
-  mercadinhoId: null,
+  mercadinhoAtualId: null,
   clienteId: null,
   clienteNome: null,
   isVisitante: false,
   cart: [],
   setTabletId: (tabletId) => set({ tabletId }),
-  setTablet: (tabletId, mercadinhoId) => set({ tabletId, mercadinhoId }),
+  setMercadinhoAtualId: (mercadinhoId) => set({ mercadinhoAtualId: mercadinhoId }),
   setCliente: (clienteId, nome) => set({ clienteId, clienteNome: nome, isVisitante: false }),
   setVisitante: () => set({ isVisitante: true, clienteId: null, clienteNome: 'VISITANTE' }),
   addToCart: (item) => set((state) => {
@@ -63,8 +63,6 @@ export const useCheckout = create<CheckoutState>((set, get) => ({
     return state.cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
   },
   reset: () => set({
-    tabletId: null,
-    mercadinhoId: null,
     clienteId: null,
     clienteNome: null,
     isVisitante: false,

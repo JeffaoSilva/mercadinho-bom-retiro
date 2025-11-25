@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { clienteId, isVisitante, cart, getTotal, reset } = useCheckout();
+  const { clienteId, isVisitante, cart, getTotal, reset, mercadinhoAtualId } = useCheckout();
   const [loading, setLoading] = useState(false);
 
   const total = getTotal();
@@ -22,7 +22,7 @@ const Checkout = () => {
         .from('compras')
         .insert({
           cliente_id: isVisitante ? null : clienteId,
-          mercadinho_id: 1, // TODO: configurar mercadinho_id real
+          mercadinho_id: mercadinhoAtualId || 1,
           tipo_pagamento: tipoPagamento,
           valor_total: total,
           eh_visitante: isVisitante

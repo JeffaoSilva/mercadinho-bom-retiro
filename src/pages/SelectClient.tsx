@@ -13,20 +13,27 @@ interface Cliente {
 
 const SelectClient = () => {
   const navigate = useNavigate();
-  const { setCliente, setVisitante } = useCheckout();
+  const { setCliente, setVisitante, mercadinhoAtualId } = useCheckout();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mostrarTodos, setMostrarTodos] = useState(false);
 
   useEffect(() => {
     loadClientes();
-  }, []);
+  }, [mostrarTodos, mercadinhoAtualId]);
 
   const loadClientes = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('clientes')
-        .select('id, nome')
-        .order('nome');
+        .select('id, nome');
+
+      // Filtrar por mercadinho se não estiver mostrando todos
+      if (!mostrarTodos && mercadinhoAtualId) {
+        query = query.eq('mercadinho_id', mercadinhoAtualId);
+      }
+
+      const { data, error } = await query.order('nome');
 
       if (error) throw error;
       setClientes(data || []);
@@ -97,6 +104,17 @@ const SelectClient = () => {
         </div>
 
         <div className="flex gap-4 pt-8">
+          {!mostrarTodos && (
+            <Button
+              variant="outline"
+              size="lg"
+              className="flex-1 h-20 text-xl"
+              onClick={() => setMostrarTodos(true)}
+            >
+              Outros clientes
+            </Button>
+          )}
+          
           <Button
             variant="secondary"
             size="lg"
