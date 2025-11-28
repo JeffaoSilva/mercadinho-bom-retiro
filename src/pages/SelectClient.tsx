@@ -5,35 +5,50 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
 import { ArrowLeft, User } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Cliente {
   id: number;
   nome: string;
 }
 
+const MERCADINHOS = [
+  { id: 1, nome: "Casa Bom Retiro" },
+  { id: 2, nome: "Casa São Francisco" },
+];
+
 const SelectClient = () => {
   const navigate = useNavigate();
   const { setCliente, setVisitante, mercadinhoAtualId } = useCheckout();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [mercadinhoSelecionado, setMercadinhoSelecionado] = useState<number | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     loadClientes();
-  }, [mostrarTodos, mercadinhoAtualId]);
+  }, [mercadinhoSelecionado, mercadinhoAtualId]);
 
   const loadClientes = async () => {
     try {
-      let query = supabase
-        .from('clientes')
-        .select('id, nome');
-
-      // Filtrar por mercadinho se não estiver mostrando todos
-      if (!mostrarTodos && mercadinhoAtualId) {
-        query = query.eq('mercadinho_id', mercadinhoAtualId);
+      const filtroId = mercadinhoSelecionado ?? mercadinhoAtualId;
+      
+      if (!filtroId) {
+        setClientes([]);
+        setLoading(false);
+        return;
       }
 
-      const { data, error } = await query.order('nome');
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome')
+        .eq('mercadinho_id', filtroId)
+        .order('nome');
 
       if (error) throw error;
       setClientes(data || []);
@@ -48,7 +63,6 @@ const SelectClient = () => {
   const handleSelectCliente = async (cliente: Cliente) => {
     setCliente(cliente.id, cliente.nome);
     
-    // Verificar se cliente tem PIN
     const { data } = await supabase
       .from('pins')
       .select('pin')
@@ -66,6 +80,19 @@ const SelectClient = () => {
     setVisitante();
     navigate('/cart');
   };
+
+  const handleSelectMercadinho = (mercadinhoId: number) => {
+    setMercadinhoSelecionado(mercadinhoId);
+    setShowModal(false);
+    setLoading(true);
+  };
+
+  const handleVoltar = () => {
+    setMercadinhoSelecionado(null);
+    setLoading(true);
+  };
+
+  const mercadinhoAtualNome = MERCADINHOS.find(m => m.id === (mercadinhoSelecionado ?? mercadinhoAtualId))?.nome;
 
   if (loading) {
     return (
@@ -86,7 +113,12 @@ const SelectClient = () => {
           >
             <ArrowLeft className="w-6 h-6" />
           </Button>
-          <h1 className="text-4xl font-bold">Selecione o Cliente</h1>
+          <div>
+            <h1 className="text-4xl font-bold">Selecione o Cliente</h1>
+            {mercadinhoAtualNome && (
+              <p className="text-muted-foreground">{mercadinhoAtualNome}</p>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -104,12 +136,21 @@ const SelectClient = () => {
         </div>
 
         <div className="flex gap-4 pt-8">
-          {!mostrarTodos && (
+          {mercadinhoSelecionado ? (
             <Button
               variant="outline"
               size="lg"
               className="flex-1 h-20 text-xl"
-              onClick={() => setMostrarTodos(true)}
+              onClick={handleVoltar}
+            >
+              Voltar
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="lg"
+              className="flex-1 h-20 text-xl"
+              onClick={() => setShowModal(true)}
             >
               Outros clientes
             </Button>
@@ -125,6 +166,27 @@ const SelectClient = () => {
           </Button>
         </div>
       </div>
+
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-center">Selecione a Casa</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            {MERCADINHOS.map((mercadinho) => (
+              <Button
+                key={mercadinho.id}
+                variant="outline"
+                size="lg"
+                className="h-20 text-xl"
+                onClick={() => handleSelectMercadinho(mercadinho.id)}
+              >
+                {mercadinho.nome}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
