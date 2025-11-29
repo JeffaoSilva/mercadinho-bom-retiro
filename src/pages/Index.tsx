@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Settings } from "lucide-react";
 import { useEffect } from "react";
 import { useCheckout } from "@/hooks/useCheckout";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,6 +62,16 @@ const Index = () => {
           Iniciar Compra
         </Button>
       </div>
+
+      {/* Botão Admin */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-6 right-6 w-12 h-12 rounded-full opacity-60 hover:opacity-100"
+        onClick={() => navigate('/admin')}
+      >
+        <Settings className="w-6 h-6" />
+      </Button>
     </div>
   );
 };

@@ -139,6 +139,44 @@ export type Database = {
           },
         ]
       }
+      lotes_produtos: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          id: number
+          preco_compra_lote: number | null
+          produto_id: number
+          quantidade: number
+          validade: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          id?: number
+          preco_compra_lote?: number | null
+          produto_id: number
+          quantidade: number
+          validade?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          id?: number
+          preco_compra_lote?: number | null
+          produto_id?: number
+          quantidade?: number
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lotes_produtos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercadinhos: {
         Row: {
           criado_em: string
@@ -195,6 +233,7 @@ export type Database = {
           nome: string
           preco_compra: number
           preco_venda: number
+          quantidade_atual: number
         }
         Insert: {
           ativo?: boolean
@@ -204,6 +243,7 @@ export type Database = {
           nome: string
           preco_compra: number
           preco_venda: number
+          quantidade_atual?: number
         }
         Update: {
           ativo?: boolean
@@ -213,8 +253,53 @@ export type Database = {
           nome?: string
           preco_compra?: number
           preco_venda?: number
+          quantidade_atual?: number
         }
         Relationships: []
+      }
+      promocoes: {
+        Row: {
+          ativa: boolean
+          criado_em: string
+          desconto_percentual: number
+          id: number
+          inicia_em: string
+          nome: string
+          produto_id: number | null
+          termina_em: string | null
+          tipo: string
+        }
+        Insert: {
+          ativa?: boolean
+          criado_em?: string
+          desconto_percentual: number
+          id?: number
+          inicia_em: string
+          nome: string
+          produto_id?: number | null
+          termina_em?: string | null
+          tipo: string
+        }
+        Update: {
+          ativa?: boolean
+          criado_em?: string
+          desconto_percentual?: number
+          id?: number
+          inicia_em?: string
+          nome?: string
+          produto_id?: number | null
+          termina_em?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promocoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tablets: {
         Row: {

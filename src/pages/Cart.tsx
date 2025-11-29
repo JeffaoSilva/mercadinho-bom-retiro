@@ -7,15 +7,58 @@ import { useCheckout } from "@/hooks/useCheckout";
 import { ArrowLeft, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+interface Promocao {
+  id: number;
+  desconto_percentual: number;
+  tipo: string;
+  produto_id: number | null;
+}
+
 const Cart = () => {
   const navigate = useNavigate();
   const { clienteNome, cart, addToCart, updateQuantity, removeFromCart, getTotal } = useCheckout();
   const [barcode, setBarcode] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [promocoes, setPromocoes] = useState<Promocao[]>([]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [cart]);
+
+  useEffect(() => {
+    loadPromocoes();
+  }, []);
+
+  const loadPromocoes = async () => {
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from('promocoes')
+      .select('id, desconto_percentual, tipo, produto_id')
+      .eq('ativa', true)
+      .lte('inicia_em', now)
+      .or(`termina_em.is.null,termina_em.gte.${now}`);
+    
+    setPromocoes(data || []);
+  };
+
+  const getPromoForProduct = (produtoId: number): Promocao | null => {
+    // Primeiro tenta encontrar promoção específica do produto
+    const produtoPromo = promocoes.find(p => p.tipo === 'produto' && p.produto_id === produtoId);
+    if (produtoPromo) return produtoPromo;
+    
+    // Se não, busca promoção global
+    const globalPromo = promocoes.find(p => p.tipo === 'global');
+    return globalPromo || null;
+  };
+
+  const getPrecoComDesconto = (preco: number, produtoId: number): { precoFinal: number; temDesconto: boolean; desconto: number } => {
+    const promo = getPromoForProduct(produtoId);
+    if (promo) {
+      const precoFinal = preco * (1 - promo.desconto_percentual / 100);
+      return { precoFinal, temDesconto: true, desconto: promo.desconto_percentual };
+    }
+    return { precoFinal: preco, temDesconto: false, desconto: 0 };
+  };
 
   const handleBarcodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +74,12 @@ const Cart = () => {
       if (error) throw error;
 
       if (data) {
+        const { precoFinal, temDesconto } = getPrecoComDesconto(data.preco_venda, data.id);
         addToCart({
           produto_id: data.id,
           nome: data.nome,
-          preco: data.preco_venda,
+          preco: precoFinal,
+          preco_original: temDesconto ? data.preco_venda : undefined,
           codigo_barras: data.codigo_barras || ''
         });
         toast.success(`${data.nome} adicionado`);
@@ -49,7 +94,11 @@ const Cart = () => {
     setBarcode('');
   };
 
-  const total = getTotal();
+  const getTotalComPromocoes = () => {
+    return cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+  };
+
+  const total = getTotalComPromocoes();
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -97,8 +146,18 @@ const Cart = () => {
             cart.map((item) => (
               <div key={item.produto_id} className="bg-card p-4 rounded-lg border flex items-center gap-4">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{item.nome}</h3>
+                  <h3 className="font-semibold text-lg">
+                    {item.nome}
+                    {item.preco_original && (
+                      <span className="ml-2 text-xs bg-green-500/20 text-green-600 px-2 py-0.5 rounded">
+                        PROMO
+                      </span>
+                    )}
+                  </h3>
                   <p className="text-muted-foreground">
+                    {item.preco_original && (
+                      <span className="line-through mr-2">R$ {item.preco_original.toFixed(2)}</span>
+                    )}
                     R$ {item.preco.toFixed(2)} x {item.quantidade}
                   </p>
                 </div>
