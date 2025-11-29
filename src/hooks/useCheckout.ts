@@ -4,6 +4,7 @@ interface CartItem {
   produto_id: number;
   nome: string;
   preco: number;
+  preco_original?: number;
   quantidade: number;
   codigo_barras: string;
 }

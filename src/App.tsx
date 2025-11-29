@@ -9,6 +9,13 @@ import Pin from "./pages/Pin";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
+import AdminProdutos from "./pages/admin/AdminProdutos";
+import AdminEstoque from "./pages/admin/AdminEstoque";
+import AdminPromocoes from "./pages/admin/AdminPromocoes";
+import AdminCompras from "./pages/admin/AdminCompras";
+import AdminClientes from "./pages/admin/AdminClientes";
+import AdminEstornos from "./pages/admin/AdminEstornos";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +31,13 @@ const App = () => (
           <Route path="/pin" element={<Pin />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/produtos" element={<AdminProdutos />} />
+          <Route path="/admin/estoque" element={<AdminEstoque />} />
+          <Route path="/admin/promocoes" element={<AdminPromocoes />} />
+          <Route path="/admin/compras" element={<AdminCompras />} />
+          <Route path="/admin/clientes" element={<AdminClientes />} />
+          <Route path="/admin/estornos" element={<AdminEstornos />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
