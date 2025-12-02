@@ -341,6 +341,7 @@ export type Database = {
           id: number
           imagem_url: string | null
           subtitulo: string | null
+          tablet_id: number | null
           titulo: string | null
         }
         Insert: {
@@ -350,6 +351,7 @@ export type Database = {
           id?: number
           imagem_url?: string | null
           subtitulo?: string | null
+          tablet_id?: number | null
           titulo?: string | null
         }
         Update: {
@@ -359,9 +361,18 @@ export type Database = {
           id?: number
           imagem_url?: string | null
           subtitulo?: string | null
+          tablet_id?: number | null
           titulo?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tela_descanso_tablet_id_fkey"
+            columns: ["tablet_id"]
+            isOneToOne: false
+            referencedRelation: "tablets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

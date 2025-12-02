@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useIdleTimer } from '@/hooks/useIdleTimer';
+import { useIdleStore } from '@/stores/idleStore';
+import { useTabletStore } from '@/stores/tabletStore';
 
 interface TelaDescansoConfig {
   id: number;
@@ -10,6 +12,7 @@ interface TelaDescansoConfig {
   titulo: string | null;
   subtitulo: string | null;
   cor_fundo: string | null;
+  tablet_id: number | null;
 }
 
 export const TelaDescanso = () => {
@@ -18,45 +21,62 @@ export const TelaDescanso = () => {
   const [config, setConfig] = useState<TelaDescansoConfig | null>(null);
   const [showScreen, setShowScreen] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [timeout, setTimeout] = useState(60);
   const dismissingRef = useRef(false);
 
-  // Carregar configuração do banco
+  const idleSeconds = useIdleStore((state) => state.idleSeconds);
+  const tabletId = useTabletStore((state) => state.tabletId);
+
+  // Carregar configuração do banco com prioridade: tablet > global
   useEffect(() => {
     const loadConfig = async () => {
-      const { data } = await supabase
+      // Primeiro tenta buscar config específica do tablet
+      if (tabletId) {
+        const { data: tabletConfig } = await supabase
+          .from('tela_descanso')
+          .select('*')
+          .eq('ativa', true)
+          .eq('tablet_id', tabletId)
+          .order('criado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (tabletConfig) {
+          setConfig(tabletConfig as TelaDescansoConfig);
+          return;
+        }
+      }
+
+      // Se não encontrou específica, busca global (tablet_id IS NULL)
+      const { data: globalConfig } = await supabase
         .from('tela_descanso')
         .select('*')
+        .eq('ativa', true)
+        .is('tablet_id', null)
         .order('criado_em', { ascending: false })
         .limit(1)
         .maybeSingle();
       
-      if (data) {
-        setConfig(data);
+      if (globalConfig) {
+        setConfig(globalConfig as TelaDescansoConfig);
+      } else {
+        setConfig(null);
       }
     };
 
     loadConfig();
 
-    // Carregar tempo de inatividade do localStorage (em segundos)
-    const savedTimeout = localStorage.getItem('tela_descanso_timeout');
-    const timeoutSeconds = savedTimeout ? parseInt(savedTimeout, 10) : 30;
-    setTimeout(timeoutSeconds);
-
     // Subscribe to realtime updates
     const channel = supabase
       .channel('tela_descanso_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tela_descanso' }, (payload) => {
-        if (payload.new) {
-          setConfig(payload.new as TelaDescansoConfig);
-        }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tela_descanso' }, () => {
+        loadConfig();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [tabletId]);
 
   // Verificar se pode mostrar tela de descanso
   const canShowIdleScreen = () => {
@@ -77,7 +97,7 @@ export const TelaDescanso = () => {
   };
 
   const { dismissIdle } = useIdleTimer({
-    timeout,
+    timeout: idleSeconds,
     onIdle: handleIdle,
     enabled: config?.ativa ?? false,
   });
