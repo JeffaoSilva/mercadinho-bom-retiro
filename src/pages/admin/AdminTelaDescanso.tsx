@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Upload, Trash2, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useIdleStore } from "@/stores/idleStore";
 
 interface TelaDescansoConfig {
   id: number;
@@ -16,12 +18,20 @@ interface TelaDescansoConfig {
   titulo: string | null;
   subtitulo: string | null;
   cor_fundo: string | null;
+  tablet_id: number | null;
+}
+
+interface Tablet {
+  id: number;
+  nome: string;
 }
 
 const AdminTelaDescanso = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAdmin();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const setIdleSeconds = useIdleStore((state) => state.setIdleSeconds);
+  const currentIdleSeconds = useIdleStore((state) => state.idleSeconds);
   
   const [config, setConfig] = useState<TelaDescansoConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,29 +39,70 @@ const AdminTelaDescanso = () => {
   const [uploading, setUploading] = useState(false);
   const [idleSecondsInput, setIdleSecondsInput] = useState('30');
   const [idleError, setIdleError] = useState('');
+  
+  // Novo: escopo e tablets
+  const [scope, setScope] = useState<'global' | 'tablet'>('global');
+  const [selectedTabletId, setSelectedTabletId] = useState<number | null>(null);
+  const [tablets, setTablets] = useState<Tablet[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
+    loadTablets();
+    setIdleSecondsInput(currentIdleSeconds.toString());
+  }, [isAuthenticated, navigate, currentIdleSeconds]);
+
+  useEffect(() => {
     loadConfig();
+  }, [scope, selectedTabletId]);
+
+  const loadTablets = async () => {
+    const { data } = await supabase
+      .from('tablets')
+      .select('id, nome')
+      .eq('ativo', true)
+      .order('nome');
     
-    // Carregar timeout do localStorage
-    const savedTimeout = localStorage.getItem('tela_descanso_timeout');
-    setIdleSecondsInput(savedTimeout ?? '30');
-  }, [isAuthenticated, navigate]);
+    if (data) {
+      setTablets(data);
+    }
+  };
 
   const loadConfig = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('tela_descanso')
-        .select('*')
-        .limit(1)
-        .single();
+      let query = supabase.from('tela_descanso').select('*');
+      
+      if (scope === 'global') {
+        query = query.is('tablet_id', null);
+      } else if (selectedTabletId) {
+        query = query.eq('tablet_id', selectedTabletId);
+      } else {
+        setConfig(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await query.order('criado_em', { ascending: false }).limit(1).maybeSingle();
 
       if (error) throw error;
-      setConfig(data);
+      
+      if (data) {
+        setConfig(data as TelaDescansoConfig);
+      } else {
+        // Criar novo registro se não existir
+        setConfig({
+          id: 0,
+          ativa: false,
+          imagem_url: null,
+          titulo: null,
+          subtitulo: null,
+          cor_fundo: '#1a1a2e',
+          tablet_id: scope === 'tablet' ? selectedTabletId : null,
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar configuração:', error);
       toast.error('Erro ao carregar configuração');
@@ -65,14 +116,32 @@ const AdminTelaDescanso = () => {
     
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('tela_descanso')
-        .update({ ativa })
-        .eq('id', config.id);
+      if (config.id === 0) {
+        // Criar novo registro
+        const { data, error } = await supabase
+          .from('tela_descanso')
+          .insert({
+            ativa,
+            tablet_id: scope === 'tablet' ? selectedTabletId : null,
+            titulo: config.titulo,
+            subtitulo: config.subtitulo,
+            cor_fundo: config.cor_fundo,
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
+        setConfig(data as TelaDescansoConfig);
+      } else {
+        const { error } = await supabase
+          .from('tela_descanso')
+          .update({ ativa })
+          .eq('id', config.id);
+
+        if (error) throw error;
+        setConfig({ ...config, ativa });
+      }
       
-      setConfig({ ...config, ativa });
       toast.success(ativa ? 'Tela de descanso ativada' : 'Tela de descanso desativada');
     } catch (error) {
       console.error('Erro ao atualizar:', error);
@@ -95,19 +164,35 @@ const AdminTelaDescanso = () => {
     
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('tela_descanso')
-        .update({
-          titulo: config.titulo,
-          subtitulo: config.subtitulo,
-          cor_fundo: config.cor_fundo,
-        })
-        .eq('id', config.id);
+      const payload = {
+        titulo: config.titulo,
+        subtitulo: config.subtitulo,
+        cor_fundo: config.cor_fundo,
+        ativa: config.ativa,
+        tablet_id: scope === 'tablet' ? selectedTabletId : null,
+      };
 
-      if (error) throw error;
+      if (config.id === 0) {
+        // Criar novo registro
+        const { data, error } = await supabase
+          .from('tela_descanso')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+        setConfig(data as TelaDescansoConfig);
+      } else {
+        const { error } = await supabase
+          .from('tela_descanso')
+          .update(payload)
+          .eq('id', config.id);
+
+        if (error) throw error;
+      }
       
-      // Salvar timeout no localStorage como número
-      localStorage.setItem('tela_descanso_timeout', parsed.toString());
+      // Atualizar store global - aplica na hora
+      setIdleSeconds(parsed);
       
       toast.success('Configurações salvas');
     } catch (error) {
@@ -146,14 +231,32 @@ const AdminTelaDescanso = () => {
         .getPublicUrl(fileName);
 
       // Atualizar banco
-      const { error: updateError } = await supabase
-        .from('tela_descanso')
-        .update({ imagem_url: urlData.publicUrl })
-        .eq('id', config.id);
+      if (config.id === 0) {
+        const { data, error } = await supabase
+          .from('tela_descanso')
+          .insert({
+            imagem_url: urlData.publicUrl,
+            tablet_id: scope === 'tablet' ? selectedTabletId : null,
+            ativa: config.ativa,
+            titulo: config.titulo,
+            subtitulo: config.subtitulo,
+            cor_fundo: config.cor_fundo,
+          })
+          .select()
+          .single();
 
-      if (updateError) throw updateError;
+        if (error) throw error;
+        setConfig(data as TelaDescansoConfig);
+      } else {
+        const { error: updateError } = await supabase
+          .from('tela_descanso')
+          .update({ imagem_url: urlData.publicUrl })
+          .eq('id', config.id);
 
-      setConfig({ ...config, imagem_url: urlData.publicUrl });
+        if (updateError) throw updateError;
+        setConfig({ ...config, imagem_url: urlData.publicUrl });
+      }
+      
       toast.success('Imagem enviada com sucesso');
     } catch (error) {
       console.error('Erro ao enviar imagem:', error);
@@ -211,6 +314,45 @@ const AdminTelaDescanso = () => {
         </div>
 
         <div className="bg-card rounded-lg p-6 space-y-6 border">
+          {/* Seletor de escopo */}
+          <div className="space-y-2">
+            <Label>Escopo da configuração</Label>
+            <Select value={scope} onValueChange={(v) => setScope(v as 'global' | 'tablet')}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o escopo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="global">Global (todos os tablets)</SelectItem>
+                <SelectItem value="tablet">Somente um tablet</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Seletor de tablet específico */}
+          {scope === 'tablet' && (
+            <div className="space-y-2">
+              <Label>Tablet</Label>
+              <Select 
+                value={selectedTabletId?.toString() ?? ''} 
+                onValueChange={(v) => setSelectedTabletId(v ? parseInt(v, 10) : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um tablet" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tablets.map((t) => (
+                    <SelectItem key={t.id} value={t.id.toString()}>
+                      {t.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {tablets.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhum tablet cadastrado</p>
+              )}
+            </div>
+          )}
+
           {/* Toggle Ativa */}
           <div className="flex items-center justify-between">
             <div>
@@ -222,7 +364,7 @@ const AdminTelaDescanso = () => {
             <Switch
               checked={config?.ativa ?? false}
               onCheckedChange={handleToggleAtiva}
-              disabled={saving}
+              disabled={saving || (scope === 'tablet' && !selectedTabletId)}
             />
           </div>
 
@@ -242,7 +384,7 @@ const AdminTelaDescanso = () => {
               <p className="text-xs text-destructive">{idleError}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Tempo sem interação antes de mostrar a tela (salvo localmente)
+              Tempo sem interação antes de mostrar a tela (aplica imediatamente)
             </p>
           </div>
 
@@ -287,7 +429,7 @@ const AdminTelaDescanso = () => {
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || (scope === 'tablet' && !selectedTabletId)}
                 className="w-full h-32 border-dashed"
               >
                 <div className="flex flex-col items-center gap-2">
@@ -337,7 +479,11 @@ const AdminTelaDescanso = () => {
             </div>
           </div>
 
-          <Button onClick={handleSave} disabled={saving} className="w-full">
+          <Button 
+            onClick={handleSave} 
+            disabled={saving || (scope === 'tablet' && !selectedTabletId)} 
+            className="w-full"
+          >
             {saving ? 'Salvando...' : 'Salvar configurações'}
           </Button>
         </div>

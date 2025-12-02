@@ -9,6 +9,12 @@ interface UseIdleTimerOptions {
 export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOptions) => {
   const [isIdle, setIsIdle] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const onIdleRef = useRef(onIdle);
+
+  // Manter referência atualizada do callback
+  useEffect(() => {
+    onIdleRef.current = onIdle;
+  }, [onIdle]);
 
   const startTimer = useCallback(() => {
     if (timeoutRef.current) {
@@ -21,9 +27,9 @@ export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOp
     timeoutRef.current = setTimeout(() => {
       console.log('[useIdleTimer] Entrando em modo descanso');
       setIsIdle(true);
-      onIdle();
+      onIdleRef.current();
     }, idleMs);
-  }, [timeout, onIdle]);
+  }, [timeout]);
 
   const resetTimer = useCallback(() => {
     if (!enabled || isIdle) return;
@@ -35,6 +41,13 @@ export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOp
     setIsIdle(false);
     startTimer();
   }, [startTimer]);
+
+  // Reiniciar timer quando timeout mudar
+  useEffect(() => {
+    if (enabled && !isIdle) {
+      startTimer();
+    }
+  }, [timeout, enabled, isIdle, startTimer]);
 
   useEffect(() => {
     if (!enabled) {
