@@ -82,7 +82,8 @@ export const TelaDescanso = () => {
     enabled: config?.ativa ?? false,
   });
 
-  const handleDismiss = (e: React.MouseEvent | React.TouchEvent) => {
+  // Handler de captura para fechar - executa ANTES de propagar
+  const handleDismissCapture = (e: React.PointerEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -93,11 +94,18 @@ export const TelaDescanso = () => {
     setShowScreen(false);
     dismissIdle();
     
-    // Reabilitar interação após um pequeno delay
+    // Marcar globalmente que acabamos de fechar o descanso
+    (window as any).__telaDescansoJustClosed = true;
+    
+    // Reabilitar interação após 300ms para evitar ghost click no mobile
     window.setTimeout(() => {
       setPointerEnabled(true);
       dismissingRef.current = false;
-    }, 100);
+      // Limpar flag após um tempo extra
+      window.setTimeout(() => {
+        (window as any).__telaDescansoJustClosed = false;
+      }, 100);
+    }, 300);
     
     navigate('/');
   };
@@ -112,10 +120,11 @@ export const TelaDescanso = () => {
       )}
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center cursor-pointer"
-        onClick={handleDismiss}
-        onTouchStart={handleDismiss}
+        onPointerDownCapture={handleDismissCapture}
+        onTouchStartCapture={handleDismissCapture}
         style={{
           backgroundColor: config.cor_fundo || '#1a1a2e',
+          pointerEvents: 'auto',
         }}
       >
       {config.imagem_url ? (
