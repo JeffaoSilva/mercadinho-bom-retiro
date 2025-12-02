@@ -79,19 +79,15 @@ export const TelaDescanso = () => {
     }
   };
 
-  const handleActive = () => {
-    setShowScreen(false);
-  };
-
-  useIdleTimer({
+  const { dismissIdle } = useIdleTimer({
     timeout,
     onIdle: handleIdle,
-    onActive: handleActive,
     enabled: config?.ativa ?? false,
   });
 
   const handleDismiss = () => {
     setShowScreen(false);
+    dismissIdle();
     navigate('/');
   };
 

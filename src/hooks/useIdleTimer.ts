@@ -3,24 +3,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 interface UseIdleTimerOptions {
   timeout: number; // em segundos
   onIdle: () => void;
-  onActive?: () => void;
   enabled?: boolean;
 }
 
-export const useIdleTimer = ({ timeout, onIdle, onActive, enabled = true }: UseIdleTimerOptions) => {
+export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOptions) => {
   const [isIdle, setIsIdle] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const resetTimer = useCallback(() => {
-    if (!enabled) return;
-    
+  const startTimer = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-    }
-
-    if (isIdle) {
-      setIsIdle(false);
-      onActive?.();
     }
 
     const idleMs = timeout * 1000;
@@ -31,7 +23,18 @@ export const useIdleTimer = ({ timeout, onIdle, onActive, enabled = true }: UseI
       setIsIdle(true);
       onIdle();
     }, idleMs);
-  }, [timeout, onIdle, onActive, isIdle, enabled]);
+  }, [timeout, onIdle]);
+
+  const resetTimer = useCallback(() => {
+    if (!enabled || isIdle) return;
+    startTimer();
+  }, [enabled, isIdle, startTimer]);
+
+  // Função chamada ao tocar na tela de descanso
+  const dismissIdle = useCallback(() => {
+    setIsIdle(false);
+    startTimer();
+  }, [startTimer]);
 
   useEffect(() => {
     if (!enabled) {
@@ -41,13 +44,14 @@ export const useIdleTimer = ({ timeout, onIdle, onActive, enabled = true }: UseI
       return;
     }
 
-    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
+    // Apenas eventos de toque/clique, ignorando mousemove e keydown
+    const events = ['pointerdown', 'click', 'touchstart'];
 
     events.forEach(event => {
       document.addEventListener(event, resetTimer);
     });
 
-    resetTimer();
+    startTimer();
 
     return () => {
       events.forEach(event => {
@@ -57,7 +61,7 @@ export const useIdleTimer = ({ timeout, onIdle, onActive, enabled = true }: UseI
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [resetTimer, enabled]);
+  }, [resetTimer, startTimer, enabled]);
 
-  return { isIdle, resetTimer };
+  return { isIdle, dismissIdle };
 };

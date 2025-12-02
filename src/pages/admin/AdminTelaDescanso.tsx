@@ -27,7 +27,8 @@ const AdminTelaDescanso = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [timeout, setTimeout] = useState(60);
+  const [idleSecondsInput, setIdleSecondsInput] = useState('30');
+  const [idleError, setIdleError] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -38,9 +39,7 @@ const AdminTelaDescanso = () => {
     
     // Carregar timeout do localStorage
     const savedTimeout = localStorage.getItem('tela_descanso_timeout');
-    if (savedTimeout) {
-      setTimeout(parseInt(savedTimeout, 10));
-    }
+    setIdleSecondsInput(savedTimeout ?? '30');
   }, [isAuthenticated, navigate]);
 
   const loadConfig = async () => {
@@ -86,6 +85,14 @@ const AdminTelaDescanso = () => {
   const handleSave = async () => {
     if (!config) return;
     
+    // Validar tempo de inatividade
+    const parsed = parseInt(idleSecondsInput, 10);
+    if (!idleSecondsInput.trim() || isNaN(parsed) || parsed <= 0) {
+      setIdleError('Digite um número inteiro maior que 0');
+      return;
+    }
+    setIdleError('');
+    
     setSaving(true);
     try {
       const { error } = await supabase
@@ -99,8 +106,8 @@ const AdminTelaDescanso = () => {
 
       if (error) throw error;
       
-      // Salvar timeout no localStorage
-      localStorage.setItem('tela_descanso_timeout', timeout.toString());
+      // Salvar timeout no localStorage como número
+      localStorage.setItem('tela_descanso_timeout', parsed.toString());
       
       toast.success('Configurações salvas');
     } catch (error) {
@@ -223,12 +230,17 @@ const AdminTelaDescanso = () => {
           <div className="space-y-2">
             <Label>Tempo de inatividade (segundos)</Label>
             <Input
-              type="number"
-              value={timeout}
-              onChange={(e) => setTimeout(parseInt(e.target.value) || 60)}
-              min={10}
-              max={600}
+              type="text"
+              value={idleSecondsInput}
+              onChange={(e) => {
+                setIdleSecondsInput(e.target.value);
+                setIdleError('');
+              }}
+              placeholder="30"
             />
+            {idleError && (
+              <p className="text-xs text-destructive">{idleError}</p>
+            )}
             <p className="text-xs text-muted-foreground">
               Tempo sem interação antes de mostrar a tela (salvo localmente)
             </p>
