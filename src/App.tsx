@@ -16,6 +16,8 @@ import AdminPromocoes from "./pages/admin/AdminPromocoes";
 import AdminCompras from "./pages/admin/AdminCompras";
 import AdminClientes from "./pages/admin/AdminClientes";
 import AdminEstornos from "./pages/admin/AdminEstornos";
+import AdminTelaDescanso from "./pages/admin/AdminTelaDescanso";
+import { TelaDescanso } from "./components/TelaDescanso";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <TelaDescanso />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/select-client" element={<SelectClient />} />
@@ -38,6 +41,7 @@ const App = () => (
           <Route path="/admin/compras" element={<AdminCompras />} />
           <Route path="/admin/clientes" element={<AdminClientes />} />
           <Route path="/admin/estornos" element={<AdminEstornos />} />
+          <Route path="/admin/tela-descanso" element={<AdminTelaDescanso />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

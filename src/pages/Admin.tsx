@@ -13,6 +13,7 @@ import {
   RotateCcw,
   LogOut,
   ArrowLeft,
+  Monitor,
 } from "lucide-react";
 
 const Admin = () => {
@@ -72,6 +73,7 @@ const Admin = () => {
     { title: "Compras / Cadernetas", icon: ShoppingBag, route: "/admin/compras" },
     { title: "Clientes", icon: Users, route: "/admin/clientes" },
     { title: "Estornos", icon: RotateCcw, route: "/admin/estornos" },
+    { title: "Tela de Descanso", icon: Monitor, route: "/admin/tela-descanso" },
   ];
 
   return (

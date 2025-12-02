@@ -333,6 +333,36 @@ export type Database = {
           },
         ]
       }
+      tela_descanso: {
+        Row: {
+          ativa: boolean
+          cor_fundo: string | null
+          criado_em: string
+          id: number
+          imagem_url: string | null
+          subtitulo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          ativa?: boolean
+          cor_fundo?: string | null
+          criado_em?: string
+          id?: number
+          imagem_url?: string | null
+          subtitulo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          ativa?: boolean
+          cor_fundo?: string | null
+          criado_em?: string
+          id?: number
+          imagem_url?: string | null
+          subtitulo?: string | null
+          titulo?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
