@@ -27,8 +27,9 @@ export const TelaDescanso = () => {
       const { data } = await supabase
         .from('tela_descanso')
         .select('*')
+        .order('criado_em', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (data) {
         setConfig(data);
@@ -37,11 +38,10 @@ export const TelaDescanso = () => {
 
     loadConfig();
 
-    // Carregar tempo de inatividade do localStorage
+    // Carregar tempo de inatividade do localStorage (em segundos)
     const savedTimeout = localStorage.getItem('tela_descanso_timeout');
-    if (savedTimeout) {
-      setTimeout(parseInt(savedTimeout, 10));
-    }
+    const timeoutSeconds = savedTimeout ? parseInt(savedTimeout, 10) : 30;
+    setTimeout(timeoutSeconds);
 
     // Subscribe to realtime updates
     const channel = supabase

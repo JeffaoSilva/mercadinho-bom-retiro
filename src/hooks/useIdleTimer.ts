@@ -23,10 +23,14 @@ export const useIdleTimer = ({ timeout, onIdle, onActive, enabled = true }: UseI
       onActive?.();
     }
 
+    const idleMs = timeout * 1000;
+    console.log('[useIdleTimer] idleSeconds:', timeout, '| idleMs:', idleMs);
+    
     timeoutRef.current = setTimeout(() => {
+      console.log('[useIdleTimer] Entrando em modo descanso');
       setIsIdle(true);
       onIdle();
-    }, timeout * 1000);
+    }, idleMs);
   }, [timeout, onIdle, onActive, isIdle, enabled]);
 
   useEffect(() => {
