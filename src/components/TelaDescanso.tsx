@@ -17,8 +17,8 @@ export const TelaDescanso = () => {
   const location = useLocation();
   const [config, setConfig] = useState<TelaDescansoConfig | null>(null);
   const [showScreen, setShowScreen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [timeout, setTimeout] = useState(60);
-  const [pointerEnabled, setPointerEnabled] = useState(true);
   const dismissingRef = useRef(false);
 
   // Carregar configuração do banco
@@ -82,51 +82,64 @@ export const TelaDescanso = () => {
     enabled: config?.ativa ?? false,
   });
 
-  // Handler de captura para fechar - executa ANTES de propagar
+  // Handler de captura para fechar - correção hard para mobile
   const handleDismissCapture = (e: React.PointerEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (dismissingRef.current) return;
+    if (dismissingRef.current || closing) return;
     dismissingRef.current = true;
     
-    setPointerEnabled(false);
-    setShowScreen(false);
-    dismissIdle();
+    // Iniciar fase de fechamento - overlay fica invisível mas ainda bloqueia
+    setClosing(true);
     
-    // Marcar globalmente que acabamos de fechar o descanso
-    (window as any).__telaDescansoJustClosed = true;
+    // Bloquear body inteiro por segurança extra
+    document.body.style.pointerEvents = 'none';
     
-    // Reabilitar interação após 300ms para evitar ghost click no mobile
+    // Após 400ms, finalizar o fechamento
     window.setTimeout(() => {
-      setPointerEnabled(true);
+      setShowScreen(false);
+      setClosing(false);
       dismissingRef.current = false;
-      // Limpar flag após um tempo extra
-      window.setTimeout(() => {
-        (window as any).__telaDescansoJustClosed = false;
-      }, 100);
-    }, 300);
-    
-    navigate('/');
+      dismissIdle();
+      
+      // Reativar body
+      document.body.style.pointerEvents = 'auto';
+      
+      navigate('/');
+    }, 400);
   };
 
-  if (!showScreen || !config) return null;
+  // Não renderiza nada se não está ativo
+  if (!showScreen && !closing) return null;
+  if (!config) return null;
+
+  // Durante closing: overlay transparente que bloqueia toques
+  if (closing) {
+    return (
+      <div
+        className="fixed inset-0 z-[9999]"
+        style={{
+          pointerEvents: 'auto',
+          background: 'transparent',
+        }}
+        onPointerDownCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onTouchStartCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      />
+    );
+  }
 
   return (
-    <>
-      {/* Overlay para bloquear interação com a tela de baixo */}
-      {!pointerEnabled && (
-        <div className="fixed inset-0 z-[9998]" style={{ pointerEvents: 'all' }} />
-      )}
-      <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center cursor-pointer"
-        onPointerDownCapture={handleDismissCapture}
-        onTouchStartCapture={handleDismissCapture}
-        style={{
-          backgroundColor: config.cor_fundo || '#1a1a2e',
-          pointerEvents: 'auto',
-        }}
-      >
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center cursor-pointer"
+      onPointerDownCapture={handleDismissCapture}
+      onTouchStartCapture={handleDismissCapture}
+      style={{
+        backgroundColor: config.cor_fundo || '#1a1a2e',
+        pointerEvents: 'auto',
+      }}
+    >
       {config.imagem_url ? (
         <img
           src={config.imagem_url}
@@ -148,10 +161,9 @@ export const TelaDescanso = () => {
         </div>
       )}
       
-        <p className="absolute bottom-8 text-white/60 text-lg animate-pulse">
-          Toque para continuar
-        </p>
-      </div>
-    </>
+      <p className="absolute bottom-8 text-white/60 text-lg animate-pulse">
+        Toque para continuar
+      </p>
+    </div>
   );
 };
