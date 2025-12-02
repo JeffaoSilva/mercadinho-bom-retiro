@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useIdleTimer } from '@/hooks/useIdleTimer';
-import { useCheckout } from '@/hooks/useCheckout';
 
 interface TelaDescansoConfig {
   id: number;
@@ -16,10 +15,11 @@ interface TelaDescansoConfig {
 export const TelaDescanso = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cart } = useCheckout();
   const [config, setConfig] = useState<TelaDescansoConfig | null>(null);
   const [showScreen, setShowScreen] = useState(false);
   const [timeout, setTimeout] = useState(60);
+  const [pointerEnabled, setPointerEnabled] = useState(true);
+  const dismissingRef = useRef(false);
 
   // Carregar configuração do banco
   useEffect(() => {
@@ -60,12 +60,9 @@ export const TelaDescanso = () => {
 
   // Verificar se pode mostrar tela de descanso
   const canShowIdleScreen = () => {
-    // Só mostra na Home ou SelectClient
-    const allowedRoutes = ['/', '/select-client'];
-    if (!allowedRoutes.includes(location.pathname)) return false;
-    
-    // Não mostra se tem itens no carrinho (compra em andamento)
-    if (cart.length > 0) return false;
+    // Não mostra em rotas de compra ativa (cart, checkout)
+    const purchaseRoutes = ['/cart', '/checkout'];
+    if (purchaseRoutes.includes(location.pathname)) return false;
     
     // Não mostra se não está ativa
     if (!config?.ativa) return false;
@@ -85,23 +82,42 @@ export const TelaDescanso = () => {
     enabled: config?.ativa ?? false,
   });
 
-  const handleDismiss = () => {
+  const handleDismiss = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (dismissingRef.current) return;
+    dismissingRef.current = true;
+    
+    setPointerEnabled(false);
     setShowScreen(false);
     dismissIdle();
+    
+    // Reabilitar interação após um pequeno delay
+    window.setTimeout(() => {
+      setPointerEnabled(true);
+      dismissingRef.current = false;
+    }, 100);
+    
     navigate('/');
   };
 
   if (!showScreen || !config) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center cursor-pointer"
-      onClick={handleDismiss}
-      onTouchStart={handleDismiss}
-      style={{
-        backgroundColor: config.cor_fundo || '#1a1a2e',
-      }}
-    >
+    <>
+      {/* Overlay para bloquear interação com a tela de baixo */}
+      {!pointerEnabled && (
+        <div className="fixed inset-0 z-[9998]" style={{ pointerEvents: 'all' }} />
+      )}
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center cursor-pointer"
+        onClick={handleDismiss}
+        onTouchStart={handleDismiss}
+        style={{
+          backgroundColor: config.cor_fundo || '#1a1a2e',
+        }}
+      >
       {config.imagem_url ? (
         <img
           src={config.imagem_url}
@@ -123,9 +139,10 @@ export const TelaDescanso = () => {
         </div>
       )}
       
-      <p className="absolute bottom-8 text-white/60 text-lg animate-pulse">
-        Toque para continuar
-      </p>
-    </div>
+        <p className="absolute bottom-8 text-white/60 text-lg animate-pulse">
+          Toque para continuar
+        </p>
+      </div>
+    </>
   );
 };
