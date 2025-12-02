@@ -6,6 +6,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
 import { ArrowLeft, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Promocao {
   id: number;
@@ -16,10 +26,25 @@ interface Promocao {
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { clienteNome, cart, addToCart, updateQuantity, removeFromCart, getTotal } = useCheckout();
+  const { clienteNome, cart, addToCart, updateQuantity, removeFromCart, getTotal, reset } = useCheckout();
   const [barcode, setBarcode] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const handleBackClick = () => {
+    if (cart.length > 0) {
+      setShowCancelModal(true);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleCancelPurchase = () => {
+    reset();
+    setShowCancelModal(false);
+    navigate('/');
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -102,13 +127,30 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen bg-background p-8">
+      <AlertDialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar compra?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O carrinho será limpo e você voltará para a tela inicial.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar comprando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelPurchase}>
+              Cancelar compra
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/select-client')}
+              onClick={handleBackClick}
             >
               <ArrowLeft className="w-6 h-6" />
             </Button>
