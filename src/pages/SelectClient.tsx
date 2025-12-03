@@ -45,7 +45,7 @@ const SelectClient = () => {
       }
 
       const { data, error } = await supabase
-        .from('clientes')
+        .from('clientes_kiosk')
         .select('id, nome')
         .eq('mercadinho_id', filtroId)
         .order('nome');
