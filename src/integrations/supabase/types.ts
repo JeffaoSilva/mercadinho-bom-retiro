@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       clientes: {
         Row: {
+          ativo: boolean
           criado_em: string
           id: number
           mercadinho_id: number
@@ -23,6 +24,7 @@ export type Database = {
           telefone: string
         }
         Insert: {
+          ativo?: boolean
           criado_em?: string
           id?: number
           mercadinho_id: number
@@ -30,6 +32,7 @@ export type Database = {
           telefone: string
         }
         Update: {
+          ativo?: boolean
           criado_em?: string
           id?: number
           mercadinho_id?: number
@@ -83,6 +86,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_kiosk"
             referencedColumns: ["id"]
           },
           {
@@ -220,6 +230,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pins_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_kiosk"
             referencedColumns: ["id"]
           },
         ]
@@ -376,7 +393,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      clientes_kiosk: {
+        Row: {
+          ativo: boolean | null
+          id: number | null
+          mercadinho_id: number | null
+          nome: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          id?: number | null
+          mercadinho_id?: number | null
+          nome?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          id?: number | null
+          mercadinho_id?: number | null
+          nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_mercadinho_id_fkey"
+            columns: ["mercadinho_id"]
+            isOneToOne: false
+            referencedRelation: "mercadinhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
