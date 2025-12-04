@@ -5,24 +5,36 @@ import { useEffect } from "react";
 import { useCheckout } from "@/hooks/useCheckout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { buscarConfigInatividade } from "@/services/configInatividade";
+import { useConfigInatividadeStore } from "@/stores/configInatividadeStore";
+import { useIdleStore } from "@/stores/idleStore";
+import { useTabletStore } from "@/stores/tabletStore";
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { setTabletId, setMercadinhoAtualId } = useCheckout();
 
+  const setTabletStoreId = useTabletStore((s) => s.setTabletId);
+  const setIdleSeconds = useIdleStore((s) => s.setIdleSeconds);
+  const setTempos = useConfigInatividadeStore((s) => s.setTempos);
+  const setCarregando = useConfigInatividadeStore((s) => s.setCarregando);
+
   useEffect(() => {
     const loadTabletData = async () => {
-      const tabletIdParam = searchParams.get('tablet_id');
-      const tabletId = tabletIdParam || '1';
+      const tabletIdParam = searchParams.get("tablet_id");
+      const tabletId = tabletIdParam || "1";
+
+      // guarda tablet no checkout (string) e no tabletStore (number)
       setTabletId(tabletId);
+      setTabletStoreId(parseInt(tabletId));
 
       // Buscar mercadinho_id do tablet
       try {
         const { data, error } = await supabase
-          .from('tablets')
-          .select('mercadinho_id')
-          .eq('id', parseInt(tabletId))
+          .from("tablets")
+          .select("mercadinho_id")
+          .eq("id", parseInt(tabletId))
           .maybeSingle();
 
         if (error) throw error;
@@ -30,35 +42,44 @@ const Index = () => {
         if (data) {
           setMercadinhoAtualId(data.mercadinho_id);
         } else {
-          toast.error('Tablet não encontrado');
+          toast.error("Tablet não encontrado");
         }
+
+        // Carregar config remota de inatividade
+        setCarregando(true);
+        const cfg = await buscarConfigInatividade(parseInt(tabletId));
+        setTempos(cfg.tempo_idle_home_seg, cfg.tempo_descanso_home_seg);
+        setIdleSeconds(cfg.tempo_descanso_home_seg); // vitrine usa esse tempo
+        setCarregando(false);
+
       } catch (error) {
-        console.error('Erro ao carregar dados do tablet:', error);
-        toast.error('Erro ao carregar dados do tablet');
+        console.error("Erro ao carregar dados do tablet:", error);
+        toast.error("Erro ao carregar dados do tablet");
+        setCarregando(false);
       }
     };
 
     loadTabletData();
-  }, [searchParams, setTabletId, setMercadinhoAtualId]);
+  }, [searchParams, setTabletId, setMercadinhoAtualId, setTabletStoreId, setTempos, setIdleSeconds, setCarregando]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
-      <div className="text-center space-y-8 max-w-2xl">
-        <div className="space-y-4">
-          <ShoppingCart className="w-24 h-24 mx-auto text-primary" />
-          <h1 className="text-6xl font-bold text-foreground">
-            Mercadinho
-          </h1>
-          <p className="text-2xl text-muted-foreground">
-            Sistema de Autoatendimento
-          </p>
-        </div>
-        
-        <Button 
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-6 relative">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">
+          Mercadinho Autoatendimento
+        </h1>
+        <p className="text-xl text-gray-600">
+          Escolha uma opção para começar
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-6 w-full max-w-md">
+        <Button
           size="lg"
-          onClick={() => navigate('/select-client')}
-          className="text-2xl py-8 px-16 h-auto"
+          className="h-20 text-xl font-semibold bg-blue-600 hover:bg-blue-700"
+          onClick={() => navigate("/select-client")}
         >
+          <ShoppingCart className="w-8 h-8 mr-3" />
           Iniciar Compra
         </Button>
       </div>
@@ -68,7 +89,7 @@ const Index = () => {
         variant="outline"
         size="icon"
         className="fixed bottom-6 right-6 w-12 h-12 rounded-full opacity-60 hover:opacity-100"
-        onClick={() => navigate('/admin')}
+        onClick={() => navigate("/admin")}
       >
         <Settings className="w-6 h-6" />
       </Button>
