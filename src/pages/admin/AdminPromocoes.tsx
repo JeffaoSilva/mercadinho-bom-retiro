@@ -28,7 +28,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
 
 interface Promocao {
@@ -50,7 +50,7 @@ interface Produto {
 
 const AdminPromocoes = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAdmin();
+  const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,12 +67,13 @@ const AdminPromocoes = () => {
   });
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
     loadData();
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const loadData = async () => {
     const [promoRes, prodRes] = await Promise.all([

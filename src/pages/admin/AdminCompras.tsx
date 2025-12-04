@@ -27,7 +27,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Eye } from "lucide-react";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
 
 interface Compra {
@@ -63,7 +63,7 @@ interface Mercadinho {
 
 const AdminCompras = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAdmin();
+  const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [compras, setCompras] = useState<Compra[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [mercadinhos, setMercadinhos] = useState<Mercadinho[]>([]);
@@ -80,12 +80,13 @@ const AdminCompras = () => {
   });
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
     loadData();
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const loadData = async () => {
     const [comprasRes, clientesRes, mercadinhosRes] = await Promise.all([

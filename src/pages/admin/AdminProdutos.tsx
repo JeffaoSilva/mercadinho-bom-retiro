@@ -21,7 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Search } from "lucide-react";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 interface Produto {
   id: number;
@@ -35,7 +35,7 @@ interface Produto {
 
 const AdminProdutos = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAdmin();
+  const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -50,12 +50,13 @@ const AdminProdutos = () => {
   });
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
     loadProdutos();
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const loadProdutos = async () => {
     const { data, error } = await supabase
