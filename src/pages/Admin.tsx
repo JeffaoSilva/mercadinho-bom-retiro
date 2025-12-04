@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { toast } from "sonner";
 import {
   Package,
@@ -14,21 +14,46 @@ import {
   LogOut,
   ArrowLeft,
   Monitor,
+  Loader2,
 } from "lucide-react";
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, login, logout } = useAdmin();
+  const { isAuthenticated, loading, signIn, signOut } = useAdminAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLogin = () => {
-    if (login(password)) {
-      toast.success("Acesso liberado");
-    } else {
-      toast.error("Senha incorreta");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      toast.error("Preencha email e senha");
+      return;
+    }
+    
+    setIsLoggingIn(true);
+    const { error } = await signIn(email, password);
+    setIsLoggingIn(false);
+    
+    if (error) {
+      toast.error("Credenciais inválidas");
       setPassword("");
+    } else {
+      toast.success("Acesso liberado");
     }
   };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -36,20 +61,32 @@ const Admin = () => {
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold">Área Administrativa</h1>
-            <p className="text-muted-foreground mt-2">Digite a senha para acessar</p>
+            <p className="text-muted-foreground mt-2">Faça login para acessar</p>
           </div>
           
           <div className="space-y-4">
             <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-14 text-xl"
+              autoFocus
+            />
+            <Input
               type="password"
-              placeholder="Senha de administrador"
+              placeholder="Senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              className="h-14 text-xl text-center"
-              autoFocus
+              className="h-14 text-xl"
             />
-            <Button onClick={handleLogin} className="w-full h-14 text-xl">
+            <Button 
+              onClick={handleLogin} 
+              className="w-full h-14 text-xl"
+              disabled={isLoggingIn}
+            >
+              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
               Entrar
             </Button>
             <Button
@@ -81,7 +118,7 @@ const Admin = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-          <Button variant="outline" onClick={() => { logout(); navigate("/"); }}>
+          <Button variant="outline" onClick={handleLogout}>
             <LogOut className="mr-2 h-5 w-5" />
             Sair
           </Button>

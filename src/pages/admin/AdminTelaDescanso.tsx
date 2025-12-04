@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Upload, Trash2, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useIdleStore } from "@/stores/idleStore";
 
 interface TelaDescansoConfig {
@@ -28,7 +28,7 @@ interface Tablet {
 
 const AdminTelaDescanso = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAdmin();
+  const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const setIdleSeconds = useIdleStore((state) => state.setIdleSeconds);
   const currentIdleSeconds = useIdleStore((state) => state.idleSeconds);
@@ -46,13 +46,14 @@ const AdminTelaDescanso = () => {
   const [tablets, setTablets] = useState<Tablet[]>([]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
     loadTablets();
     setIdleSecondsInput(currentIdleSeconds.toString());
-  }, [isAuthenticated, navigate, currentIdleSeconds]);
+  }, [isAuthenticated, authLoading, navigate, currentIdleSeconds]);
 
   useEffect(() => {
     loadConfig();

@@ -30,7 +30,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Trash2, X } from "lucide-react";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
 
 interface Compra {
@@ -53,7 +53,7 @@ interface ItemCompra {
 
 const AdminEstornos = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAdmin();
+  const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [compras, setCompras] = useState<Compra[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -64,12 +64,13 @@ const AdminEstornos = () => {
   const [confirmRemoveItem, setConfirmRemoveItem] = useState<ItemCompra | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
     loadCompras();
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const loadCompras = async () => {
     const { data, error } = await supabase
