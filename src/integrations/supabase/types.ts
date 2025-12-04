@@ -104,6 +104,41 @@ export type Database = {
           },
         ]
       }
+      config_inatividade: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          id: number
+          tablet_id: number | null
+          tempo_descanso_home_seg: number
+          tempo_idle_home_seg: number
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          id?: number
+          tablet_id?: number | null
+          tempo_descanso_home_seg?: number
+          tempo_idle_home_seg?: number
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          id?: number
+          tablet_id?: number | null
+          tempo_descanso_home_seg?: number
+          tempo_idle_home_seg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "config_inatividade_tablet_id_fkey"
+            columns: ["tablet_id"]
+            isOneToOne: false
+            referencedRelation: "tablets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_compra: {
         Row: {
           compra_id: number
