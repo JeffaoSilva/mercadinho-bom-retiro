@@ -12,7 +12,11 @@ const Pin = () => {
   const location = useLocation();
 
   const checkout = useCheckout();
-  const { clienteId: clienteIdStore, clienteNome: clienteNomeStore } = checkout;
+  const {
+    clienteId: clienteIdStore,
+    clienteNome: clienteNomeStore,
+    setCliente,
+  } = checkout;
 
   // dados que podem vir via navigate("/pin", { state: {...} })
   const state = (location.state as any) || {};
@@ -51,6 +55,11 @@ const Pin = () => {
   }, [clienteId]);
 
   const irDepoisDoPin = () => {
+    // ✅ garante que o cliente fica setado no store
+    if (clienteId && clienteNome) {
+      setCliente(clienteId, clienteNome);
+    }
+
     if (destino === "areaCliente") {
       navigate(`/area-cliente/${clienteId}`);
     } else {
