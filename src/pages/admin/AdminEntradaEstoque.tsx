@@ -160,36 +160,44 @@ const AdminEntradaEstoque = () => {
       ];
 
       for (const rateio of rateios) {
-        if (rateio.quantidade > 0) {
-          // Verificar se já existe prateleira com esse preço
-          const { data: prateleiraExistente } = await supabase
-            .from("prateleiras_produtos")
-            .select("id, quantidade_prateleira")
-            .eq("mercadinho_id", rateio.mercadinho_id)
-            .eq("produto_id", produto.id)
-            .eq("preco_venda_prateleira", precoVendaNum)
-            .eq("ativo", true)
-            .maybeSingle();
+        if (rateio.quantidade <= 0) continue;
 
-          if (prateleiraExistente) {
-            // Atualizar quantidade existente
-            await supabase
-              .from("prateleiras_produtos")
-              .update({
-                quantidade_prateleira:
-                  prateleiraExistente.quantidade_prateleira + rateio.quantidade,
-              })
-              .eq("id", prateleiraExistente.id);
-          } else {
-            // Criar nova linha de prateleira
-            await supabase.from("prateleiras_produtos").insert({
+        // Buscar quantidade atual SEM filtrar ativo
+        const { data: atual, error: errAtual } = await supabase
+          .from("prateleiras_produtos")
+          .select("quantidade_prateleira")
+          .eq("mercadinho_id", rateio.mercadinho_id)
+          .eq("produto_id", produto.id)
+          .eq("preco_venda_prateleira", precoVendaNum)
+          .maybeSingle();
+
+        if (errAtual) {
+          console.error("Erro buscando prateleira atual", errAtual);
+          throw errAtual;
+        }
+
+        const qtdNova = (atual?.quantidade_prateleira || 0) + rateio.quantidade;
+
+        const { error } = await supabase
+          .from("prateleiras_produtos")
+          .upsert(
+            {
               mercadinho_id: rateio.mercadinho_id,
               produto_id: produto.id,
               preco_venda_prateleira: precoVendaNum,
-              quantidade_prateleira: rateio.quantidade,
+              quantidade_prateleira: qtdNova,
               ativo: true,
-            });
-          }
+              atualizado_em: new Date().toISOString(),
+            },
+            {
+              onConflict: "mercadinho_id,produto_id,preco_venda_prateleira",
+              ignoreDuplicates: false,
+            }
+          );
+
+        if (error) {
+          console.error("Erro upsert prateleira", rateio, error);
+          throw error;
         }
       }
 
