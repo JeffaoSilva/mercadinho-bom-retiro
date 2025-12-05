@@ -15,7 +15,9 @@ import {
   ArrowLeft,
   Monitor,
   Loader2,
+  PackagePlus,
 } from "lucide-react";
+import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -105,6 +107,7 @@ const Admin = () => {
 
   const menuItems = [
     { title: "Produtos", icon: Package, route: "/admin/produtos" },
+    { title: "Entrada / Reposição", icon: PackagePlus, route: "/admin/entrada-estoque" },
     { title: "Estoque / Lotes", icon: Boxes, route: "/admin/estoque" },
     { title: "Promoções", icon: Tag, route: "/admin/promocoes" },
     { title: "Compras / Cadernetas", icon: ShoppingBag, route: "/admin/compras" },
@@ -123,6 +126,8 @@ const Admin = () => {
             Sair
           </Button>
         </div>
+
+        <AlertaEstoqueBaixo />
 
         <div className="grid grid-cols-2 gap-4">
           {menuItems.map((item) => (

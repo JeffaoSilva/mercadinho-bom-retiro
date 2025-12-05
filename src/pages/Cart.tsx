@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, Minus, Plus, Trash2 } from "lucide-react";
+import { useCheckout, CartItem } from "@/hooks/useCheckout";
+import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -16,6 +16,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  buscarExposicoesProduto,
+  totalDisponivelProduto,
+  Exposicao,
+} from "@/services/prateleiras";
 
 interface Promocao {
   id: number;
@@ -26,24 +31,35 @@ interface Promocao {
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { clienteNome, cart, addToCart, updateQuantity, removeFromCart, getTotal, reset } = useCheckout();
-  const [barcode, setBarcode] = useState('');
+  const {
+    clienteNome,
+    mercadinhoAtualId,
+    cart,
+    addToCartWithPrice,
+    updateQuantity,
+    removeFromCart,
+    reset,
+  } = useCheckout();
+  const [barcode, setBarcode] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
+
+  // Cache de exposições por produto
+  const [exposicoesCache, setExposicoesCache] = useState<Map<number, Exposicao[]>>(new Map());
 
   const handleBackClick = () => {
     if (cart.length > 0) {
       setShowCancelModal(true);
     } else {
-      navigate('/');
+      navigate("/");
     }
   };
 
   const handleCancelPurchase = () => {
     reset();
     setShowCancelModal(false);
-    navigate('/');
+    navigate("/");
   };
 
   useEffect(() => {
@@ -57,26 +73,29 @@ const Cart = () => {
   const loadPromocoes = async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
-      .from('promocoes')
-      .select('id, desconto_percentual, tipo, produto_id')
-      .eq('ativa', true)
-      .lte('inicia_em', now)
+      .from("promocoes")
+      .select("id, desconto_percentual, tipo, produto_id")
+      .eq("ativa", true)
+      .lte("inicia_em", now)
       .or(`termina_em.is.null,termina_em.gte.${now}`);
-    
+
     setPromocoes(data || []);
   };
 
   const getPromoForProduct = (produtoId: number): Promocao | null => {
-    // Primeiro tenta encontrar promoção específica do produto
-    const produtoPromo = promocoes.find(p => p.tipo === 'produto' && p.produto_id === produtoId);
+    const produtoPromo = promocoes.find(
+      (p) => p.tipo === "produto" && p.produto_id === produtoId
+    );
     if (produtoPromo) return produtoPromo;
-    
-    // Se não, busca promoção global
-    const globalPromo = promocoes.find(p => p.tipo === 'global');
+
+    const globalPromo = promocoes.find((p) => p.tipo === "global");
     return globalPromo || null;
   };
 
-  const getPrecoComDesconto = (preco: number, produtoId: number): { precoFinal: number; temDesconto: boolean; desconto: number } => {
+  const getPrecoComDesconto = (
+    preco: number,
+    produtoId: number
+  ): { precoFinal: number; temDesconto: boolean; desconto: number } => {
     const promo = getPromoForProduct(produtoId);
     if (promo) {
       const precoFinal = preco * (1 - promo.desconto_percentual / 100);
@@ -85,45 +104,202 @@ const Cart = () => {
     return { precoFinal: preco, temDesconto: false, desconto: 0 };
   };
 
+  // Calcula quanto já foi "reservado" de cada prateleira no carrinho
+  const getQuantidadeReservadaPorPrateleira = (produtoId: number): Map<number, number> => {
+    const mapa = new Map<number, number>();
+    cart
+      .filter((item) => item.produto_id === produtoId && item.prateleira_id)
+      .forEach((item) => {
+        const atual = mapa.get(item.prateleira_id!) || 0;
+        mapa.set(item.prateleira_id!, atual + item.quantidade);
+      });
+    return mapa;
+  };
+
+  // Encontra próxima prateleira disponível
+  const encontrarProximaPrateleiraDisponivel = (
+    exposicoes: Exposicao[],
+    reservado: Map<number, number>
+  ): Exposicao | null => {
+    for (const expo of exposicoes) {
+      const jaReservado = reservado.get(expo.id) || 0;
+      if (expo.quantidade_prateleira - jaReservado > 0) {
+        return expo;
+      }
+    }
+    return null;
+  };
+
   const handleBarcodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!barcode.trim()) return;
 
+    const mercadinhoId = mercadinhoAtualId || 1;
+
     try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('codigo_barras', barcode.trim())
+      // Buscar produto pelo código de barras
+      const { data: produto, error } = await supabase
+        .from("produtos")
+        .select("*")
+        .eq("codigo_barras", barcode.trim())
         .maybeSingle();
 
       if (error) throw error;
 
-      if (data) {
-        const { precoFinal, temDesconto } = getPrecoComDesconto(data.preco_venda, data.id);
-        addToCart({
-          produto_id: data.id,
-          nome: data.nome,
-          preco: precoFinal,
-          preco_original: temDesconto ? data.preco_venda : undefined,
-          codigo_barras: data.codigo_barras || ''
-        });
-        toast.success(`${data.nome} adicionado`);
-      } else {
-        toast.error('Produto não encontrado');
+      if (!produto) {
+        toast.error("Produto não encontrado");
+        setBarcode("");
+        return;
       }
+
+      // Buscar exposições desse produto na prateleira
+      const exposicoes = await buscarExposicoesProduto(mercadinhoId, produto.id);
+
+      // Verificar total disponível
+      const totalDisponivel = await totalDisponivelProduto(mercadinhoId, produto.id);
+
+      if (totalDisponivel === 0 || exposicoes.length === 0) {
+        toast.error("Produto não disponível na prateleira");
+        setBarcode("");
+        return;
+      }
+
+      // Atualizar cache
+      setExposicoesCache((prev) => new Map(prev).set(produto.id, exposicoes));
+
+      // Verificar quanto já está no carrinho desse produto
+      const reservado = getQuantidadeReservadaPorPrateleira(produto.id);
+      const totalNoCarrinho = cart
+        .filter((i) => i.produto_id === produto.id)
+        .reduce((sum, i) => sum + i.quantidade, 0);
+
+      if (totalNoCarrinho >= totalDisponivel) {
+        toast.error("Quantidade máxima disponível já no carrinho");
+        setBarcode("");
+        return;
+      }
+
+      // Encontrar próxima prateleira disponível
+      const prateleiraDisponivel = encontrarProximaPrateleiraDisponivel(exposicoes, reservado);
+
+      if (!prateleiraDisponivel) {
+        toast.error("Produto não disponível na prateleira");
+        setBarcode("");
+        return;
+      }
+
+      // Aplicar desconto promocional se houver
+      const { precoFinal, temDesconto } = getPrecoComDesconto(
+        prateleiraDisponivel.preco_venda_prateleira,
+        produto.id
+      );
+
+      addToCartWithPrice({
+        produto_id: produto.id,
+        nome: produto.nome,
+        preco: precoFinal,
+        preco_original: temDesconto ? prateleiraDisponivel.preco_venda_prateleira : undefined,
+        codigo_barras: produto.codigo_barras || "",
+        prateleira_id: prateleiraDisponivel.id,
+      });
+
+      toast.success(`${produto.nome} adicionado`);
     } catch (error) {
-      console.error('Erro ao buscar produto:', error);
-      toast.error('Erro ao buscar produto');
+      console.error("Erro ao buscar produto:", error);
+      toast.error("Erro ao buscar produto");
     }
 
-    setBarcode('');
+    setBarcode("");
   };
 
+  // Agrupar itens por produto_id para detectar múltiplos preços
+  const produtosComMultiplosPrecos = new Set<number>();
+  const produtoPrecos = new Map<number, Set<number>>();
+  
+  cart.forEach((item) => {
+    if (!produtoPrecos.has(item.produto_id)) {
+      produtoPrecos.set(item.produto_id, new Set());
+    }
+    produtoPrecos.get(item.produto_id)!.add(item.preco);
+  });
+
+  produtoPrecos.forEach((precos, produtoId) => {
+    if (precos.size > 1) {
+      produtosComMultiplosPrecos.add(produtoId);
+    }
+  });
+
+  // Identificar preço mais barato de cada produto
+  const precoMaisBarato = new Map<number, number>();
+  produtoPrecos.forEach((precos, produtoId) => {
+    precoMaisBarato.set(produtoId, Math.min(...precos));
+  });
+
   const getTotalComPromocoes = () => {
-    return cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+    return cart.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
   };
 
   const total = getTotalComPromocoes();
+
+  const temMultiplosPrecos = produtosComMultiplosPrecos.size > 0;
+
+  // Função para verificar se é linha mais cara
+  const isLinhaMaisCara = (item: CartItem) => {
+    if (!produtosComMultiplosPrecos.has(item.produto_id)) return false;
+    const menorPreco = precoMaisBarato.get(item.produto_id);
+    return item.preco > (menorPreco || 0);
+  };
+
+  // Handler para incrementar quantidade com verificação de estoque
+  const handleIncrement = async (item: CartItem) => {
+    const mercadinhoId = mercadinhoAtualId || 1;
+    
+    // Buscar exposições atualizadas
+    const exposicoes = await buscarExposicoesProduto(mercadinhoId, item.produto_id);
+    const totalDisponivel = await totalDisponivelProduto(mercadinhoId, item.produto_id);
+    
+    const totalNoCarrinho = cart
+      .filter((i) => i.produto_id === item.produto_id)
+      .reduce((sum, i) => sum + i.quantidade, 0);
+
+    if (totalNoCarrinho >= totalDisponivel) {
+      toast.error("Quantidade máxima disponível atingida");
+      return;
+    }
+
+    // Verificar se essa prateleira específica ainda tem estoque
+    const reservado = getQuantidadeReservadaPorPrateleira(item.produto_id);
+    const expo = exposicoes.find((e) => e.id === item.prateleira_id);
+    
+    if (expo) {
+      const jaReservado = reservado.get(expo.id) || 0;
+      if (expo.quantidade_prateleira - jaReservado > 0) {
+        updateQuantity(item.produto_id, item.quantidade + 1, item.preco);
+        return;
+      }
+    }
+
+    // Se não tem mais nessa prateleira, tenta adicionar de outra
+    const prateleiraDisponivel = encontrarProximaPrateleiraDisponivel(exposicoes, reservado);
+    
+    if (prateleiraDisponivel) {
+      const { precoFinal, temDesconto } = getPrecoComDesconto(
+        prateleiraDisponivel.preco_venda_prateleira,
+        item.produto_id
+      );
+
+      addToCartWithPrice({
+        produto_id: item.produto_id,
+        nome: item.nome,
+        preco: precoFinal,
+        preco_original: temDesconto ? prateleiraDisponivel.preco_venda_prateleira : undefined,
+        codigo_barras: item.codigo_barras,
+        prateleira_id: prateleiraDisponivel.id,
+      });
+    } else {
+      toast.error("Quantidade máxima disponível atingida");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -147,11 +323,7 @@ const Cart = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleBackClick}
-            >
+            <Button variant="ghost" size="icon" onClick={handleBackClick}>
               <ArrowLeft className="w-6 h-6" />
             </Button>
             <div>
@@ -159,12 +331,10 @@ const Cart = () => {
               <p className="text-lg text-muted-foreground">{clienteNome}</p>
             </div>
           </div>
-          
+
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Total</p>
-            <p className="text-4xl font-bold text-primary">
-              R$ {total.toFixed(2)}
-            </p>
+            <p className="text-4xl font-bold text-primary">R$ {total.toFixed(2)}</p>
           </div>
         </div>
 
@@ -185,8 +355,15 @@ const Cart = () => {
               Carrinho vazio. Escaneie um produto para começar.
             </div>
           ) : (
-            cart.map((item) => (
-              <div key={item.produto_id} className="bg-card p-4 rounded-lg border flex items-center gap-4">
+            cart.map((item, index) => (
+              <div
+                key={`${item.produto_id}_${item.preco}_${index}`}
+                className={`p-4 rounded-lg border flex items-center gap-4 ${
+                  isLinhaMaisCara(item)
+                    ? "bg-destructive/10 border-destructive/30"
+                    : "bg-card"
+                }`}
+              >
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg">
                     {item.nome}
@@ -195,10 +372,17 @@ const Cart = () => {
                         PROMO
                       </span>
                     )}
+                    {isLinhaMaisCara(item) && (
+                      <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
+                        LOTE DIFERENTE
+                      </span>
+                    )}
                   </h3>
                   <p className="text-muted-foreground">
                     {item.preco_original && (
-                      <span className="line-through mr-2">R$ {item.preco_original.toFixed(2)}</span>
+                      <span className="line-through mr-2">
+                        R$ {item.preco_original.toFixed(2)}
+                      </span>
                     )}
                     R$ {item.preco.toFixed(2)} x {item.quantidade}
                   </p>
@@ -208,19 +392,25 @@ const Cart = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => updateQuantity(item.produto_id, Math.max(1, item.quantidade - 1))}
+                    onClick={() =>
+                      updateQuantity(
+                        item.produto_id,
+                        Math.max(0, item.quantidade - 1),
+                        item.preco
+                      )
+                    }
                   >
                     <Minus className="w-4 h-4" />
                   </Button>
-                  
+
                   <span className="text-2xl font-bold w-12 text-center">
                     {item.quantidade}
                   </span>
-                  
+
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => updateQuantity(item.produto_id, item.quantidade + 1)}
+                    onClick={() => handleIncrement(item)}
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -228,7 +418,7 @@ const Cart = () => {
                   <Button
                     variant="destructive"
                     size="icon"
-                    onClick={() => removeFromCart(item.produto_id)}
+                    onClick={() => removeFromCart(item.produto_id, item.preco)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -244,11 +434,21 @@ const Cart = () => {
           )}
         </div>
 
+        {temMultiplosPrecos && (
+          <div className="flex items-center gap-2 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-700">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm">
+              <strong>Atenção:</strong> itens iguais com preços diferentes por serem de
+              lotes distintos.
+            </p>
+          </div>
+        )}
+
         {cart.length > 0 && (
           <Button
             size="lg"
             className="w-full text-xl py-8"
-            onClick={() => navigate('/checkout')}
+            onClick={() => navigate("/checkout")}
           >
             Finalizar Compra
           </Button>

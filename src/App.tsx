@@ -17,6 +17,7 @@ import AdminCompras from "./pages/admin/AdminCompras";
 import AdminClientes from "./pages/admin/AdminClientes";
 import AdminEstornos from "./pages/admin/AdminEstornos";
 import AdminTelaDescanso from "./pages/admin/AdminTelaDescanso";
+import AdminEntradaEstoque from "./pages/admin/AdminEntradaEstoque";
 import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
@@ -54,6 +55,7 @@ const AppContent = () => {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/produtos" element={<AdminProdutos />} />
+        <Route path="/admin/entrada-estoque" element={<AdminEntradaEstoque />} />
         <Route path="/admin/estoque" element={<AdminEstoque />} />
         <Route path="/admin/promocoes" element={<AdminPromocoes />} />
         <Route path="/admin/compras" element={<AdminCompras />} />

@@ -139,6 +139,50 @@ export type Database = {
           },
         ]
       }
+      entradas_estoque: {
+        Row: {
+          criado_em: string
+          id: number
+          preco_compra_entrada: number
+          preco_venda_sugerido: number
+          produto_id: number
+          quantidade_total: number
+          rateio_bom_retiro: number
+          rateio_central: number
+          rateio_sao_francisco: number
+        }
+        Insert: {
+          criado_em?: string
+          id?: number
+          preco_compra_entrada: number
+          preco_venda_sugerido: number
+          produto_id: number
+          quantidade_total: number
+          rateio_bom_retiro?: number
+          rateio_central?: number
+          rateio_sao_francisco?: number
+        }
+        Update: {
+          criado_em?: string
+          id?: number
+          preco_compra_entrada?: number
+          preco_venda_sugerido?: number
+          produto_id?: number
+          quantidade_total?: number
+          rateio_bom_retiro?: number
+          rateio_central?: number
+          rateio_sao_francisco?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entradas_estoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_compra: {
         Row: {
           compra_id: number
@@ -272,6 +316,54 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes_kiosk"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prateleiras_produtos: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          criado_em: string
+          id: number
+          mercadinho_id: number
+          preco_venda_prateleira: number
+          produto_id: number
+          quantidade_prateleira: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          id?: number
+          mercadinho_id: number
+          preco_venda_prateleira: number
+          produto_id: number
+          quantidade_prateleira?: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          id?: number
+          mercadinho_id?: number
+          preco_venda_prateleira?: number
+          produto_id?: number
+          quantidade_prateleira?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prateleiras_produtos_mercadinho_id_fkey"
+            columns: ["mercadinho_id"]
+            isOneToOne: false
+            referencedRelation: "mercadinhos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prateleiras_produtos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -467,6 +559,10 @@ export type Database = {
       pin_validate: {
         Args: { p_cliente_id: number; p_pin: string }
         Returns: boolean
+      }
+      prateleira_total_disponivel: {
+        Args: { p_mercadinho_id: number; p_produto_id: number }
+        Returns: number
       }
     }
     Enums: {
