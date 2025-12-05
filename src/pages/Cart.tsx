@@ -263,7 +263,7 @@ const Cart = () => {
       .reduce((sum, i) => sum + i.quantidade, 0);
 
     if (totalNoCarrinho >= totalDisponivel) {
-      toast.error("Quantidade máxima disponível atingida");
+      toast.error("Quantidade máxima disponível em estoque");
       return;
     }
 
@@ -297,7 +297,7 @@ const Cart = () => {
         prateleira_id: prateleiraDisponivel.id,
       });
     } else {
-      toast.error("Quantidade máxima disponível atingida");
+      toast.error("Quantidade máxima disponível em estoque");
     }
   };
 
