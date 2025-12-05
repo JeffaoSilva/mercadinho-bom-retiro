@@ -97,7 +97,7 @@ export const TelaDescanso = () => {
   };
 
   const { dismissIdle } = useIdleTimer({
-    timeout: idleSeconds,
+    timeoutSeconds: idleSeconds,
     onIdle: handleIdle,
     enabled: config?.ativa ?? false,
   });

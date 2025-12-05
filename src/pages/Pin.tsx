@@ -34,12 +34,12 @@ const Pin = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('pins')
-        .insert({ cliente_id: clienteId!, pin });
+      const { error } = await supabase.rpc("pin_create", {
+        p_cliente_id: clienteId!,
+        p_pin: pin
+      });
 
       if (error) throw error;
-      toast.success('PIN criado com sucesso!');
       navigate('/cart');
     } catch (error) {
       console.error('Erro ao criar PIN:', error);
@@ -54,19 +54,21 @@ const Pin = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('pins')
-        .select('pin')
-        .eq('cliente_id', clienteId!)
-        .single();
+      const { data: ok, error } = await supabase.rpc("pin_validate", {
+        p_cliente_id: clienteId!,
+        p_pin: pin
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao validar PIN:', error);
+        toast.error('Erro ao validar PIN');
+        return;
+      }
 
-      if (data.pin === pin) {
-        toast.success('PIN correto!');
+      if (ok) {
         navigate('/cart');
       } else {
-        toast.error('PIN incorreto');
+        toast.error('PIN inválido');
         setPin('');
       }
     } catch (error) {
@@ -111,12 +113,13 @@ const Pin = () => {
             maxLength={4}
             value={step === 'confirm' ? confirmPin : pin}
             onChange={(value) => step === 'confirm' ? setConfirmPin(value) : setPin(value)}
+            textAlign="center"
           >
             <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
+              <InputOTPSlot index={0} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
+              <InputOTPSlot index={1} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
+              <InputOTPSlot index={2} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
+              <InputOTPSlot index={3} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
             </InputOTPGroup>
           </InputOTP>
         </div>
