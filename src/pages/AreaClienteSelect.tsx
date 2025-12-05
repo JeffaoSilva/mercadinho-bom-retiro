@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-// Se existir um store/hook de checkout no seu projeto, usamos pra pegar o mercadinho atual.
-// Se não existir ou der erro, o componente ainda funciona mostrando todos.
 import { useCheckout } from "@/hooks/useCheckout";
 
 type ClienteKiosk = {
@@ -16,8 +13,7 @@ type ClienteKiosk = {
 
 export default function AreaClienteSelect() {
   const navigate = useNavigate();
-  const checkout = useCheckout?.();
-  const mercadinhoAtualId = checkout?.mercadinhoAtualId;
+  const { mercadinhoAtualId, setCliente } = useCheckout();
 
   const [clientes, setClientes] = useState<ClienteKiosk[]>([]);
   const [busca, setBusca] = useState("");
@@ -54,6 +50,9 @@ export default function AreaClienteSelect() {
   }, [clientes, busca]);
 
   const escolherCliente = (c: ClienteKiosk) => {
+    // ✅ SETA o cliente no store (pra Área do Cliente e Carrinho saberem quem é)
+    setCliente(c.id, c.nome);
+
     // Navega para o PIN, mas dizendo que o destino é a Área do Cliente
     navigate("/pin", {
       state: {
