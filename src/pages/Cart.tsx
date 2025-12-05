@@ -438,8 +438,7 @@ const Cart = () => {
           <div className="flex items-center gap-2 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-700">
             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             <p className="text-sm">
-              <strong>Atenção:</strong> itens iguais com preços diferentes por serem de
-              lotes distintos.
+              <strong>Atenção:</strong> itens iguais com preços diferentes por terem preço de custo diferente.
             </p>
           </div>
         )}
