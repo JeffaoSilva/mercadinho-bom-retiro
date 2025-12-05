@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 
-interface CartItem {
+export interface CartItem {
   produto_id: number;
   nome: string;
   preco: number;
   preco_original?: number;
   quantidade: number;
   codigo_barras: string;
+  prateleira_id?: number; // ID da prateleira de onde veio
 }
 
 interface CheckoutState {
@@ -21,10 +22,12 @@ interface CheckoutState {
   setCliente: (clienteId: number, nome: string) => void;
   setVisitante: () => void;
   addToCart: (item: Omit<CartItem, 'quantidade'>) => void;
-  removeFromCart: (produto_id: number) => void;
-  updateQuantity: (produto_id: number, quantidade: number) => void;
+  addToCartWithPrice: (item: Omit<CartItem, 'quantidade'>) => void;
+  removeFromCart: (produto_id: number, preco?: number) => void;
+  updateQuantity: (produto_id: number, quantidade: number, preco?: number) => void;
   getTotal: () => number;
   reset: () => void;
+  getCartKey: (produto_id: number, preco: number) => string;
 }
 
 export const useCheckout = create<CheckoutState>((set, get) => ({
@@ -38,12 +41,16 @@ export const useCheckout = create<CheckoutState>((set, get) => ({
   setMercadinhoAtualId: (mercadinhoId) => set({ mercadinhoAtualId: mercadinhoId }),
   setCliente: (clienteId, nome) => set({ clienteId, clienteNome: nome, isVisitante: false }),
   setVisitante: () => set({ isVisitante: true, clienteId: null, clienteNome: 'VISITANTE' }),
+  
+  getCartKey: (produto_id: number, preco: number) => `${produto_id}_${preco.toFixed(2)}`,
+  
+  // Método antigo mantido para compatibilidade
   addToCart: (item) => set((state) => {
-    const existing = state.cart.find(i => i.produto_id === item.produto_id);
+    const existing = state.cart.find(i => i.produto_id === item.produto_id && i.preco === item.preco);
     if (existing) {
       return {
         cart: state.cart.map(i =>
-          i.produto_id === item.produto_id
+          i.produto_id === item.produto_id && i.preco === item.preco
             ? { ...i, quantidade: i.quantidade + 1 }
             : i
         )
@@ -51,18 +58,49 @@ export const useCheckout = create<CheckoutState>((set, get) => ({
     }
     return { cart: [...state.cart, { ...item, quantidade: 1 }] };
   }),
-  removeFromCart: (produto_id) => set((state) => ({
-    cart: state.cart.filter(i => i.produto_id !== produto_id)
+
+  // Novo método que agrupa por produto_id + preco
+  addToCartWithPrice: (item) => set((state) => {
+    const existing = state.cart.find(
+      i => i.produto_id === item.produto_id && i.preco === item.preco
+    );
+    if (existing) {
+      return {
+        cart: state.cart.map(i =>
+          i.produto_id === item.produto_id && i.preco === item.preco
+            ? { ...i, quantidade: i.quantidade + 1 }
+            : i
+        )
+      };
+    }
+    return { cart: [...state.cart, { ...item, quantidade: 1 }] };
+  }),
+
+  removeFromCart: (produto_id, preco) => set((state) => ({
+    cart: state.cart.filter(i => {
+      if (preco !== undefined) {
+        return !(i.produto_id === produto_id && i.preco === preco);
+      }
+      return i.produto_id !== produto_id;
+    })
   })),
-  updateQuantity: (produto_id, quantidade) => set((state) => ({
-    cart: state.cart.map(i =>
-      i.produto_id === produto_id ? { ...i, quantidade } : i
-    ).filter(i => i.quantidade > 0)
+
+  updateQuantity: (produto_id, quantidade, preco) => set((state) => ({
+    cart: state.cart.map(i => {
+      if (preco !== undefined) {
+        return i.produto_id === produto_id && i.preco === preco
+          ? { ...i, quantidade }
+          : i;
+      }
+      return i.produto_id === produto_id ? { ...i, quantidade } : i;
+    }).filter(i => i.quantidade > 0)
   })),
+
   getTotal: () => {
     const state = get();
     return state.cart.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
   },
+
   reset: () => set({
     clienteId: null,
     clienteNome: null,
