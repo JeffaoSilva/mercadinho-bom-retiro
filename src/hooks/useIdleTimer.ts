@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface UseIdleTimerOptions {
-  timeout: number; // em segundos
+  timeoutSeconds: number;
   onIdle: () => void;
   enabled?: boolean;
 }
 
-export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOptions) => {
+export const useIdleTimer = ({ timeoutSeconds, onIdle, enabled = true }: UseIdleTimerOptions) => {
   const [isIdle, setIsIdle] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const onIdleRef = useRef(onIdle);
@@ -16,20 +16,25 @@ export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOp
     onIdleRef.current = onIdle;
   }, [onIdle]);
 
-  const startTimer = useCallback(() => {
+  const clearTimer = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
+  }, []);
 
-    const idleMs = timeout * 1000;
-    console.log('[useIdleTimer] idleSeconds:', timeout, '| idleMs:', idleMs);
+  const startTimer = useCallback(() => {
+    clearTimer();
+    
+    const idleMs = timeoutSeconds * 1000;
+    console.log('[useIdleTimer] timeoutSeconds:', timeoutSeconds, '| idleMs:', idleMs);
     
     timeoutRef.current = setTimeout(() => {
-      console.log('[useIdleTimer] Entrando em modo descanso');
+      console.log('[useIdleTimer] Idle timeout reached, calling onIdle');
       setIsIdle(true);
       onIdleRef.current();
     }, idleMs);
-  }, [timeout]);
+  }, [timeoutSeconds, clearTimer]);
 
   const resetTimer = useCallback(() => {
     if (!enabled || isIdle) return;
@@ -47,34 +52,33 @@ export const useIdleTimer = ({ timeout, onIdle, enabled = true }: UseIdleTimerOp
     if (enabled && !isIdle) {
       startTimer();
     }
-  }, [timeout, enabled, isIdle, startTimer]);
+  }, [timeoutSeconds, enabled, isIdle, startTimer]);
 
   useEffect(() => {
     if (!enabled) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      clearTimer();
       return;
     }
 
-    // Apenas eventos de toque/clique, ignorando mousemove e keydown
-    const events = ['pointerdown', 'click', 'touchstart'];
+    const events = ['click', 'touchstart', 'keydown', 'mousemove'];
+
+    const handleActivity = () => {
+      resetTimer();
+    };
 
     events.forEach(event => {
-      document.addEventListener(event, resetTimer);
+      document.addEventListener(event, handleActivity);
     });
 
     startTimer();
 
     return () => {
       events.forEach(event => {
-        document.removeEventListener(event, resetTimer);
+        document.removeEventListener(event, handleActivity);
       });
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      clearTimer();
     };
-  }, [resetTimer, startTimer, enabled]);
+  }, [enabled, resetTimer, startTimer, clearTimer]);
 
   return { isIdle, dismissIdle };
 };

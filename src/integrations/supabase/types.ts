@@ -459,7 +459,14 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      pin_create: {
+        Args: { p_cliente_id: number; p_pin: string }
+        Returns: undefined
+      }
+      pin_validate: {
+        Args: { p_cliente_id: number; p_pin: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

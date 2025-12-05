@@ -63,13 +63,14 @@ const SelectClient = () => {
   const handleSelectCliente = async (cliente: Cliente) => {
     setCliente(cliente.id, cliente.nome);
     
-    const { data } = await supabase
+    // Verificar se cliente já tem PIN (não há RPC para isso, então usa select)
+    const { data: pinExists } = await supabase
       .from('pins')
-      .select('pin')
+      .select('cliente_id')
       .eq('cliente_id', cliente.id)
       .maybeSingle();
 
-    if (data) {
+    if (pinExists) {
       navigate('/pin?action=validate');
     } else {
       navigate('/pin?action=create');
