@@ -24,6 +24,7 @@ import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
 import { useCheckout } from "./hooks/useCheckout";
 import AreaClienteSelect from "@/pages/AreaClienteSelect";
+import AreaCliente from "@/pages/AreaCliente";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const AppContent = () => {
         <Route path="/admin/tela-descanso" element={<AdminTelaDescanso />} />
         <Route path="*" element={<NotFound />} />
         <Route path="/area-cliente" element={<AreaClienteSelect />} />
+        <Route path="/area-cliente/:clienteId" element={<AreaCliente />} />
       </Routes>
     </>
   );
