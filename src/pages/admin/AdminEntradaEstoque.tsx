@@ -153,11 +153,10 @@ const AdminEntradaEstoque = () => {
 
       if (produtoError) throw produtoError;
 
-      // D) Upsert nas prateleiras por mercadinho
+      // D) Upsert nas prateleiras por mercadinho (central não vai para prateleiras)
       const rateios = [
-        { mercadinho_id: 1, quantidade: central }, // Central
-        { mercadinho_id: 2, quantidade: bomRetiro }, // Bom Retiro
-        { mercadinho_id: 3, quantidade: saoFrancisco }, // São Francisco
+        { mercadinho_id: 1, quantidade: bomRetiro }, // Bom Retiro
+        { mercadinho_id: 2, quantidade: saoFrancisco }, // São Francisco
       ];
 
       for (const rateio of rateios) {
