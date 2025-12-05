@@ -82,6 +82,14 @@ const Index = () => {
           <ShoppingCart className="w-8 h-8 mr-3" />
           Iniciar Compra
         </Button>
+          {/* Botão Área do Cliente */}
+  <Button
+    variant="secondary"
+    className="w-full max-w-sm mx-auto h-12 text-base"
+    onClick={() => navigate("/area-cliente")}
+  >
+    Área do Cliente
+  </Button>
       </div>
 
       {/* Botão Admin */}
