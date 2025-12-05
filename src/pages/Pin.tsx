@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Delete } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const Pin = () => {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ const Pin = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState<'pin' | 'confirm'>('pin');
   const [clienteTemPin, setClienteTemPin] = useState<boolean | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const checkHasPin = async () => {
@@ -26,7 +27,7 @@ const Pin = () => {
 
       if (error) {
         console.error('Erro ao verificar PIN:', error);
-        setClienteTemPin(true); // trata erro como "tem pin" pra não criar errado
+        setClienteTemPin(true);
         return;
       }
 
@@ -36,25 +37,29 @@ const Pin = () => {
     checkHasPin();
   }, [clienteId]);
 
-  const handleSubmit = async () => {
-    if (pin.length !== 4) {
-      toast.error('PIN deve ter 4 dígitos');
-      return;
-    }
+  const irParaCarrinho = () => {
+    navigate('/cart');
+  };
 
-    // Primeiro acesso: criar PIN
+  const processarPin = async (pinAtual: string) => {
+    if (pinAtual.length !== 4 || isProcessing) return;
+
+    // Primeiro acesso: criar PIN (fluxo de 2 etapas)
     if (clienteTemPin === false) {
       if (step === 'pin') {
         setStep('confirm');
         return;
       }
 
-      if (confirmPin !== pin) {
+      // Estamos na etapa de confirmação
+      if (pinAtual !== pin) {
         toast.error('PINs não coincidem');
         setConfirmPin('');
         return;
       }
 
+      // PINs coincidem, criar
+      setIsProcessing(true);
       try {
         const { error } = await supabase.rpc("pin_create", {
           p_cliente_id: clienteId!,
@@ -62,29 +67,34 @@ const Pin = () => {
         });
 
         if (error) throw error;
-        navigate('/cart');
+        irParaCarrinho();
       } catch (error) {
         console.error('Erro ao criar PIN:', error);
         toast.error('Erro ao criar PIN');
+        setConfirmPin('');
+      } finally {
+        setIsProcessing(false);
       }
       return;
     }
 
     // Acesso normal: validar PIN
+    setIsProcessing(true);
     try {
       const { data: ok, error } = await supabase.rpc("pin_validate", {
         p_cliente_id: clienteId!,
-        p_pin: pin
+        p_pin: pinAtual
       });
 
       if (error) {
         console.error('Erro ao validar PIN:', error);
         toast.error('Erro ao validar PIN');
+        setPin('');
         return;
       }
 
       if (ok) {
-        navigate('/cart');
+        irParaCarrinho();
       } else {
         toast.error('PIN inválido');
         setPin('');
@@ -92,8 +102,37 @@ const Pin = () => {
     } catch (error) {
       console.error('Erro ao validar PIN:', error);
       toast.error('Erro ao validar PIN');
+      setPin('');
+    } finally {
+      setIsProcessing(false);
     }
   };
+
+  // Auto-processar quando PIN atinge 4 dígitos
+  useEffect(() => {
+    const currentPin = step === 'confirm' ? confirmPin : pin;
+    if (currentPin.length === 4) {
+      processarPin(currentPin);
+    }
+  }, [pin, confirmPin]);
+
+  const adicionarDigito = (d: string) => {
+    if (step === 'confirm') {
+      setConfirmPin((prev) => (prev.length < 4 ? prev + d : prev));
+    } else {
+      setPin((prev) => (prev.length < 4 ? prev + d : prev));
+    }
+  };
+
+  const apagarDigito = () => {
+    if (step === 'confirm') {
+      setConfirmPin((prev) => prev.slice(0, -1));
+    } else {
+      setPin((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const currentPin = step === 'confirm' ? confirmPin : pin;
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
@@ -118,30 +157,58 @@ const Pin = () => {
           </p>
         </div>
 
-        <div className="flex justify-center">
-          <InputOTP
-            maxLength={4}
-            value={step === 'confirm' ? confirmPin : pin}
-            onChange={(value) => step === 'confirm' ? setConfirmPin(value) : setPin(value)}
-            textAlign="center"
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
-              <InputOTPSlot index={1} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
-              <InputOTPSlot index={2} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
-              <InputOTPSlot index={3} className="[&>div]:text-transparent [&>div]:after:content-['•'] [&>div]:after:text-foreground [&>div]:after:text-2xl" />
-            </InputOTPGroup>
-          </InputOTP>
+        {/* OTP Display - readOnly, sem teclado do sistema */}
+        <div className="flex justify-center gap-3">
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              className={cn(
+                "w-14 h-14 border-2 rounded-lg flex items-center justify-center text-2xl font-bold transition-all",
+                index === currentPin.length
+                  ? "border-primary ring-2 ring-primary/20"
+                  : "border-input",
+                currentPin[index] ? "bg-muted" : "bg-background"
+              )}
+            >
+              {currentPin[index] ? '•' : ''}
+            </div>
+          ))}
         </div>
 
-        <Button
-          size="lg"
-          className="w-full text-xl py-6"
-          onClick={handleSubmit}
-          disabled={(step === 'confirm' ? confirmPin : pin).length !== 4}
-        >
-          {clienteTemPin === false && step === 'pin' ? 'Próximo' : 'Confirmar'}
-        </Button>
+        {/* Teclado numérico fixo */}
+        <div className="grid grid-cols-3 gap-3 w-full max-w-xs mx-auto mt-8">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+            <Button
+              key={n}
+              variant="outline"
+              className="h-16 text-2xl font-semibold"
+              onClick={() => adicionarDigito(String(n))}
+              disabled={isProcessing}
+            >
+              {n}
+            </Button>
+          ))}
+
+          <Button
+            variant="outline"
+            className="h-16 text-2xl"
+            onClick={apagarDigito}
+            disabled={isProcessing}
+          >
+            <Delete className="w-6 h-6" />
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-16 text-2xl font-semibold"
+            onClick={() => adicionarDigito("0")}
+            disabled={isProcessing}
+          >
+            0
+          </Button>
+
+          <div />
+        </div>
       </div>
     </div>
   );
