@@ -33,7 +33,9 @@ const AppContent = () => {
   const navigate = useNavigate();
   const isAdminRoute = location.pathname.startsWith("/admin");
   const tempoIdleGeral = useConfigInatividadeStore(s => s.tempo_idle_home_seg);
+
   const resetCheckout = useCheckout(s => s.reset);
+  const getHomePath = useCheckout(s => s.getHomePath);
 
   useIdleTimer({
     timeoutSeconds: tempoIdleGeral,
@@ -42,8 +44,8 @@ const AppContent = () => {
       console.log('[App] Idle global - limpando carrinho e voltando para home');
       // Limpar compra atual
       resetCheckout();
-      // Voltar para home
-      navigate("/");
+      // ✅ Voltar pra home preservando tablet_id
+      navigate(getHomePath());
     }
   });
 
@@ -56,6 +58,10 @@ const AppContent = () => {
         <Route path="/pin" element={<Pin />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
+
+        <Route path="/area-cliente" element={<AreaClienteSelect />} />
+        <Route path="/area-cliente/:clienteId" element={<AreaCliente />} />
+
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/produtos" element={<AdminProdutos />} />
         <Route path="/admin/entrada-estoque" element={<AdminEntradaEstoque />} />
@@ -67,8 +73,6 @@ const AppContent = () => {
         <Route path="/admin/estornos" element={<AdminEstornos />} />
         <Route path="/admin/tela-descanso" element={<AdminTelaDescanso />} />
         <Route path="*" element={<NotFound />} />
-        <Route path="/area-cliente" element={<AreaClienteSelect />} />
-        <Route path="/area-cliente/:clienteId" element={<AreaCliente />} />
       </Routes>
     </>
   );
