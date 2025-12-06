@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,15 +25,12 @@ type CompraHistorico = {
 
 export default function AreaCliente() {
   const navigate = useNavigate();
-  const location = useLocation();
   const params = useParams<{ clienteId: string }>();
   const checkout = useCheckout();
 
-  // tenta pegar do store (quando veio do carrinho) ou da rota
-  const clienteIdStore = checkout?.clienteId;
-  const clienteNomeStore = checkout?.clienteNome;
+  const clienteIdStore = checkout.clienteId;
+  const clienteNomeStore = checkout.clienteNome;
   const clienteIdRota = params.clienteId ? Number(params.clienteId) : null;
-
   const clienteId = clienteIdStore || clienteIdRota;
 
   const [clienteNome, setClienteNome] = useState<string>(clienteNomeStore || "");
@@ -56,6 +53,7 @@ export default function AreaCliente() {
         .select("corte_atual")
         .eq("id", 1)
         .maybeSingle();
+      
       if (errCorte) {
         console.error("Erro get_corte_atual", errCorte);
       } else {
@@ -72,7 +70,6 @@ export default function AreaCliente() {
         console.error("Erro buscando histórico", errHistorico);
         setCompras([]);
       } else {
-        // RPC retorna: compra_id, criado_em, mercadinho_id, forma_pagamento, valor_total, itens (jsonb)
         const lista: CompraHistorico[] = (historicoData ?? []).map((row: any) => ({
           compra_id: row.compra_id,
           criado_em: row.criado_em,
@@ -99,28 +96,23 @@ export default function AreaCliente() {
     };
 
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clienteId]);
-
-  // A RPC já retorna ordenado por criado_em desc
-  const comprasAgrupadas = compras;
+  }, [clienteId, clienteNomeStore, navigate]);
 
   const [loteAtual, loteSeguinte] = useMemo(() => {
-    if (!corteAtual) return [comprasAgrupadas, []];
+    if (!corteAtual) return [compras, []];
 
     const corteTime = new Date(corteAtual).getTime();
-
     const atual: CompraHistorico[] = [];
     const seguinte: CompraHistorico[] = [];
 
-    for (const c of comprasAgrupadas) {
+    for (const c of compras) {
       const t = new Date(c.criado_em).getTime();
       if (t <= corteTime) atual.push(c);
       else seguinte.push(c);
     }
 
     return [atual, seguinte];
-  }, [comprasAgrupadas, corteAtual]);
+  }, [compras, corteAtual]);
 
   const formatarDataHora = (iso: string) => {
     try {
@@ -146,7 +138,7 @@ export default function AreaCliente() {
           <Button
             variant="secondary"
             onClick={() => navigate("/cart")}
-            disabled={!checkout?.clienteId} // só habilita se já estiver autenticado no store
+            disabled={!checkout.clienteId}
           >
             Ir pro Carrinho
           </Button>
@@ -165,21 +157,18 @@ export default function AreaCliente() {
         </div>
       )}
 
-      {!carregando && comprasAgrupadas.length === 0 && (
+      {!carregando && compras.length === 0 && (
         <div className="text-center text-muted-foreground mt-6">
           Nenhuma compra em aberto.
         </div>
       )}
 
-      {!carregando && comprasAgrupadas.length > 0 && (
+      {!carregando && compras.length > 0 && (
         <div className="flex flex-col gap-6">
-
           {/* LOTE ATUAL */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                Fatura atual (até o corte)
-              </h2>
+              <h2 className="text-xl font-bold">Fatura atual (até o corte)</h2>
               <div className="text-sm font-semibold">
                 Total: R$ {totalLote(loteAtual).toFixed(2)}
               </div>
@@ -211,9 +200,7 @@ export default function AreaCliente() {
                         <div>
                           {it.nome} x{it.quantidade}
                         </div>
-                        <div>
-                          R$ {Number(it.valor_total).toFixed(2)}
-                        </div>
+                        <div>R$ {Number(it.valor_total).toFixed(2)}</div>
                       </div>
                     ))}
                   </div>
@@ -232,9 +219,7 @@ export default function AreaCliente() {
           {/* LOTE SEGUINTE */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                Fatura seguinte (após o corte)
-              </h2>
+              <h2 className="text-xl font-bold">Fatura seguinte (após o corte)</h2>
               <div className="text-sm font-semibold">
                 Total: R$ {totalLote(loteSeguinte).toFixed(2)}
               </div>
@@ -266,9 +251,7 @@ export default function AreaCliente() {
                         <div>
                           {it.nome} x{it.quantidade}
                         </div>
-                        <div>
-                          R$ {Number(it.valor_total).toFixed(2)}
-                        </div>
+                        <div>R$ {Number(it.valor_total).toFixed(2)}</div>
                       </div>
                     ))}
                   </div>
@@ -283,7 +266,6 @@ export default function AreaCliente() {
               </Card>
             ))}
           </section>
-
         </div>
       )}
 
