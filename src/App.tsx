@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+
 import Index from "./pages/Index";
 import SelectClient from "./pages/SelectClient";
 import Pin from "./pages/Pin";
@@ -23,6 +25,7 @@ import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
 import { useCheckout } from "./hooks/useCheckout";
+
 import AreaClienteSelect from "@/pages/AreaClienteSelect";
 import AreaCliente from "@/pages/AreaCliente";
 
@@ -31,18 +34,36 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
   const isAdminRoute = location.pathname.startsWith("/admin");
   const tempoIdleGeral = useConfigInatividadeStore(s => s.tempo_idle_home_seg);
 
   const resetCheckout = useCheckout(s => s.reset);
   const getHomePath = useCheckout(s => s.getHomePath);
+  const setTabletId = useCheckout(s => s.setTabletId);
+  const setMercadinhoAtualId = useCheckout(s => s.setMercadinhoAtualId);
+
+  // ✅ NOVO: toda vez que a URL tiver tablet_id, salva no store
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const t = sp.get("tablet_id");
+
+    if (t) {
+      setTabletId(t);
+
+      // como hoje teu sistema usa:
+      // tablet_id=1 -> mercadinho BR (id 1)
+      // tablet_id=2 -> mercadinho SF (id 2)
+      if (t === "1") setMercadinhoAtualId(1);
+      if (t === "2") setMercadinhoAtualId(2);
+    }
+  }, [location.search, setTabletId, setMercadinhoAtualId]);
 
   useIdleTimer({
     timeoutSeconds: tempoIdleGeral,
     enabled: !isAdminRoute && tempoIdleGeral > 0,
     onIdle: () => {
       console.log('[App] Idle global - limpando carrinho e voltando para home');
-      // Limpar compra atual
       resetCheckout();
       // ✅ Voltar pra home preservando tablet_id
       navigate(getHomePath());
