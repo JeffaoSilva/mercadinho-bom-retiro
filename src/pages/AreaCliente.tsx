@@ -58,24 +58,57 @@ export default function AreaCliente() {
       setCarregando(true);
 
       // 1) pega corte atual global
-      const { data: corte, error: errCorte } = await supabase.rpc("get_corte_atual");
+      const { data: corte, error: errCorte } = await supabase
+        .from("config_cobranca")
+        .select("corte_atual")
+        .eq("id", 1)
+        .maybeSingle();
       if (errCorte) {
         console.error("Erro get_corte_atual", errCorte);
       } else {
-        setCorteAtual(corte);
+        setCorteAtual(corte?.corte_atual ?? null);
       }
 
-      // 2) pega histórico em aberto do cliente
-      const { data: hist, error: errHist } = await supabase.rpc(
-        "cliente_historico_em_aberto",
-        { p_cliente_id: clienteId }
-      );
+      // 2) pega histórico em aberto do cliente (compras não pagas + itens)
+      const { data: comprasData, error: errCompras } = await supabase
+        .from("compras")
+        .select(`
+          id,
+          criado_em,
+          forma_pagamento,
+          valor_total,
+          itens_compra (
+            quantidade,
+            valor_unitario,
+            valor_total,
+            produtos (nome)
+          )
+        `)
+        .eq("cliente_id", clienteId)
+        .eq("paga", false)
+        .order("criado_em", { ascending: false });
 
-      if (errHist) {
-        console.error("Erro cliente_historico_em_aberto", errHist);
+      if (errCompras) {
+        console.error("Erro buscando histórico", errCompras);
         setLinhas([]);
       } else {
-        setLinhas((hist as LinhaHistorico[]) || []);
+        // Flatten para o formato LinhaHistorico
+        const linhasFlat: LinhaHistorico[] = [];
+        for (const compra of comprasData ?? []) {
+          for (const item of compra.itens_compra ?? []) {
+            linhasFlat.push({
+              compra_id: compra.id,
+              criado_em: compra.criado_em,
+              forma_pagamento: compra.forma_pagamento,
+              valor_total: compra.valor_total,
+              produto_nome: (item.produtos as any)?.nome ?? "Produto",
+              quantidade: item.quantidade,
+              preco_unitario: item.valor_unitario,
+              valor_total_item: item.valor_total,
+            });
+          }
+        }
+        setLinhas(linhasFlat);
       }
 
       // 3) se não tiver nome no store, busca no kiosk pra mostrar

@@ -75,8 +75,8 @@ const Checkout = () => {
         compra_id: compra.id,
         produto_id: item.produto_id,
         quantidade: item.quantidade,
-        preco_unitario: item.preco,
-        valor_total_item: item.preco * item.quantidade,
+        valor_unitario: item.preco,
+        valor_total: item.preco * item.quantidade,
       }));
 
       const { error: itensError } = await supabase
