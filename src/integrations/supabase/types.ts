@@ -588,17 +588,6 @@ export type Database = {
       }
     }
     Functions: {
-      cliente_historico: {
-        Args: { p_cliente_id: number }
-        Returns: {
-          compra_id: number
-          criado_em: string
-          forma_pagamento: string
-          itens: Json
-          mercadinho_id: number
-          valor_total: number
-        }[]
-      }
       criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }
       pin_create: {
