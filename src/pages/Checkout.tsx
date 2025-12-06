@@ -9,21 +9,30 @@ import { decrementarPrateleira } from "@/services/prateleiras";
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { clienteId, isVisitante, cart, getTotal, reset, mercadinhoAtualId } = useCheckout();
+  const {
+    clienteId,
+    isVisitante,
+    cart,
+    getTotal,
+    reset,
+    mercadinhoAtualId,
+    tabletId,
+    getHomePath,
+  } = useCheckout();
+
   const [loading, setLoading] = useState(false);
   const [showPixQR, setShowPixQR] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const total = getTotal();
 
-  const handleFinalizarCompra = async (tipoPagamento: string) => {
+  const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
     setLoading(true);
 
     try {
-      // Primeiro, verificar e baixar estoque de cada item
+      // 1) Verificar estoque de cada item antes de finalizar
       for (const item of cart) {
         if (item.prateleira_id) {
-          // Verificar se ainda tem estoque
           const { data: prateleira, error: fetchError } = await supabase
             .from("prateleiras_produtos")
             .select("quantidade_prateleira")
@@ -44,41 +53,47 @@ const Checkout = () => {
         }
       }
 
-      // Criar compra
+      // 2) Criar compra (nomes de colunas certos)
       const { data: compra, error: compraError } = await supabase
         .from("compras")
         .insert({
           cliente_id: isVisitante ? null : clienteId,
           mercadinho_id: mercadinhoAtualId || 1,
-          tipo_pagamento: tipoPagamento,
+          tablet_id: tabletId ? parseInt(tabletId) : null,
+          forma_pagamento: formaPagamento,
           valor_total: total,
           eh_visitante: isVisitante,
+          paga: false,
         })
         .select()
         .single();
 
       if (compraError) throw compraError;
 
-      // Criar itens da compra
+      // 3) Criar itens da compra (nomes de colunas certos)
       const itens = cart.map((item) => ({
         compra_id: compra.id,
         produto_id: item.produto_id,
-        valor_unitario: item.preco,
         quantidade: item.quantidade,
-        valor_total: item.preco * item.quantidade,
+        preco_unitario: item.preco,
+        valor_total_item: item.preco * item.quantidade,
       }));
 
-      const { error: itensError } = await supabase.from("itens_compra").insert(itens);
+      const { error: itensError } = await supabase
+        .from("itens_compra")
+        .insert(itens);
 
       if (itensError) throw itensError;
 
-      // Baixar estoque das prateleiras
+      // 4) Baixar estoque das prateleiras
       for (const item of cart) {
         if (item.prateleira_id) {
-          const sucesso = await decrementarPrateleira(item.prateleira_id, item.quantidade);
+          const sucesso = await decrementarPrateleira(
+            item.prateleira_id,
+            item.quantidade
+          );
           if (!sucesso) {
             console.error(`Erro ao baixar estoque do item ${item.nome}`);
-            // Não aborta pois a compra já foi registrada
           }
         }
       }
@@ -86,10 +101,9 @@ const Checkout = () => {
       setShowSuccess(true);
       toast.success("Compra finalizada com sucesso!");
 
-      // Aguardar 2 segundos antes de limpar e redirecionar
       setTimeout(() => {
         reset();
-        navigate("/");
+        navigate(getHomePath());
       }, 2000);
     } catch (error) {
       console.error("Erro ao finalizar compra:", error);
@@ -99,15 +113,9 @@ const Checkout = () => {
     }
   };
 
-  const handlePixClick = () => {
-    setShowPixQR(true);
-  };
+  const handlePixClick = () => setShowPixQR(true);
+  const handleConfirmarPix = () => handleFinalizarCompra("pix");
 
-  const handleConfirmarPix = () => {
-    handleFinalizarCompra("pix");
-  };
-
-  // Tela de sucesso
   if (showSuccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
@@ -121,7 +129,6 @@ const Checkout = () => {
     );
   }
 
-  // Tela de QR Code PIX
   if (showPixQR) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
@@ -140,7 +147,6 @@ const Checkout = () => {
             <p className="text-2xl font-bold text-primary">R$ {total.toFixed(2)}</p>
           </div>
 
-          {/* QR Code Placeholder */}
           <div className="bg-white p-8 rounded-xl shadow-lg mx-auto w-fit">
             <div className="w-64 h-64 border-4 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center bg-muted/20">
               <QrCode className="w-16 h-16 text-muted-foreground mb-4" />
@@ -178,7 +184,6 @@ const Checkout = () => {
     );
   }
 
-  // Tela principal de checkout
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-2xl space-y-8">
@@ -197,7 +202,6 @@ const Checkout = () => {
         </div>
 
         <div className="space-y-4">
-          {/* Opção Caderneta - apenas para clientes logados */}
           {!isVisitante && (
             <Button
               size="lg"
@@ -211,7 +215,6 @@ const Checkout = () => {
             </Button>
           )}
 
-          {/* Opção PIX - para todos */}
           <Button
             size="lg"
             className="w-full h-24 text-2xl"
