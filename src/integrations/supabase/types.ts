@@ -588,6 +588,7 @@ export type Database = {
       }
     }
     Functions: {
+      criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }
       pin_create: {
         Args: { p_cliente_id: number; p_pin: string }

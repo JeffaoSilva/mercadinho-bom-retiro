@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
 import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
 import { toast } from "sonner";
-import { decrementarPrateleira } from "@/services/prateleiras";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -30,72 +29,33 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // 1) Verificar estoque de cada item antes de finalizar
-      for (const item of cart) {
-        if (item.prateleira_id) {
-          const { data: prateleira, error: fetchError } = await supabase
-            .from("prateleiras_produtos")
-            .select("quantidade_prateleira")
-            .eq("id", item.prateleira_id)
-            .single();
+      // Montar payload para RPC segura
+      const payload = {
+        cliente_id: isVisitante ? null : clienteId,
+        mercadinho_id: mercadinhoAtualId || 1,
+        tablet_id: tabletId ? parseInt(tabletId) : null,
+        forma_pagamento: formaPagamento,
+        eh_visitante: isVisitante,
+        valor_total: total,
+        itens: cart.map((item) => ({
+          produto_id: item.produto_id,
+          prateleira_id: item.prateleira_id || null,
+          quantidade: item.quantidade,
+          valor_unitario: item.preco,
+          valor_total: item.preco * item.quantidade,
+        })),
+      };
 
-          if (fetchError || !prateleira) {
-            toast.error(`Erro ao verificar estoque de ${item.nome}`);
-            setLoading(false);
-            return;
-          }
+      // Chamada única à RPC segura (SECURITY DEFINER)
+      const { data, error } = await supabase.rpc("criar_compra_kiosk", {
+        payload,
+      });
 
-          if (prateleira.quantidade_prateleira < item.quantidade) {
-            toast.error(`Produto não disponível na prateleira: ${item.nome}`);
-            setLoading(false);
-            return;
-          }
-        }
-      }
+      if (error) throw error;
 
-      // 2) Criar compra (nomes de colunas certos)
-      const { data: compra, error: compraError } = await supabase
-        .from("compras")
-        .insert({
-          cliente_id: isVisitante ? null : clienteId,
-          mercadinho_id: mercadinhoAtualId || 1,
-          tablet_id: tabletId ? parseInt(tabletId) : null,
-          forma_pagamento: formaPagamento,
-          valor_total: total,
-          eh_visitante: isVisitante,
-          paga: false,
-        })
-        .select()
-        .single();
-
-      if (compraError) throw compraError;
-
-      // 3) Criar itens da compra (nomes de colunas certos)
-      const itens = cart.map((item) => ({
-        compra_id: compra.id,
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
-        valor_unitario: item.preco,
-        valor_total: item.preco * item.quantidade,
-      }));
-
-      const { error: itensError } = await supabase
-        .from("itens_compra")
-        .insert(itens);
-
-      if (itensError) throw itensError;
-
-      // 4) Baixar estoque das prateleiras
-      for (const item of cart) {
-        if (item.prateleira_id) {
-          const sucesso = await decrementarPrateleira(
-            item.prateleira_id,
-            item.quantidade
-          );
-          if (!sucesso) {
-            console.error(`Erro ao baixar estoque do item ${item.nome}`);
-          }
-        }
+      const result = data as { ok: boolean; compra_id: number } | null;
+      if (!result?.ok) {
+        throw new Error("Falha ao criar compra");
       }
 
       setShowSuccess(true);
