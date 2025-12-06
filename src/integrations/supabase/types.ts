@@ -55,8 +55,12 @@ export type Database = {
           criado_em: string
           data_compra: string
           eh_visitante: boolean
+          forma_pagamento: string
           id: number
           mercadinho_id: number
+          paga: boolean
+          paga_em: string | null
+          tablet_id: number | null
           tipo_pagamento: string
           valor_total: number
         }
@@ -65,8 +69,12 @@ export type Database = {
           criado_em?: string
           data_compra?: string
           eh_visitante?: boolean
+          forma_pagamento: string
           id?: number
           mercadinho_id: number
+          paga?: boolean
+          paga_em?: string | null
+          tablet_id?: number | null
           tipo_pagamento?: string
           valor_total?: number
         }
@@ -75,8 +83,12 @@ export type Database = {
           criado_em?: string
           data_compra?: string
           eh_visitante?: boolean
+          forma_pagamento?: string
           id?: number
           mercadinho_id?: number
+          paga?: boolean
+          paga_em?: string | null
+          tablet_id?: number | null
           tipo_pagamento?: string
           valor_total?: number
         }
@@ -102,7 +114,32 @@ export type Database = {
             referencedRelation: "mercadinhos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "compras_tablet_id_fkey"
+            columns: ["tablet_id"]
+            isOneToOne: false
+            referencedRelation: "tablets"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      config_cobranca: {
+        Row: {
+          atualizado_em: string
+          corte_atual: string
+          id: number
+        }
+        Insert: {
+          atualizado_em?: string
+          corte_atual: string
+          id?: number
+        }
+        Update: {
+          atualizado_em?: string
+          corte_atual?: string
+          id?: number
+        }
+        Relationships: []
       }
       config_inatividade: {
         Row: {
@@ -551,6 +588,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_corte_atual: { Args: never; Returns: string }
       pin_create: {
         Args: { p_cliente_id: number; p_pin: string }
         Returns: undefined
