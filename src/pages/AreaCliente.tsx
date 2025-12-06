@@ -47,52 +47,57 @@ export default function AreaCliente() {
 
       setCarregando(true);
 
-      // 1) pega corte atual global
-      const { data: corte, error: errCorte } = await supabase
-        .from("config_cobranca")
-        .select("corte_atual")
-        .eq("id", 1)
-        .maybeSingle();
-      
-      if (errCorte) {
-        console.error("Erro get_corte_atual", errCorte);
-      } else {
-        setCorteAtual(corte?.corte_atual ?? null);
-      }
-
-      // 2) pega histórico via RPC segura
-      const { data: historicoData, error: errHistorico } = await supabase.rpc(
-        "cliente_historico",
-        { p_cliente_id: clienteId }
-      );
-
-      if (errHistorico) {
-        console.error("Erro buscando histórico", errHistorico);
-        setCompras([]);
-      } else {
-        const lista: CompraHistorico[] = (historicoData ?? []).map((row: any) => ({
-          compra_id: row.compra_id,
-          criado_em: row.criado_em,
-          mercadinho_id: row.mercadinho_id,
-          forma_pagamento: row.forma_pagamento,
-          valor_total: Number(row.valor_total || 0),
-          itens: (row.itens ?? []) as ItemHistorico[],
-        }));
-        setCompras(lista);
-      }
-
-      // 3) se não tiver nome no store, busca no kiosk pra mostrar
-      if (!clienteNomeStore) {
-        const { data: cdata } = await supabase
-          .from("clientes_kiosk")
-          .select("nome")
-          .eq("id", clienteId)
+      try {
+        // 1) pega corte atual global
+        const { data: corte, error: errCorte } = await supabase
+          .from("config_cobranca")
+          .select("corte_atual")
+          .eq("id", 1)
           .maybeSingle();
+        
+        if (errCorte) {
+          console.error("Erro get_corte_atual", errCorte);
+        } else {
+          setCorteAtual(corte?.corte_atual ?? null);
+        }
 
-        if (cdata?.nome) setClienteNome(cdata.nome);
+        // 2) pega histórico via RPC segura (tipagem local, sem mexer em types.ts)
+        const { data: historicoData, error: errHistorico } = await supabase.rpc(
+          "cliente_historico",
+          { p_cliente_id: clienteId }
+        );
+
+        if (errHistorico) {
+          console.error("Erro buscando histórico", errHistorico);
+          setCompras([]);
+        } else {
+          const rows = (historicoData ?? []) as any[];
+          const lista: CompraHistorico[] = rows.map((row) => ({
+            compra_id: row.compra_id,
+            criado_em: row.criado_em,
+            mercadinho_id: row.mercadinho_id,
+            forma_pagamento: row.forma_pagamento,
+            valor_total: Number(row.valor_total || 0),
+            itens: Array.isArray(row.itens) ? row.itens : [],
+          }));
+          setCompras(lista);
+        }
+
+        // 3) se não tiver nome no store, busca no kiosk pra mostrar
+        if (!clienteNomeStore) {
+          const { data: cdata } = await supabase
+            .from("clientes_kiosk")
+            .select("nome")
+            .eq("id", clienteId)
+            .maybeSingle();
+
+          if (cdata?.nome) setClienteNome(cdata.nome);
+        }
+      } catch (err) {
+        console.error("Erro inesperado ao carregar histórico", err);
+      } finally {
+        setCarregando(false);
       }
-
-      setCarregando(false);
     };
 
     init();
