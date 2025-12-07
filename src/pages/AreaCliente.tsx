@@ -103,21 +103,37 @@ export default function AreaCliente() {
     init();
   }, [clienteId, clienteNomeStore, navigate]);
 
-  const [loteAtual, loteSeguinte] = useMemo(() => {
-    if (!corteAtual) return [compras, []];
+  // Separar compras: atrasadas (antes do corte anterior) e do mês atual
+  const [comprasAtrasadas, comprasDoMes] = useMemo(() => {
+    if (!corteAtual) return [[], compras];
 
     const corteTime = new Date(corteAtual).getTime();
-    const atual: CompraHistorico[] = [];
-    const seguinte: CompraHistorico[] = [];
+    const atrasadas: CompraHistorico[] = [];
+    const doMes: CompraHistorico[] = [];
 
     for (const c of compras) {
       const t = new Date(c.criado_em).getTime();
-      if (t <= corteTime) atual.push(c);
-      else seguinte.push(c);
+      // Compras até o corte = fatura do mês atual
+      // Compras antes do corte anterior seriam atrasadas, mas como só temos corte_atual,
+      // consideramos que compras do lote atual são as do mês
+      if (t <= corteTime) {
+        doMes.push(c);
+      } else {
+        // Compras após o corte seriam do próximo mês - não mostrar
+      }
     }
 
-    return [atual, seguinte];
+    // Por agora, não há como identificar "atrasadas" sem dados adicionais de pagamento
+    // O RPC retorna compras em aberto, então se houver compras de meses anteriores, 
+    // elas precisariam ser identificadas por outro critério
+    return [atrasadas, doMes];
   }, [compras, corteAtual]);
+
+  // Total de compras atrasadas
+  const totalAtrasado = useMemo(() => 
+    comprasAtrasadas.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
+    [comprasAtrasadas]
+  );
 
   const formatarDataHora = (iso: string) => {
     try {
@@ -141,18 +157,25 @@ export default function AreaCliente() {
           </div>
 
           <Button
-            variant="secondary"
+            className="bg-green-600 hover:bg-green-700 text-white"
             onClick={() => navigate("/cart")}
             disabled={!checkout.clienteId}
           >
-            Ir pro Carrinho
+            Iniciar compra
           </Button>
         </div>
 
-        {corteAtual && (
-          <p className="text-sm text-muted-foreground">
-            Corte atual: {formatarDataHora(corteAtual)}
-          </p>
+        {/* Botão de fatura atrasada - só aparece se houver atraso */}
+        {totalAtrasado > 0 && (
+          <Button
+            variant="outline"
+            className="w-full bg-red-100 hover:bg-red-200 text-red-700 border-red-300"
+            onClick={() => {
+              // Pode-se implementar navegação para lista de atrasadas
+            }}
+          >
+            Fatura atrasada de R$ {totalAtrasado.toFixed(2)}
+          </Button>
         )}
       </header>
 
@@ -162,113 +185,58 @@ export default function AreaCliente() {
         </div>
       )}
 
-      {!carregando && compras.length === 0 && (
+      {!carregando && comprasDoMes.length === 0 && (
         <div className="text-center text-muted-foreground mt-6">
           Nenhuma compra em aberto.
         </div>
       )}
 
-      {!carregando && compras.length > 0 && (
+      {!carregando && comprasDoMes.length > 0 && (
         <div className="flex flex-col gap-6">
-          {/* LOTE ATUAL */}
+          {/* FATURA DO MÊS */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Fatura atual (até o corte)</h2>
+              <h2 className="text-xl font-bold">Fatura do mês</h2>
               <div className="text-sm font-semibold">
-                Total: R$ {totalLote(loteAtual).toFixed(2)}
+                Total: R$ {totalLote(comprasDoMes).toFixed(2)}
               </div>
             </div>
 
-            {loteAtual.length === 0 && (
-              <div className="text-sm text-muted-foreground">
-                Nenhuma compra neste lote.
-              </div>
-            )}
-
-            {loteAtual.map((compra) => (
-              <Card key={compra.compra_id} className="rounded-2xl">
-                <CardContent className="p-4 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold">
-                      {formatarDataHora(compra.criado_em)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {compra.forma_pagamento}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex flex-col gap-1">
-                    {compra.itens.map((it, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-sm">
-                        <div>
-                          {it.nome} x{it.quantidade}
-                        </div>
-                        <div>R$ {Number(it.valor_total).toFixed(2)}</div>
+            {comprasDoMes.map((compra, index) => (
+              <div key={compra.compra_id}>
+                <Card className="rounded-2xl">
+                  <CardContent className="p-4 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-sm">
+                        {formatarDataHora(compra.criado_em)}
                       </div>
-                    ))}
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between font-semibold">
-                    <div>Total da compra</div>
-                    <div>R$ {Number(compra.valor_total).toFixed(2)}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </section>
-
-          {/* LOTE SEGUINTE */}
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Fatura seguinte (após o corte)</h2>
-              <div className="text-sm font-semibold">
-                Total: R$ {totalLote(loteSeguinte).toFixed(2)}
-              </div>
-            </div>
-
-            {loteSeguinte.length === 0 && (
-              <div className="text-sm text-muted-foreground">
-                Nenhuma compra neste lote.
-              </div>
-            )}
-
-            {loteSeguinte.map((compra) => (
-              <Card key={compra.compra_id} className="rounded-2xl">
-                <CardContent className="p-4 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold">
-                      {formatarDataHora(compra.criado_em)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {compra.forma_pagamento}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex flex-col gap-1">
-                    {compra.itens.map((it, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-sm">
-                        <div>
-                          {it.nome} x{it.quantidade}
-                        </div>
-                        <div>R$ {Number(it.valor_total).toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {compra.forma_pagamento}
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  <Separator />
-
-                  <div className="flex items-center justify-between font-semibold">
-                    <div>Total da compra</div>
-                    <div>R$ {Number(compra.valor_total).toFixed(2)}</div>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="flex flex-col gap-1 mt-1">
+                      {compra.itens.map((it, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <div className="flex-1">
+                            {it.nome}
+                          </div>
+                          <div className="text-muted-foreground text-xs mx-2">
+                            {it.quantidade}x R$ {Number(it.valor_unitario).toFixed(2)}
+                          </div>
+                          <div className="font-medium">
+                            R$ {Number(it.valor_total).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Divisória discreta entre compras */}
+                {index < comprasDoMes.length - 1 && (
+                  <div className="h-2" />
+                )}
+              </div>
             ))}
           </section>
         </div>
