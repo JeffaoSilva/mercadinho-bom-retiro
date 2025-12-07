@@ -114,7 +114,7 @@ const CameraScanner = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
       {/* Header */}
       <div className="bg-black/80 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3 text-white">
