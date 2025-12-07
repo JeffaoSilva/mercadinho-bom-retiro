@@ -135,16 +135,23 @@ const Cart = () => {
 
   // Função que realmente adiciona o produto ao carrinho
   const addProductByBarcode = async (code: string) => {
-    if (!code.trim()) return;
+    // Normalizar: remover tudo que não for dígito
+    const normalizado = code.replace(/[^\d]/g, "").trim();
+    
+    if (!normalizado) {
+      toast.error("Código de barras inválido");
+      return;
+    }
 
+    setBarcode(normalizado);
     const mercadinhoId = mercadinhoAtualId || 1;
 
     try {
-      // Buscar produto pelo código de barras
+      // Buscar produto pelo código de barras normalizado
       const { data: produto, error } = await supabase
         .from("produtos")
         .select("*")
-        .eq("codigo_barras", barcode.trim())
+        .eq("codigo_barras", normalizado)
         .maybeSingle();
 
       if (error) throw error;
