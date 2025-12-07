@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Search, Package, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Search, Package, Loader2, CheckCircle, Camera } from "lucide-react";
 import { toast } from "sonner";
+import CameraScanner from "@/components/CameraScanner";
+import { playBeep } from "@/utils/beep";
 
 interface Produto {
   id: number;
@@ -27,6 +29,7 @@ const AdminEntradaEstoque = () => {
   const [buscando, setBuscando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
 
   const [mercadinhos, setMercadinhos] = useState<Mercadinho[]>([]);
 
@@ -73,6 +76,39 @@ const AdminEntradaEstoque = () => {
       setProduto(data);
       setPrecoCompra(data.preco_compra.toString());
       setPrecoVenda(data.preco_venda.toString());
+      // Beep ao encontrar produto
+      playBeep();
+    } else {
+      toast.error("Produto não encontrado");
+    }
+  };
+
+  // Handler para código detectado pela câmera
+  const handleCameraDetected = async (code: string) => {
+    setShowCameraScanner(false);
+    setCodigoBarras(code);
+    // Buscar produto automaticamente
+    setBuscando(true);
+    setProduto(null);
+
+    const { data, error } = await supabase
+      .from("produtos")
+      .select("id, nome, codigo_barras, preco_compra, preco_venda")
+      .eq("codigo_barras", code.trim())
+      .maybeSingle();
+
+    setBuscando(false);
+
+    if (error) {
+      toast.error("Erro ao buscar produto");
+      return;
+    }
+
+    if (data) {
+      setProduto(data);
+      setPrecoCompra(data.preco_compra.toString());
+      setPrecoVenda(data.preco_venda.toString());
+      playBeep();
     } else {
       toast.error("Produto não encontrado");
     }
@@ -255,7 +291,7 @@ const AdminEntradaEstoque = () => {
               onChange={(e) => setCodigoBarras(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escaneie ou digite o código..."
-              className="text-lg"
+              className="text-lg flex-1"
               autoFocus
             />
             <Button onClick={buscarProduto} disabled={buscando}>
@@ -264,6 +300,13 @@ const AdminEntradaEstoque = () => {
               ) : (
                 <Search className="w-5 h-5" />
               )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowCameraScanner(true)}
+              title="Ler pela câmera"
+            >
+              <Camera className="w-5 h-5" />
             </Button>
           </div>
 
@@ -278,6 +321,15 @@ const AdminEntradaEstoque = () => {
             </Button>
           )}
         </div>
+
+        {/* Camera Scanner Modal */}
+        {showCameraScanner && (
+          <CameraScanner
+            onDetected={handleCameraDetected}
+            onClose={() => setShowCameraScanner(false)}
+            title="Escaneie o código de barras"
+          />
+        )}
 
         {/* Formulário de entrada */}
         {produto && (
