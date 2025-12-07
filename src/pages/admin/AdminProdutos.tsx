@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Search } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Search, Camera } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import CameraScanner from "@/components/CameraScanner";
+import { playBeep } from "@/utils/beep";
 
 interface Produto {
   id: number;
@@ -41,6 +43,7 @@ const AdminProdutos = () => {
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [form, setForm] = useState({
     nome: "",
     codigo_barras: "",
@@ -148,6 +151,14 @@ const AdminProdutos = () => {
     loadProdutos();
   };
 
+  // Handler para código detectado pela câmera
+  const handleCameraDetected = (code: string) => {
+    setShowCameraScanner(false);
+    setForm({ ...form, codigo_barras: code });
+    playBeep();
+    toast.success("Código lido: " + code);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -244,10 +255,22 @@ const AdminProdutos = () => {
             </div>
             <div>
               <Label>Código de Barras</Label>
-              <Input
-                value={form.codigo_barras}
-                onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={form.codigo_barras}
+                  onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowCameraScanner(true)}
+                  title="Ler pela câmera"
+                >
+                  <Camera className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -287,6 +310,15 @@ const AdminProdutos = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Camera Scanner Modal */}
+      {showCameraScanner && (
+        <CameraScanner
+          onDetected={handleCameraDetected}
+          onClose={() => setShowCameraScanner(false)}
+          title="Escaneie o código de barras"
+        />
+      )}
     </div>
   );
 };

@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout, CartItem } from "@/hooks/useCheckout";
-import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle, Camera } from "lucide-react";
+import CameraScanner from "@/components/CameraScanner";
+import { playBeep } from "@/utils/beep";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -44,6 +46,7 @@ const Cart = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
 
   // Cache de exposições por produto
   const [exposicoesCache, setExposicoesCache] = useState<Map<number, Exposicao[]>>(new Map());
@@ -203,6 +206,8 @@ const Cart = () => {
         prateleira_id: prateleiraDisponivel.id,
       });
 
+      // Toca beep de sucesso
+      playBeep();
       toast.success(`${produto.nome} adicionado`);
     } catch (error) {
       console.error("Erro ao buscar produto:", error);
@@ -210,6 +215,19 @@ const Cart = () => {
     }
 
     setBarcode("");
+  };
+
+  // Handler para código detectado pela câmera
+  const handleCameraDetected = (code: string) => {
+    setShowCameraScanner(false);
+    setBarcode(code);
+    // Submeter automaticamente
+    setTimeout(() => {
+      const form = document.getElementById("barcode-form") as HTMLFormElement;
+      if (form) {
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      }
+    }, 100);
   };
 
   // Agrupar itens por produto_id para detectar múltiplos preços
@@ -338,16 +356,36 @@ const Cart = () => {
           </div>
         </div>
 
-        <form onSubmit={handleBarcodeSubmit} className="bg-card p-4 rounded-lg border">
-          <Input
-            ref={inputRef}
-            type="text"
-            placeholder="Escaneie o código de barras..."
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            className="text-lg"
-          />
+        <form id="barcode-form" onSubmit={handleBarcodeSubmit} className="bg-card p-4 rounded-lg border">
+          <div className="flex gap-2">
+            <Input
+              ref={inputRef}
+              type="text"
+              placeholder="Escaneie o código de barras..."
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              className="text-lg flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setShowCameraScanner(true)}
+              title="Ler pela câmera"
+            >
+              <Camera className="w-5 h-5" />
+            </Button>
+          </div>
         </form>
+
+        {/* Camera Scanner Modal */}
+        {showCameraScanner && (
+          <CameraScanner
+            onDetected={handleCameraDetected}
+            onClose={() => setShowCameraScanner(false)}
+            title="Escaneie o produto"
+          />
+        )}
 
         <div className="space-y-3">
           {cart.length === 0 ? (
