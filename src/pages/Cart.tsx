@@ -133,9 +133,9 @@ const Cart = () => {
     return null;
   };
 
-  const handleBarcodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!barcode.trim()) return;
+  // Função que realmente adiciona o produto ao carrinho
+  const addProductByBarcode = async (code: string) => {
+    if (!code.trim()) return;
 
     const mercadinhoId = mercadinhoAtualId || 1;
 
@@ -217,17 +217,16 @@ const Cart = () => {
     setBarcode("");
   };
 
-  // Handler para código detectado pela câmera
-  const handleCameraDetected = (code: string) => {
+  // Handler para formulário (Enter ou submit manual)
+  const handleBarcodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await addProductByBarcode(barcode);
+  };
+
+  // Handler para código detectado pela câmera - adiciona automaticamente
+  const handleCameraDetected = async (code: string) => {
     setShowCameraScanner(false);
-    setBarcode(code);
-    // Submeter automaticamente
-    setTimeout(() => {
-      const form = document.getElementById("barcode-form") as HTMLFormElement;
-      if (form) {
-        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-      }
-    }, 100);
+    await addProductByBarcode(code);
   };
 
   // Agrupar itens por produto_id para detectar múltiplos preços
