@@ -17,6 +17,8 @@ import {
   Loader2,
   PackagePlus,
   LayoutGrid,
+  Settings,
+  BookOpen,
 } from "lucide-react";
 import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
 
@@ -112,10 +114,12 @@ const Admin = () => {
     { title: "Prateleiras / Estoque", icon: LayoutGrid, route: "/admin/prateleiras-estoque" },
     { title: "Estoque / Lotes", icon: Boxes, route: "/admin/estoque" },
     { title: "Promoções", icon: Tag, route: "/admin/promocoes" },
-    { title: "Compras / Cadernetas", icon: ShoppingBag, route: "/admin/compras" },
+    { title: "Cadernetas", icon: BookOpen, route: "/admin/cadernetas" },
+    { title: "Compras", icon: ShoppingBag, route: "/admin/compras" },
     { title: "Clientes", icon: Users, route: "/admin/clientes" },
     { title: "Estornos", icon: RotateCcw, route: "/admin/estornos" },
     { title: "Tela de Descanso", icon: Monitor, route: "/admin/tela-descanso" },
+    { title: "Configurações", icon: Settings, route: "/admin/configuracoes" },
   ];
 
   return (

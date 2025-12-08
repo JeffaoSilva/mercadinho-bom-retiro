@@ -3,8 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCheckout } from "@/hooks/useCheckout";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type ItemHistorico = {
   produto_id: number;
@@ -20,7 +21,17 @@ type CompraHistorico = {
   mercadinho_id: number;
   forma_pagamento: string;
   valor_total: number;
+  mes_referencia?: string;
   itens: ItemHistorico[];
+};
+
+type HistoricoPayload = {
+  mes_atual: string;
+  mes_anterior: string;
+  dia_limite: number;
+  compras_mes_atual: CompraHistorico[];
+  compras_mes_anterior: CompraHistorico[];
+  compras_atrasadas: CompraHistorico[];
 };
 
 export default function AreaCliente() {
@@ -34,9 +45,10 @@ export default function AreaCliente() {
   const clienteId = clienteIdStore || clienteIdRota;
 
   const [clienteNome, setClienteNome] = useState<string>(clienteNomeStore || "");
-  const [corteAtual, setCorteAtual] = useState<string | null>(null);
-  const [compras, setCompras] = useState<CompraHistorico[]>([]);
+  const [historico, setHistorico] = useState<HistoricoPayload | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [showMesAnterior, setShowMesAnterior] = useState(false);
+  const [showAtrasadas, setShowAtrasadas] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -48,20 +60,7 @@ export default function AreaCliente() {
       setCarregando(true);
 
       try {
-        // 1) pega corte atual global
-        const { data: corte, error: errCorte } = await supabase
-          .from("config_cobranca")
-          .select("corte_atual")
-          .eq("id", 1)
-          .maybeSingle();
-        
-        if (errCorte) {
-          console.error("Erro get_corte_atual", errCorte);
-        } else {
-          setCorteAtual(corte?.corte_atual ?? null);
-        }
-
-        // 2) pega histórico via RPC segura (tipagem local, sem mexer em types.ts)
+        // Buscar histórico via RPC segura que retorna JSONB estruturado
         const { data: historicoData, error: errHistorico } = await supabase.rpc(
           "cliente_historico",
           { p_cliente_id: clienteId }
@@ -69,21 +68,13 @@ export default function AreaCliente() {
 
         if (errHistorico) {
           console.error("Erro buscando histórico", errHistorico);
-          setCompras([]);
+          setHistorico(null);
         } else {
-          const rows = (historicoData ?? []) as any[];
-          const lista: CompraHistorico[] = rows.map((row) => ({
-            compra_id: row.compra_id,
-            criado_em: row.criado_em,
-            mercadinho_id: row.mercadinho_id,
-            forma_pagamento: row.forma_pagamento,
-            valor_total: Number(row.valor_total || 0),
-            itens: Array.isArray(row.itens) ? row.itens : [],
-          }));
-          setCompras(lista);
+          const payload = historicoData as HistoricoPayload;
+          setHistorico(payload);
         }
 
-        // 3) se não tiver nome no store, busca no kiosk pra mostrar
+        // Se não tiver nome no store, busca no kiosk pra mostrar
         if (!clienteNomeStore) {
           const { data: cdata } = await supabase
             .from("clientes_kiosk")
@@ -103,37 +94,41 @@ export default function AreaCliente() {
     init();
   }, [clienteId, clienteNomeStore, navigate]);
 
-  // Separar compras: atrasadas (antes do corte anterior) e do mês atual
-  const [comprasAtrasadas, comprasDoMes] = useMemo(() => {
-    if (!corteAtual) return [[], compras];
+  // Cálculos baseados no historico
+  const diaHoje = new Date().getDate();
+  const diaLimite = historico?.dia_limite ?? 5;
 
-    const corteTime = new Date(corteAtual).getTime();
-    const atrasadas: CompraHistorico[] = [];
-    const doMes: CompraHistorico[] = [];
+  const comprasMesAtual = historico?.compras_mes_atual ?? [];
+  const comprasMesAnterior = historico?.compras_mes_anterior ?? [];
+  const comprasAtrasadas = historico?.compras_atrasadas ?? [];
 
-    for (const c of compras) {
-      const t = new Date(c.criado_em).getTime();
-      // Compras até o corte = fatura do mês atual
-      // Compras antes do corte anterior seriam atrasadas, mas como só temos corte_atual,
-      // consideramos que compras do lote atual são as do mês
-      if (t <= corteTime) {
-        doMes.push(c);
-      } else {
-        // Compras após o corte seriam do próximo mês - não mostrar
-      }
-    }
+  const totalMesAnterior = useMemo(() =>
+    comprasMesAnterior.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
+    [comprasMesAnterior]
+  );
 
-    // Por agora, não há como identificar "atrasadas" sem dados adicionais de pagamento
-    // O RPC retorna compras em aberto, então se houver compras de meses anteriores, 
-    // elas precisariam ser identificadas por outro critério
-    return [atrasadas, doMes];
-  }, [compras, corteAtual]);
-
-  // Total de compras atrasadas
-  const totalAtrasado = useMemo(() => 
+  const totalAtrasado = useMemo(() =>
     comprasAtrasadas.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
     [comprasAtrasadas]
   );
+
+  const temMesAnteriorAberto = comprasMesAnterior.length > 0;
+  const temAtrasadas = comprasAtrasadas.length > 0;
+
+  // Lógica dos botões de cobrança
+  const mostrarBotaoPagar = temMesAnteriorAberto && diaHoje <= diaLimite;
+  const mostrarBotaoAtrasada = temMesAnteriorAberto && diaHoje > diaLimite;
+  const mostrarSoAtrasadasAntigas = !temMesAnteriorAberto && temAtrasadas;
+
+  // Valor do botão de atraso inclui mês anterior se passou do dia limite
+  const valorBotaoAtrasada = mostrarBotaoAtrasada
+    ? totalMesAnterior + totalAtrasado
+    : totalAtrasado;
+
+  // Combina compras para exibição quando clica no botão atrasada
+  const comprasParaExibirAtrasadas = mostrarBotaoAtrasada
+    ? [...comprasMesAnterior, ...comprasAtrasadas]
+    : comprasAtrasadas;
 
   const formatarDataHora = (iso: string) => {
     try {
@@ -145,6 +140,44 @@ export default function AreaCliente() {
 
   const totalLote = (lote: CompraHistorico[]) =>
     lote.reduce((sum, c) => sum + Number(c.valor_total || 0), 0);
+
+  const renderCompras = (compras: CompraHistorico[]) => (
+    <>
+      {compras.map((compra, index) => (
+        <div key={compra.compra_id}>
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-sm">
+                  {formatarDataHora(compra.criado_em)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {compra.forma_pagamento}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1 mt-1">
+                {compra.itens.map((it, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <div className="flex-1">
+                      {it.nome}
+                    </div>
+                    <div className="text-muted-foreground text-xs mx-2">
+                      {it.quantidade}x R$ {Number(it.valor_unitario).toFixed(2)}
+                    </div>
+                    <div className="font-medium">
+                      R$ {Number(it.valor_total).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          {index < compras.length - 1 && <div className="h-2" />}
+        </div>
+      ))}
+    </>
+  );
 
   return (
     <div className="min-h-screen p-4 flex flex-col gap-4">
@@ -165,17 +198,40 @@ export default function AreaCliente() {
           </Button>
         </div>
 
-        {/* Botão de fatura atrasada - só aparece se houver atraso */}
-        {totalAtrasado > 0 && (
-          <Button
-            variant="outline"
-            className="w-full bg-red-100 hover:bg-red-200 text-red-700 border-red-300"
-            onClick={() => {
-              // Pode-se implementar navegação para lista de atrasadas
-            }}
-          >
-            Fatura atrasada de R$ {totalAtrasado.toFixed(2)}
-          </Button>
+        {/* Botão: Fatura para pagar até o dia X */}
+        {mostrarBotaoPagar && (
+          <Collapsible open={showMesAnterior} onOpenChange={setShowMesAnterior}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full bg-red-100 hover:bg-red-200 text-red-700 border-red-300 justify-between"
+              >
+                <span>Fatura de R$ {totalMesAnterior.toFixed(2)} para pagar até o dia {diaLimite}</span>
+                {showMesAnterior ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 flex flex-col gap-2">
+              {renderCompras(comprasMesAnterior)}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Botão: Fatura atrasada (após dia limite ou só atrasadas antigas) */}
+        {(mostrarBotaoAtrasada || mostrarSoAtrasadasAntigas) && (
+          <Collapsible open={showAtrasadas} onOpenChange={setShowAtrasadas}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full bg-red-200 hover:bg-red-300 text-red-800 border-red-400 justify-between"
+              >
+                <span>Fatura atrasada no valor de R$ {valorBotaoAtrasada.toFixed(2)}</span>
+                {showAtrasadas ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 flex flex-col gap-2">
+              {renderCompras(comprasParaExibirAtrasadas)}
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </header>
 
@@ -185,59 +241,24 @@ export default function AreaCliente() {
         </div>
       )}
 
-      {!carregando && comprasDoMes.length === 0 && (
+      {!carregando && comprasMesAtual.length === 0 && (
         <div className="text-center text-muted-foreground mt-6">
-          Nenhuma compra em aberto.
+          Nenhuma compra em aberto neste mês.
         </div>
       )}
 
-      {!carregando && comprasDoMes.length > 0 && (
+      {!carregando && comprasMesAtual.length > 0 && (
         <div className="flex flex-col gap-6">
           {/* FATURA DO MÊS */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Fatura do mês</h2>
               <div className="text-sm font-semibold">
-                Total: R$ {totalLote(comprasDoMes).toFixed(2)}
+                Total: R$ {totalLote(comprasMesAtual).toFixed(2)}
               </div>
             </div>
 
-            {comprasDoMes.map((compra, index) => (
-              <div key={compra.compra_id}>
-                <Card className="rounded-2xl">
-                  <CardContent className="p-4 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-sm">
-                        {formatarDataHora(compra.criado_em)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {compra.forma_pagamento}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1 mt-1">
-                      {compra.itens.map((it, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
-                          <div className="flex-1">
-                            {it.nome}
-                          </div>
-                          <div className="text-muted-foreground text-xs mx-2">
-                            {it.quantidade}x R$ {Number(it.valor_unitario).toFixed(2)}
-                          </div>
-                          <div className="font-medium">
-                            R$ {Number(it.valor_total).toFixed(2)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-                {/* Divisória discreta entre compras */}
-                {index < comprasDoMes.length - 1 && (
-                  <div className="h-2" />
-                )}
-              </div>
-            ))}
+            {renderCompras(comprasMesAtual)}
           </section>
         </div>
       )}

@@ -588,17 +588,25 @@ export type Database = {
       }
     }
     Functions: {
-      cliente_historico: {
-        Args: { p_cliente_id: number }
-        Returns: {
-          compra_id: number
-          criado_em: string
-          forma_pagamento: string
-          itens: Json
-          mercadinho_id: number
-          valor_total: number
-        }[]
+      admin_estornar_item: {
+        Args: {
+          p_devolver_estoque: boolean
+          p_item_compra_id: number
+          p_motivo?: string
+          p_prateleira_id?: number
+        }
+        Returns: Json
       }
+      admin_listar_clientes_debitos: { Args: never; Returns: Json }
+      admin_marcar_atrasadas_pagas: {
+        Args: { p_cliente_id: number }
+        Returns: Json
+      }
+      admin_marcar_pago_mes: {
+        Args: { p_cliente_id: number; p_mes_referencia: string }
+        Returns: Json
+      }
+      cliente_historico: { Args: { p_cliente_id: number }; Returns: Json }
       criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }
       pin_create: {

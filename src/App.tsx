@@ -21,6 +21,8 @@ import AdminEstornos from "./pages/admin/AdminEstornos";
 import AdminTelaDescanso from "./pages/admin/AdminTelaDescanso";
 import AdminEntradaEstoque from "./pages/admin/AdminEntradaEstoque";
 import AdminPrateleirasEstoque from "./pages/admin/AdminPrateleirasEstoque";
+import AdminConfiguracoes from "./pages/admin/AdminConfiguracoes";
+import AdminCadernetas from "./pages/admin/AdminCadernetas";
 import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
@@ -93,6 +95,8 @@ const AppContent = () => {
         <Route path="/admin/clientes" element={<AdminClientes />} />
         <Route path="/admin/estornos" element={<AdminEstornos />} />
         <Route path="/admin/tela-descanso" element={<AdminTelaDescanso />} />
+        <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+        <Route path="/admin/cadernetas" element={<AdminCadernetas />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
