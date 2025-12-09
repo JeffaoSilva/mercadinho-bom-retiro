@@ -30,10 +30,13 @@ import { useCheckout } from "./hooks/useCheckout";
 
 import AreaClienteSelect from "@/pages/AreaClienteSelect";
 import AreaCliente from "@/pages/AreaCliente";
+import { useConfigRealtime } from "@/hooks/useConfigRealtime";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
+  // Inicializa store de config globalmente (beep, pagamentos)
+  useConfigRealtime();
   const location = useLocation();
   const navigate = useNavigate();
 
