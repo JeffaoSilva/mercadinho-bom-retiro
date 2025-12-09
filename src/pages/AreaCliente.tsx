@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCheckout } from "@/hooks/useCheckout";
+import { useConfigRealtime } from "@/hooks/useConfigRealtime";
+import { useConfigSistemaStore } from "@/stores/configSistemaStore";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 type ItemHistorico = {
@@ -28,7 +30,7 @@ type CompraHistorico = {
 type HistoricoPayload = {
   mes_atual: string;
   mes_anterior: string;
-  dia_limite: number;
+  data_limite: string | null; // "YYYY-MM-DD" ou null
   compras_mes_atual: CompraHistorico[];
   compras_mes_anterior: CompraHistorico[];
   compras_atrasadas: CompraHistorico[];
@@ -38,6 +40,10 @@ export default function AreaCliente() {
   const navigate = useNavigate();
   const params = useParams<{ clienteId: string }>();
   const checkout = useCheckout();
+
+  // Ativa realtime para configs
+  useConfigRealtime();
+  const { configPagamentos } = useConfigSistemaStore();
 
   const clienteIdStore = checkout.clienteId;
   const clienteNomeStore = checkout.clienteNome;
@@ -50,6 +56,23 @@ export default function AreaCliente() {
   const [showMesAnterior, setShowMesAnterior] = useState(false);
   const [showAtrasadas, setShowAtrasadas] = useState(false);
 
+  const fetchHistorico = async () => {
+    if (!clienteId) return;
+
+    const { data: historicoData, error: errHistorico } = await supabase.rpc(
+      "cliente_historico",
+      { p_cliente_id: clienteId }
+    );
+
+    if (errHistorico) {
+      console.error("Erro buscando histórico", errHistorico);
+      setHistorico(null);
+    } else {
+      const payload = historicoData as HistoricoPayload;
+      setHistorico(payload);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       if (!clienteId) {
@@ -60,19 +83,7 @@ export default function AreaCliente() {
       setCarregando(true);
 
       try {
-        // Buscar histórico via RPC segura que retorna JSONB estruturado
-        const { data: historicoData, error: errHistorico } = await supabase.rpc(
-          "cliente_historico",
-          { p_cliente_id: clienteId }
-        );
-
-        if (errHistorico) {
-          console.error("Erro buscando histórico", errHistorico);
-          setHistorico(null);
-        } else {
-          const payload = historicoData as HistoricoPayload;
-          setHistorico(payload);
-        }
+        await fetchHistorico();
 
         // Se não tiver nome no store, busca no kiosk pra mostrar
         if (!clienteNomeStore) {
@@ -94,9 +105,14 @@ export default function AreaCliente() {
     init();
   }, [clienteId, clienteNomeStore, navigate]);
 
-  // Cálculos baseados no historico
-  const diaHoje = new Date().getDate();
-  const diaLimite = historico?.dia_limite ?? 5;
+  // Re-calcula quando config_pagamentos muda (realtime)
+  const dataLimiteRealtime = useMemo(() => {
+    if (!historico) return null;
+    const configMesAnterior = configPagamentos.find(
+      (c) => c.mes_referencia === historico.mes_anterior
+    );
+    return configMesAnterior?.data_limite || historico.data_limite;
+  }, [configPagamentos, historico]);
 
   const comprasMesAtual = historico?.compras_mes_atual ?? [];
   const comprasMesAnterior = historico?.compras_mes_anterior ?? [];
@@ -115,12 +131,22 @@ export default function AreaCliente() {
   const temMesAnteriorAberto = comprasMesAnterior.length > 0;
   const temAtrasadas = comprasAtrasadas.length > 0;
 
-  // Lógica dos botões de cobrança
-  const mostrarBotaoPagar = temMesAnteriorAberto && diaHoje <= diaLimite;
-  const mostrarBotaoAtrasada = temMesAnteriorAberto && diaHoje > diaLimite;
+  // Lógica dos botões de cobrança baseada em data_limite (DATE)
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const dataLimiteParsed = dataLimiteRealtime ? new Date(dataLimiteRealtime + "T00:00:00") : null;
+
+  // Botão "Fatura para pagar": aparece se tem mes anterior em aberto E (não tem data_limite OU hoje <= data_limite)
+  const mostrarBotaoPagar = temMesAnteriorAberto && (!dataLimiteParsed || hoje <= dataLimiteParsed);
+
+  // Botão "Fatura atrasada": aparece se tem mes anterior em aberto E data_limite existe E hoje > data_limite
+  const mostrarBotaoAtrasada = temMesAnteriorAberto && dataLimiteParsed && hoje > dataLimiteParsed;
+
+  // Ou se só tem atrasadas antigas (sem mes anterior)
   const mostrarSoAtrasadasAntigas = !temMesAnteriorAberto && temAtrasadas;
 
-  // Valor do botão de atraso inclui mês anterior se passou do dia limite
+  // Valor do botão de atraso inclui mês anterior se passou da data limite
   const valorBotaoAtrasada = mostrarBotaoAtrasada
     ? totalMesAnterior + totalAtrasado
     : totalAtrasado;
@@ -129,6 +155,15 @@ export default function AreaCliente() {
   const comprasParaExibirAtrasadas = mostrarBotaoAtrasada
     ? [...comprasMesAnterior, ...comprasAtrasadas]
     : comprasAtrasadas;
+
+  // Formata data limite para exibição (DD/MM)
+  const formatarDataLimite = (dataStr: string | null) => {
+    if (!dataStr) return null;
+    const [ano, mes, dia] = dataStr.split("-");
+    return `${dia}/${mes}`;
+  };
+
+  const dataLimiteFormatada = formatarDataLimite(dataLimiteRealtime);
 
   const formatarDataHora = (iso: string) => {
     try {
@@ -198,15 +233,18 @@ export default function AreaCliente() {
           </Button>
         </div>
 
-        {/* Botão: Fatura para pagar até o dia X */}
+        {/* Botão: Fatura para pagar (AZUL SUAVE) */}
         {mostrarBotaoPagar && (
           <Collapsible open={showMesAnterior} onOpenChange={setShowMesAnterior}>
             <CollapsibleTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full bg-red-100 hover:bg-red-200 text-red-700 border-red-300 justify-between"
+                className="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 justify-between"
               >
-                <span>Fatura de R$ {totalMesAnterior.toFixed(2)} para pagar até o dia {diaLimite}</span>
+                <span>
+                  Fatura de R$ {totalMesAnterior.toFixed(2)}
+                  {dataLimiteFormatada ? ` para pagar até o dia ${dataLimiteFormatada}` : " para pagar"}
+                </span>
                 {showMesAnterior ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </CollapsibleTrigger>
@@ -216,7 +254,7 @@ export default function AreaCliente() {
           </Collapsible>
         )}
 
-        {/* Botão: Fatura atrasada (após dia limite ou só atrasadas antigas) */}
+        {/* Botão: Fatura atrasada (VERMELHO FORTE) */}
         {(mostrarBotaoAtrasada || mostrarSoAtrasadasAntigas) && (
           <Collapsible open={showAtrasadas} onOpenChange={setShowAtrasadas}>
             <CollapsibleTrigger asChild>
