@@ -58,6 +58,7 @@ export type Database = {
           forma_pagamento: string
           id: number
           mercadinho_id: number
+          mes_referencia: string
           paga: boolean
           paga_em: string | null
           tablet_id: number | null
@@ -72,6 +73,7 @@ export type Database = {
           forma_pagamento: string
           id?: number
           mercadinho_id: number
+          mes_referencia?: string
           paga?: boolean
           paga_em?: string | null
           tablet_id?: number | null
@@ -86,6 +88,7 @@ export type Database = {
           forma_pagamento?: string
           id?: number
           mercadinho_id?: number
+          mes_referencia?: string
           paga?: boolean
           paga_em?: string | null
           tablet_id?: number | null
@@ -175,6 +178,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      config_pagamentos_mensais: {
+        Row: {
+          criado_em: string
+          data_limite: string | null
+          mes_referencia: string
+        }
+        Insert: {
+          criado_em?: string
+          data_limite?: string | null
+          mes_referencia: string
+        }
+        Update: {
+          criado_em?: string
+          data_limite?: string | null
+          mes_referencia?: string
+        }
+        Relationships: []
+      }
+      config_sistema: {
+        Row: {
+          bip_ativo: boolean
+          bip_volume: number
+          criado_em: string
+          id: number
+        }
+        Insert: {
+          bip_ativo?: boolean
+          bip_volume?: number
+          criado_em?: string
+          id?: number
+        }
+        Update: {
+          bip_ativo?: boolean
+          bip_volume?: number
+          criado_em?: string
+          id?: number
+        }
+        Relationships: []
       }
       entradas_estoque: {
         Row: {
