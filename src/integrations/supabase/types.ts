@@ -49,6 +49,30 @@ export type Database = {
           },
         ]
       }
+      codigos_tres: {
+        Row: {
+          codigo: string
+          criado_em: string
+          id: number
+          usado: boolean
+          usado_em: string | null
+        }
+        Insert: {
+          codigo: string
+          criado_em?: string
+          id?: number
+          usado?: boolean
+          usado_em?: string | null
+        }
+        Update: {
+          codigo?: string
+          criado_em?: string
+          id?: number
+          usado?: boolean
+          usado_em?: string | null
+        }
+        Relationships: []
+      }
       compras: {
         Row: {
           cliente_id: number | null
