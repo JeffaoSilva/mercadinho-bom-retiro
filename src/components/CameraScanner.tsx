@@ -20,6 +20,10 @@ const CameraScanner = ({
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(true);
 
+  // Debounce para evitar bip duplo
+  const lastCodeRef = useRef<string | null>(null);
+  const lastReadAtRef = useRef<number>(0);
+
   useEffect(() => {
     let mounted = true;
 
@@ -58,12 +62,26 @@ const CameraScanner = ({
             if (result) {
               const code = result.getText();
               if (code) {
+                const normalized = code.trim();
+                const now = Date.now();
+
+                // Debounce: ignorar se mesmo código dentro de 1200ms
+                if (
+                  lastCodeRef.current === normalized &&
+                  now - lastReadAtRef.current < 1200
+                ) {
+                  return;
+                }
+
+                lastCodeRef.current = normalized;
+                lastReadAtRef.current = now;
+
                 playBeep();
                 // Parar scanner antes de chamar callback
                 if (controlsRef.current) {
                   controlsRef.current.stop();
                 }
-                onDetected(code);
+                onDetected(normalized);
               }
             }
 
