@@ -10,15 +10,14 @@ import {
   Tag,
   ShoppingBag,
   Users,
-  RotateCcw,
   LogOut,
   ArrowLeft,
-  Monitor,
   Loader2,
   PackagePlus,
   LayoutGrid,
   Settings,
   BookOpen,
+  Key,
 } from "lucide-react";
 import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
 
@@ -117,8 +116,7 @@ const Admin = () => {
     { title: "Cadernetas", icon: BookOpen, route: "/admin/cadernetas" },
     { title: "Compras", icon: ShoppingBag, route: "/admin/compras" },
     { title: "Clientes", icon: Users, route: "/admin/clientes" },
-    { title: "Estornos", icon: RotateCcw, route: "/admin/estornos" },
-    { title: "Tela de Descanso", icon: Monitor, route: "/admin/tela-descanso" },
+    { title: "Códigos Três", icon: Key, route: "/admin/codigos-tres" },
     { title: "Configurações", icon: Settings, route: "/admin/configuracoes" },
   ];
 

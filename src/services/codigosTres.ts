@@ -37,3 +37,12 @@ export async function marcarCodigoUsado(id: number): Promise<void> {
 
   if (error) throw error;
 }
+
+export async function removerCodigoTres(id: number): Promise<void> {
+  const { error } = await supabase
+    .from("codigos_tres" as any)
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}

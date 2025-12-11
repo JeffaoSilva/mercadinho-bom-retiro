@@ -33,6 +33,7 @@ interface Produto {
   preco_venda: number;
   ativo: boolean;
   quantidade_atual: number;
+  quantidade_total: number;
 }
 
 const AdminProdutos = () => {
@@ -62,16 +63,36 @@ const AdminProdutos = () => {
   }, [isAuthenticated, authLoading, navigate]);
 
   const loadProdutos = async () => {
-    const { data, error } = await supabase
+    // Buscar produtos
+    const { data: produtosData, error: produtosError } = await supabase
       .from("produtos")
       .select("*")
       .order("nome");
 
-    if (error) {
+    if (produtosError) {
       toast.error("Erro ao carregar produtos");
       return;
     }
-    setProdutos(data || []);
+
+    // Buscar soma de quantidade_prateleira por produto_id
+    const { data: prateleirasData } = await supabase
+      .from("prateleiras_produtos")
+      .select("produto_id, quantidade_prateleira");
+
+    // Montar mapa de soma por produto_id
+    const somaPrateleiras = new Map<number, number>();
+    for (const p of prateleirasData || []) {
+      const atual = somaPrateleiras.get(p.produto_id) || 0;
+      somaPrateleiras.set(p.produto_id, atual + p.quantidade_prateleira);
+    }
+
+    // Adicionar quantidade_total a cada produto
+    const produtosComTotal = (produtosData || []).map((prod) => ({
+      ...prod,
+      quantidade_total: prod.quantidade_atual + (somaPrateleiras.get(prod.id) || 0),
+    }));
+
+    setProdutos(produtosComTotal);
     setLoading(false);
   };
 
@@ -201,7 +222,7 @@ const AdminProdutos = () => {
                 <TableHead>Código</TableHead>
                 <TableHead className="text-right">Compra</TableHead>
                 <TableHead className="text-right">Venda</TableHead>
-                <TableHead className="text-right">Qtd</TableHead>
+                <TableHead className="text-right">Qtd Total</TableHead>
                 <TableHead className="text-center">Ativo</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -219,7 +240,7 @@ const AdminProdutos = () => {
                   <TableCell className="text-right">
                     R$ {produto.preco_venda.toFixed(2)}
                   </TableCell>
-                  <TableCell className="text-right">{produto.quantidade_atual}</TableCell>
+                  <TableCell className="text-right">{produto.quantidade_total}</TableCell>
                   <TableCell className="text-center">
                     <Switch
                       checked={produto.ativo}

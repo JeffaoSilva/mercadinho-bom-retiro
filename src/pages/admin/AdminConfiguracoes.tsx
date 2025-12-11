@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,16 +33,9 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Copy, Check, Camera } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { cn } from "@/lib/utils";
-import {
-  CodigoTres,
-  listarCodigosTres,
-  adicionarCodigoTres,
-  marcarCodigoUsado,
-} from "@/services/codigosTres";
-import CameraOCR from "@/components/CameraOCR";
 
 interface ConfigSistema {
   bip_ativo: boolean;
@@ -71,12 +63,6 @@ const AdminConfiguracoes = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingMes, setEditingMes] = useState<string | null>(null);
   const [formMes, setFormMes] = useState({ mes_referencia: "", data_limite: null as Date | null });
-
-  // Códigos Três
-  const [codigosTres, setCodigosTres] = useState<CodigoTres[]>([]);
-  const [novoCodigo, setNovoCodigo] = useState("");
-  const [adicionandoCodigo, setAdicionandoCodigo] = useState(false);
-  const [showCameraOCR, setShowCameraOCR] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -111,14 +97,6 @@ const AdminConfiguracoes = () => {
       .order("mes_referencia", { ascending: false });
 
     setConfigMensais((mensais || []) as ConfigMensal[]);
-
-    // Carregar códigos três
-    try {
-      const codigos = await listarCodigosTres();
-      setCodigosTres(codigos);
-    } catch (err) {
-      console.error("Erro ao carregar códigos três:", err);
-    }
 
     setLoading(false);
   };
@@ -226,66 +204,6 @@ const AdminConfiguracoes = () => {
     return `${dia}/${mes}/${ano}`;
   };
 
-  // Códigos Três
-  const handleAdicionarCodigo = async () => {
-    const codigo = novoCodigo.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (!codigo) {
-      toast.error("Informe um código válido");
-      return;
-    }
-
-    setAdicionandoCodigo(true);
-    try {
-      const novo = await adicionarCodigoTres(codigo);
-      setCodigosTres((prev) => [novo, ...prev]);
-      setNovoCodigo("");
-      toast.success("Código adicionado!");
-    } catch (err) {
-      toast.error("Erro ao adicionar código");
-    } finally {
-      setAdicionandoCodigo(false);
-    }
-  };
-
-  const handleMarcarUsado = async (id: number) => {
-    try {
-      await marcarCodigoUsado(id);
-      setCodigosTres((prev) =>
-        prev.map((c) =>
-          c.id === id ? { ...c, usado: true, usado_em: new Date().toISOString() } : c
-        )
-      );
-      toast.success("Código marcado como usado");
-    } catch (err) {
-      toast.error("Erro ao marcar como usado");
-    }
-  };
-
-  const handleCopiar = async (codigo: string) => {
-    try {
-      await navigator.clipboard.writeText(codigo);
-      toast.success("Código copiado!");
-    } catch {
-      // Fallback
-      const input = document.createElement("input");
-      input.value = codigo;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
-      toast.success("Código copiado!");
-    }
-  };
-
-  const handleOCRResult = (text: string) => {
-    setNovoCodigo(text);
-    setShowCameraOCR(false);
-    toast.success("Código lido com sucesso!");
-  };
-
-  const codigosPendentes = codigosTres.filter((c) => !c.usado);
-  const codigosUsados = codigosTres.filter((c) => c.usado);
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -389,86 +307,19 @@ const AdminConfiguracoes = () => {
           </CardContent>
         </Card>
 
-        {/* Códigos Três */}
+        {/* Tela de Descanso */}
         <Card>
           <CardHeader>
-            <CardTitle>Códigos Três</CardTitle>
+            <CardTitle>Tela de Descanso</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Input para adicionar */}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Digite o código"
-                value={novoCodigo}
-                onChange={(e) => setNovoCodigo(e.target.value.toUpperCase())}
-                className="flex-1"
-                onKeyDown={(e) => e.key === "Enter" && handleAdicionarCodigo()}
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowCameraOCR(true)}
-                title="Ler pela câmera"
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-              <Button onClick={handleAdicionarCodigo} disabled={adicionandoCodigo}>
-                {adicionandoCodigo ? "Adicionando..." : "Adicionar código"}
-              </Button>
-            </div>
-
-            {/* Lista de pendentes */}
-            <div>
-              <h3 className="font-semibold mb-2">Códigos pendentes</h3>
-              {codigosPendentes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum código pendente.</p>
-              ) : (
-                <div className="space-y-2">
-                  {codigosPendentes.map((codigo, index) => (
-                    <div
-                      key={codigo.id}
-                      className="flex items-center justify-between bg-muted p-3 rounded-lg"
-                    >
-                      <span className="font-mono">
-                        {index + 1} - {codigo.codigo}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopiar(codigo.codigo)}
-                          title="Copiar"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarcarUsado(codigo.id)}
-                        >
-                          <Check className="h-4 w-4 mr-1" />
-                          Marcar como usado
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Lista de utilizados */}
-            {codigosUsados.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-2">Códigos utilizados</h3>
-                <div className="bg-muted/50 p-4 rounded-lg space-y-1">
-                  {codigosUsados.map((codigo, index) => (
-                    <p key={codigo.id} className="font-mono text-sm text-muted-foreground">
-                      {index + 1} - {codigo.codigo}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure a tela exibida durante inatividade nos tablets. Personalize imagem, texto e cores.
+            </p>
+            <Button onClick={() => navigate("/admin/tela-descanso")} variant="outline">
+              <Monitor className="h-4 w-4 mr-2" />
+              Abrir configurações da Tela de Descanso
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -545,14 +396,6 @@ const AdminConfiguracoes = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Camera OCR */}
-      {showCameraOCR && (
-        <CameraOCR
-          onResult={handleOCRResult}
-          onClose={() => setShowCameraOCR(false)}
-        />
-      )}
     </div>
   );
 };

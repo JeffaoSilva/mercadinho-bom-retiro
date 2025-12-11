@@ -29,8 +29,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Eye, CheckCircle, X, RotateCcw } from "lucide-react";
+import { ArrowLeft, Search, Eye, CheckCircle, RotateCcw, Trash2, Users } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { estornarCompraCompleta } from "@/services/estornos";
+import { format } from "date-fns";
 
 interface ClienteDebito {
   cliente_id: number;
@@ -52,7 +54,7 @@ interface ItemCompra {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
-  produto?: { nome: string };
+  produto?: { nome: string; quantidade_atual: number };
 }
 
 interface Compra {
@@ -61,6 +63,8 @@ interface Compra {
   valor_total: number;
   mes_referencia: string;
   forma_pagamento: string;
+  eh_visitante?: boolean;
+  cliente?: { nome: string };
 }
 
 const AdminCadernetas = () => {
@@ -85,9 +89,17 @@ const AdminCadernetas = () => {
   const [confirmPagarMes, setConfirmPagarMes] = useState<string | null>(null);
   const [confirmPagarAtrasadas, setConfirmPagarAtrasadas] = useState(false);
   
-  // Estorno
+  // Estorno de item
   const [itemParaEstornar, setItemParaEstornar] = useState<ItemCompra | null>(null);
   const [estornoComDevolucao, setEstornoComDevolucao] = useState(true);
+
+  // Estorno de compra completa
+  const [confirmEstornoCompra, setConfirmEstornoCompra] = useState(false);
+
+  // Compras de visitante
+  const [showVisitantes, setShowVisitantes] = useState(false);
+  const [comprasVisitante, setComprasVisitante] = useState<Compra[]>([]);
+  const [loadingVisitantes, setLoadingVisitantes] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -116,7 +128,6 @@ const AdminCadernetas = () => {
   const abrirDetalhesCliente = async (cliente: ClienteDebito) => {
     setSelectedCliente(cliente);
     
-    // Buscar compras do cliente não pagas (mes_referencia é coluna nova)
     const { data, error } = await supabase
       .from("compras")
       .select("id, criado_em, valor_total, mes_referencia, forma_pagamento" as any)
@@ -138,7 +149,7 @@ const AdminCadernetas = () => {
     
     const { data, error } = await supabase
       .from("itens_compra")
-      .select("*, produto:produtos(nome)")
+      .select("*, produto:produtos(nome, quantidade_atual)")
       .eq("compra_id", compra.id);
     
     if (error) {
@@ -210,9 +221,10 @@ const AdminCadernetas = () => {
         setShowItens(false);
         setShowDetalhes(false);
         loadDebitos();
+        // Se estava vendo visitantes, recarrega também
+        if (showVisitantes) loadComprasVisitante();
       } else {
         toast.success("Item estornado com sucesso");
-        // Recarregar itens da compra
         if (selectedCompra) {
           abrirItensCompra({ ...selectedCompra, valor_total: resultado.novo_total || 0 });
         }
@@ -220,9 +232,70 @@ const AdminCadernetas = () => {
     }
   };
 
+  const handleEstornoCompraCompleta = async () => {
+    if (!selectedCompra || itensCompra.length === 0) return;
+
+    const result = await estornarCompraCompleta(selectedCompra.id, itensCompra);
+    
+    setConfirmEstornoCompra(false);
+
+    if (result.ok) {
+      toast.success("Compra estornada com sucesso");
+      setShowItens(false);
+      setShowDetalhes(false);
+      loadDebitos();
+      // Se estava vendo visitantes, recarrega também
+      if (showVisitantes) loadComprasVisitante();
+    } else {
+      toast.error(result.error || "Erro ao estornar compra");
+    }
+  };
+
+  // Compras de visitante
+  const loadComprasVisitante = async () => {
+    setLoadingVisitantes(true);
+    
+    const { data, error } = await supabase
+      .from("compras")
+      .select("id, criado_em, valor_total, mes_referencia, forma_pagamento, eh_visitante")
+      .eq("eh_visitante", true)
+      .eq("paga", false)
+      .order("criado_em", { ascending: false });
+    
+    if (error) {
+      toast.error("Erro ao carregar compras de visitante");
+    } else {
+      setComprasVisitante((data || []) as Compra[]);
+    }
+    
+    setLoadingVisitantes(false);
+  };
+
+  const abrirVisitantes = async () => {
+    await loadComprasVisitante();
+    setShowVisitantes(true);
+  };
+
+  const abrirItensVisitante = async (compra: Compra) => {
+    setSelectedCompra(compra);
+    
+    const { data, error } = await supabase
+      .from("itens_compra")
+      .select("*, produto:produtos(nome, quantidade_atual)")
+      .eq("compra_id", compra.id);
+    
+    if (error) {
+      toast.error("Erro ao carregar itens");
+      return;
+    }
+    
+    setItensCompra(data || []);
+    setShowItens(true);
+  };
+
   const formatarData = (iso: string) => {
     try {
-      return new Date(iso).toLocaleString("pt-BR");
+      return format(new Date(iso), "dd/MM/yyyy HH:mm");
     } catch {
       return iso;
     }
@@ -232,7 +305,6 @@ const AdminCadernetas = () => {
     c.cliente_nome.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
-  // Clientes com algum débito
   const clientesComDebito = clientesFiltrados.filter(
     (c) => c.total_mes_atual > 0 || c.total_mes_anterior > 0 || c.total_atrasado > 0
   );
@@ -248,11 +320,17 @@ const AdminCadernetas = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="h-5 w-5" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">Cadernetas</h1>
+          </div>
+          <Button variant="outline" onClick={abrirVisitantes}>
+            <Users className="h-4 w-4 mr-2" />
+            Compras de Visitante
           </Button>
-          <h1 className="text-3xl font-bold">Cadernetas</h1>
         </div>
 
         <Card>
@@ -357,7 +435,6 @@ const AdminCadernetas = () => {
               )}
             </div>
 
-            {/* Lista de compras agrupadas por mês */}
             {comprasCliente.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">Nenhuma compra em aberto.</p>
             ) : (
@@ -382,6 +459,52 @@ const AdminCadernetas = () => {
                       </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" onClick={() => abrirItensCompra(compra)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Compras de Visitante */}
+      <Dialog open={showVisitantes} onOpenChange={setShowVisitantes}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Compras de Visitante (não pagas)</DialogTitle>
+          </DialogHeader>
+          
+          <div className="pt-4">
+            {loadingVisitantes ? (
+              <p className="text-center py-8">Carregando...</p>
+            ) : comprasVisitante.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Nenhuma compra de visitante em aberto.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Mês Ref.</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {comprasVisitante.map((compra) => (
+                    <TableRow key={compra.id}>
+                      <TableCell>#{compra.id}</TableCell>
+                      <TableCell>{formatarData(compra.criado_em)}</TableCell>
+                      <TableCell>{compra.mes_referencia}</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        R$ {Number(compra.valor_total).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => abrirItensVisitante(compra)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -436,8 +559,17 @@ const AdminCadernetas = () => {
               </TableBody>
             </Table>
             
-            <div className="mt-4 text-right text-xl font-bold">
-              Total: R$ {Number(selectedCompra?.valor_total || 0).toFixed(2)}
+            <div className="mt-4 flex justify-between items-center pt-4 border-t">
+              <span className="text-xl font-bold">
+                Total: R$ {Number(selectedCompra?.valor_total || 0).toFixed(2)}
+              </span>
+              <Button
+                variant="destructive"
+                onClick={() => setConfirmEstornoCompra(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Estornar compra completa
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -471,6 +603,29 @@ const AdminCadernetas = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={marcarAtrasadasPagas}>Confirmar Pagamento</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação Estorno de Compra Completa */}
+      <AlertDialog open={confirmEstornoCompra} onOpenChange={setConfirmEstornoCompra}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Estornar compra completa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <p className="mb-2">Esta ação irá:</p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>Remover a compra inteira</li>
+                <li>Devolver todos os itens ao estoque</li>
+                <li><strong>Não poderá ser desfeita</strong></li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEstornoCompraCompleta}>
+              Confirmar Estorno
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
