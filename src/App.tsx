@@ -17,12 +17,12 @@ import AdminEstoque from "./pages/admin/AdminEstoque";
 import AdminPromocoes from "./pages/admin/AdminPromocoes";
 import AdminCompras from "./pages/admin/AdminCompras";
 import AdminClientes from "./pages/admin/AdminClientes";
-import AdminEstornos from "./pages/admin/AdminEstornos";
 import AdminTelaDescanso from "./pages/admin/AdminTelaDescanso";
 import AdminEntradaEstoque from "./pages/admin/AdminEntradaEstoque";
 import AdminPrateleirasEstoque from "./pages/admin/AdminPrateleirasEstoque";
 import AdminConfiguracoes from "./pages/admin/AdminConfiguracoes";
 import AdminCadernetas from "./pages/admin/AdminCadernetas";
+import AdminCodigosTres from "./pages/admin/AdminCodigosTres";
 import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
@@ -96,10 +96,10 @@ const AppContent = () => {
         <Route path="/admin/promocoes" element={<AdminPromocoes />} />
         <Route path="/admin/compras" element={<AdminCompras />} />
         <Route path="/admin/clientes" element={<AdminClientes />} />
-        <Route path="/admin/estornos" element={<AdminEstornos />} />
         <Route path="/admin/tela-descanso" element={<AdminTelaDescanso />} />
         <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
         <Route path="/admin/cadernetas" element={<AdminCadernetas />} />
+        <Route path="/admin/codigos-tres" element={<AdminCodigosTres />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
