@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Search, Camera } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Search, Camera, Loader2, CheckCircle, PackagePlus } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
@@ -36,12 +36,17 @@ interface Produto {
   quantidade_total: number;
 }
 
+type FilterType = "disponiveis" | "esgotados";
+
 const AdminProdutos = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterType>("disponiveis");
+  
+  // Dialog de novo/editar produto
   const [showDialog, setShowDialog] = useState(false);
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
@@ -53,6 +58,38 @@ const AdminProdutos = () => {
     ativo: true,
   });
 
+  // Campos de entrada inicial (para novo produto)
+  const [showEntradaInicial, setShowEntradaInicial] = useState(false);
+  const [entradaForm, setEntradaForm] = useState({
+    quantidadeTotal: "",
+    precoCompraEntrada: "",
+    precoVendaEntrada: "",
+    validade: "",
+    rateioCentral: "",
+    rateioBomRetiro: "",
+    rateioSaoFrancisco: "",
+  });
+
+  // Dialog de entrada para produto existente
+  const [showEntradaDialog, setShowEntradaDialog] = useState(false);
+  const [produtoEntrada, setProdutoEntrada] = useState<Produto | null>(null);
+  const [entradaProdutoForm, setEntradaProdutoForm] = useState({
+    quantidadeTotal: "",
+    precoCompraEntrada: "",
+    precoVendaEntrada: "",
+    validade: "",
+    rateioCentral: "",
+    rateioBomRetiro: "",
+    rateioSaoFrancisco: "",
+  });
+  const [salvandoEntrada, setSalvandoEntrada] = useState(false);
+  const [sucessoEntrada, setSucessoEntrada] = useState(false);
+
+  // Campo de entrada por código de barras
+  const [codigoEntrada, setCodigoEntrada] = useState("");
+  const [buscandoEntrada, setBuscandoEntrada] = useState(false);
+  const [showCameraScannerEntrada, setShowCameraScannerEntrada] = useState(false);
+
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
@@ -63,7 +100,7 @@ const AdminProdutos = () => {
   }, [isAuthenticated, authLoading, navigate]);
 
   const loadProdutos = async () => {
-    // Buscar produtos
+    // Buscar produtos (incluindo inativos para admin)
     const { data: produtosData, error: produtosError } = await supabase
       .from("produtos")
       .select("*")
@@ -74,10 +111,17 @@ const AdminProdutos = () => {
       return;
     }
 
-    // Buscar soma de quantidade_prateleira por produto_id
+    // Buscar soma de quantidade_prateleira por produto_id (apenas ativos)
     const { data: prateleirasData } = await supabase
       .from("prateleiras_produtos")
-      .select("produto_id, quantidade_prateleira");
+      .select("produto_id, quantidade_prateleira")
+      .eq("ativo", true);
+
+    // Buscar lotes ativos
+    const { data: lotesData } = await supabase
+      .from("lotes_produtos")
+      .select("produto_id, quantidade")
+      .eq("ativo", true);
 
     // Montar mapa de soma por produto_id
     const somaPrateleiras = new Map<number, number>();
@@ -86,25 +130,52 @@ const AdminProdutos = () => {
       somaPrateleiras.set(p.produto_id, atual + p.quantidade_prateleira);
     }
 
-    // Adicionar quantidade_total a cada produto
+    const somaLotes = new Map<number, number>();
+    for (const l of lotesData || []) {
+      const atual = somaLotes.get(l.produto_id) || 0;
+      somaLotes.set(l.produto_id, atual + l.quantidade);
+    }
+
+    // Adicionar quantidade_total a cada produto (central + prateleiras + lotes)
     const produtosComTotal = (produtosData || []).map((prod) => ({
       ...prod,
-      quantidade_total: prod.quantidade_atual + (somaPrateleiras.get(prod.id) || 0),
+      quantidade_total: 
+        prod.quantidade_atual + 
+        (somaPrateleiras.get(prod.id) || 0) + 
+        (somaLotes.get(prod.id) || 0),
     }));
 
     setProdutos(produtosComTotal);
     setLoading(false);
   };
 
-  const filteredProdutos = produtos.filter(
-    (p) =>
+  // Filtrar por busca (nome ou código) e por disponibilidade
+  const filteredProdutos = produtos.filter((p) => {
+    const matchSearch = 
       p.nome.toLowerCase().includes(search.toLowerCase()) ||
-      (p.codigo_barras && p.codigo_barras.includes(search))
-  );
+      (p.codigo_barras && p.codigo_barras.toLowerCase().includes(search.toLowerCase()));
+    
+    const matchFilter = 
+      filter === "disponiveis" 
+        ? p.quantidade_total > 0 
+        : p.quantidade_total === 0;
+
+    return matchSearch && matchFilter;
+  });
 
   const openNew = () => {
     setEditingProduto(null);
     setForm({ nome: "", codigo_barras: "", preco_compra: "", preco_venda: "", ativo: true });
+    setShowEntradaInicial(true);
+    setEntradaForm({
+      quantidadeTotal: "",
+      precoCompraEntrada: "",
+      precoVendaEntrada: "",
+      validade: "",
+      rateioCentral: "",
+      rateioBomRetiro: "",
+      rateioSaoFrancisco: "",
+    });
     setShowDialog(true);
   };
 
@@ -117,7 +188,110 @@ const AdminProdutos = () => {
       preco_venda: produto.preco_venda.toString(),
       ativo: produto.ativo,
     });
+    setShowEntradaInicial(false);
     setShowDialog(true);
+  };
+
+  const validarRateio = (qtdTotal: number, central: number, bomRetiro: number, saoFrancisco: number): boolean => {
+    const soma = central + bomRetiro + saoFrancisco;
+    if (soma !== qtdTotal) {
+      toast.error(`Soma dos rateios (${soma}) deve ser igual à quantidade total (${qtdTotal})`);
+      return false;
+    }
+    return true;
+  };
+
+  const executarEntrada = async (produtoId: number, entrada: typeof entradaForm) => {
+    const qtdTotal = parseInt(entrada.quantidadeTotal) || 0;
+    const central = parseInt(entrada.rateioCentral) || 0;
+    const bomRetiro = parseInt(entrada.rateioBomRetiro) || 0;
+    const saoFrancisco = parseInt(entrada.rateioSaoFrancisco) || 0;
+    const precoCompraNum = parseFloat(entrada.precoCompraEntrada);
+    const precoVendaNum = parseFloat(entrada.precoVendaEntrada);
+
+    // A) Inserir histórico em entradas_estoque
+    const { error: entradaError } = await supabase.from("entradas_estoque").insert({
+      produto_id: produtoId,
+      quantidade_total: qtdTotal,
+      preco_compra_entrada: precoCompraNum,
+      preco_venda_sugerido: precoVendaNum,
+      rateio_central: central,
+      rateio_bom_retiro: bomRetiro,
+      rateio_sao_francisco: saoFrancisco,
+    });
+
+    if (entradaError) throw entradaError;
+
+    // B) Atualizar produto com novos preços e quantidade central
+    const { data: produtoAtual } = await supabase
+      .from("produtos")
+      .select("quantidade_atual")
+      .eq("id", produtoId)
+      .single();
+
+    const novaQtdCentral = (produtoAtual?.quantidade_atual || 0) + central;
+
+    const { error: produtoError } = await supabase
+      .from("produtos")
+      .update({
+        preco_compra: precoCompraNum,
+        preco_venda: precoVendaNum,
+        quantidade_atual: novaQtdCentral,
+      })
+      .eq("id", produtoId);
+
+    if (produtoError) throw produtoError;
+
+    // C) Upsert nas prateleiras por mercadinho
+    const rateios = [
+      { mercadinho_id: 1, quantidade: bomRetiro }, // Bom Retiro
+      { mercadinho_id: 2, quantidade: saoFrancisco }, // São Francisco
+    ];
+
+    for (const rateio of rateios) {
+      if (rateio.quantidade <= 0) continue;
+
+      const { data: atual } = await supabase
+        .from("prateleiras_produtos")
+        .select("quantidade_prateleira")
+        .eq("mercadinho_id", rateio.mercadinho_id)
+        .eq("produto_id", produtoId)
+        .eq("preco_venda_prateleira", precoVendaNum)
+        .maybeSingle();
+
+      const qtdNova = (atual?.quantidade_prateleira || 0) + rateio.quantidade;
+
+      const { error } = await supabase
+        .from("prateleiras_produtos")
+        .upsert(
+          {
+            mercadinho_id: rateio.mercadinho_id,
+            produto_id: produtoId,
+            preco_venda_prateleira: precoVendaNum,
+            quantidade_prateleira: qtdNova,
+            ativo: true,
+            atualizado_em: new Date().toISOString(),
+          },
+          {
+            onConflict: "mercadinho_id,produto_id,preco_venda_prateleira",
+            ignoreDuplicates: false,
+          }
+        );
+
+      if (error) throw error;
+    }
+
+    // D) Se informou validade, criar lote
+    if (entrada.validade) {
+      const { error: loteError } = await supabase.from("lotes_produtos").insert({
+        produto_id: produtoId,
+        quantidade: qtdTotal,
+        validade: entrada.validade,
+        preco_compra_lote: precoCompraNum,
+        ativo: true,
+      });
+      if (loteError) console.error("Erro ao criar lote:", loteError);
+    }
   };
 
   const handleSave = async () => {
@@ -135,6 +309,7 @@ const AdminProdutos = () => {
     };
 
     if (editingProduto) {
+      // Atualizar produto existente
       const { error } = await supabase
         .from("produtos")
         .update(payload)
@@ -146,13 +321,40 @@ const AdminProdutos = () => {
       }
       toast.success("Produto atualizado");
     } else {
-      const { error } = await supabase.from("produtos").insert(payload);
+      // Criar novo produto com entrada inicial
+      if (showEntradaInicial && entradaForm.quantidadeTotal) {
+        const qtdTotal = parseInt(entradaForm.quantidadeTotal) || 0;
+        const central = parseInt(entradaForm.rateioCentral) || 0;
+        const bomRetiro = parseInt(entradaForm.rateioBomRetiro) || 0;
+        const saoFrancisco = parseInt(entradaForm.rateioSaoFrancisco) || 0;
 
-      if (error) {
+        if (!validarRateio(qtdTotal, central, bomRetiro, saoFrancisco)) return;
+      }
+
+      // Inserir produto
+      const { data: novoProduto, error } = await supabase
+        .from("produtos")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error || !novoProduto) {
         toast.error("Erro ao criar produto");
         return;
       }
-      toast.success("Produto criado");
+
+      // Se tem entrada inicial, executar
+      if (showEntradaInicial && entradaForm.quantidadeTotal) {
+        try {
+          await executarEntrada(novoProduto.id, entradaForm);
+          toast.success("Produto criado com entrada registrada");
+        } catch (err) {
+          console.error("Erro ao registrar entrada:", err);
+          toast.error("Produto criado, mas houve erro na entrada");
+        }
+      } else {
+        toast.success("Produto criado");
+      }
     }
 
     setShowDialog(false);
@@ -172,7 +374,7 @@ const AdminProdutos = () => {
     loadProdutos();
   };
 
-  // Handler para código detectado pela câmera
+  // Handler para código detectado pela câmera (no modal de novo produto)
   const handleCameraDetected = (code: string) => {
     setShowCameraScanner(false);
     setForm({ ...form, codigo_barras: code });
@@ -180,10 +382,131 @@ const AdminProdutos = () => {
     toast.success("Código lido: " + code);
   };
 
+  // Handler para entrada por código de barras
+  const buscarProdutoPorCodigo = async (codigo: string) => {
+    if (!codigo.trim()) return;
+    
+    setBuscandoEntrada(true);
+    
+    const { data: produto, error } = await supabase
+      .from("produtos")
+      .select("*")
+      .eq("codigo_barras", codigo.trim())
+      .maybeSingle();
+
+    setBuscandoEntrada(false);
+
+    if (error) {
+      toast.error("Erro ao buscar produto");
+      return;
+    }
+
+    if (produto) {
+      // Produto existe - abrir modal de entrada
+      const produtoComTotal: Produto = {
+        ...produto,
+        quantidade_total: produto.quantidade_atual, // Will be updated after load
+      };
+      setProdutoEntrada(produtoComTotal);
+      setEntradaProdutoForm({
+        quantidadeTotal: "",
+        precoCompraEntrada: produto.preco_compra.toString(),
+        precoVendaEntrada: produto.preco_venda.toString(),
+        validade: "",
+        rateioCentral: "",
+        rateioBomRetiro: "",
+        rateioSaoFrancisco: "",
+      });
+      setShowEntradaDialog(true);
+      playBeep();
+    } else {
+      // Produto não existe - abrir novo produto com código preenchido
+      setEditingProduto(null);
+      setForm({
+        nome: "",
+        codigo_barras: codigo.trim(),
+        preco_compra: "",
+        preco_venda: "",
+        ativo: true,
+      });
+      setShowEntradaInicial(true);
+      setEntradaForm({
+        quantidadeTotal: "",
+        precoCompraEntrada: "",
+        precoVendaEntrada: "",
+        validade: "",
+        rateioCentral: "",
+        rateioBomRetiro: "",
+        rateioSaoFrancisco: "",
+      });
+      setShowDialog(true);
+      toast.info("Produto não encontrado. Cadastre um novo.");
+    }
+    
+    setCodigoEntrada("");
+  };
+
+  const handleCameraScannerEntrada = (code: string) => {
+    setShowCameraScannerEntrada(false);
+    buscarProdutoPorCodigo(code);
+  };
+
+  const handleSalvarEntradaProduto = async () => {
+    if (!produtoEntrada) return;
+
+    if (!entradaProdutoForm.quantidadeTotal || !entradaProdutoForm.precoCompraEntrada || !entradaProdutoForm.precoVendaEntrada) {
+      toast.error("Preencha quantidade e preços");
+      return;
+    }
+
+    const qtdTotal = parseInt(entradaProdutoForm.quantidadeTotal) || 0;
+    const central = parseInt(entradaProdutoForm.rateioCentral) || 0;
+    const bomRetiro = parseInt(entradaProdutoForm.rateioBomRetiro) || 0;
+    const saoFrancisco = parseInt(entradaProdutoForm.rateioSaoFrancisco) || 0;
+
+    if (!validarRateio(qtdTotal, central, bomRetiro, saoFrancisco)) return;
+
+    setSalvandoEntrada(true);
+
+    try {
+      await executarEntrada(produtoEntrada.id, entradaProdutoForm);
+      setSucessoEntrada(true);
+      toast.success("Entrada registrada com sucesso!");
+
+      setTimeout(() => {
+        setSucessoEntrada(false);
+        setShowEntradaDialog(false);
+        setProdutoEntrada(null);
+        loadProdutos();
+      }, 1500);
+    } catch (err) {
+      console.error("Erro ao salvar entrada:", err);
+      toast.error("Erro ao registrar entrada");
+    } finally {
+      setSalvandoEntrada(false);
+    }
+  };
+
+  const somaRateioEntrada = () => {
+    return (
+      (parseInt(entradaProdutoForm.rateioCentral) || 0) +
+      (parseInt(entradaProdutoForm.rateioBomRetiro) || 0) +
+      (parseInt(entradaProdutoForm.rateioSaoFrancisco) || 0)
+    );
+  };
+
+  const somaRateioNovoProduto = () => {
+    return (
+      (parseInt(entradaForm.rateioCentral) || 0) +
+      (parseInt(entradaForm.rateioBomRetiro) || 0) +
+      (parseInt(entradaForm.rateioSaoFrancisco) || 0)
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl">Carregando...</p>
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -191,6 +514,7 @@ const AdminProdutos = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
@@ -204,6 +528,53 @@ const AdminProdutos = () => {
           </Button>
         </div>
 
+        {/* Entrada por código de barras */}
+        <div className="bg-card p-4 rounded-lg border">
+          <Label className="text-sm font-medium mb-2 block">Entrada por Código de Barras</Label>
+          <div className="flex gap-2">
+            <Input
+              value={codigoEntrada}
+              onChange={(e) => setCodigoEntrada(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && buscarProdutoPorCodigo(codigoEntrada)}
+              placeholder="Escaneie ou digite o código..."
+              className="flex-1"
+            />
+            <Button onClick={() => buscarProdutoPorCodigo(codigoEntrada)} disabled={buscandoEntrada}>
+              {buscandoEntrada ? <Loader2 className="w-5 h-5 animate-spin" /> : <PackagePlus className="w-5 h-5" />}
+            </Button>
+            <Button variant="outline" onClick={() => setShowCameraScannerEntrada(true)}>
+              <Camera className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            onClick={() => setFilter("disponiveis")}
+            className={`h-16 text-lg font-semibold transition-all ${
+              filter === "disponiveis"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+            variant="ghost"
+          >
+            Disponíveis
+          </Button>
+          <Button
+            onClick={() => setFilter("esgotados")}
+            className={`h-16 text-lg font-semibold transition-all ${
+              filter === "esgotados"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+            variant="ghost"
+          >
+            Esgotados
+          </Button>
+        </div>
+
+        {/* Busca */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
@@ -214,6 +585,7 @@ const AdminProdutos = () => {
           />
         </div>
 
+        {/* Tabela */}
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
@@ -228,39 +600,48 @@ const AdminProdutos = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProdutos.map((produto) => (
-                <TableRow key={produto.id}>
-                  <TableCell className="font-medium">{produto.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {produto.codigo_barras || "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    R$ {produto.preco_compra.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    R$ {produto.preco_venda.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">{produto.quantidade_total}</TableCell>
-                  <TableCell className="text-center">
-                    <Switch
-                      checked={produto.ativo}
-                      onCheckedChange={() => toggleAtivo(produto)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(produto)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+              {filteredProdutos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Nenhum produto encontrado
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredProdutos.map((produto) => (
+                  <TableRow key={produto.id}>
+                    <TableCell className="font-medium">{produto.nome}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {produto.codigo_barras || "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      R$ {produto.preco_compra.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      R$ {produto.preco_venda.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">{produto.quantidade_total}</TableCell>
+                    <TableCell className="text-center">
+                      <Switch
+                        checked={produto.ativo}
+                        onCheckedChange={() => toggleAtivo(produto)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(produto)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
       </div>
 
+      {/* Dialog Novo/Editar Produto */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProduto ? "Editar Produto" : "Novo Produto"}
@@ -287,7 +668,6 @@ const AdminProdutos = () => {
                   variant="outline"
                   size="icon"
                   onClick={() => setShowCameraScanner(true)}
-                  title="Ler pela câmera"
                 >
                   <Camera className="w-4 h-4" />
                 </Button>
@@ -320,6 +700,91 @@ const AdminProdutos = () => {
               />
               <Label>Produto ativo</Label>
             </div>
+
+            {/* Entrada Inicial (apenas para novo produto) */}
+            {!editingProduto && showEntradaInicial && (
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="font-semibold text-lg">Entrada Inicial</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Quantidade Total</Label>
+                    <Input
+                      type="number"
+                      value={entradaForm.quantidadeTotal}
+                      onChange={(e) => setEntradaForm({ ...entradaForm, quantidadeTotal: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label>Preço Compra Entrada</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={entradaForm.precoCompraEntrada}
+                      onChange={(e) => setEntradaForm({ ...entradaForm, precoCompraEntrada: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label>Preço Venda Entrada</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={entradaForm.precoVendaEntrada}
+                      onChange={(e) => setEntradaForm({ ...entradaForm, precoVendaEntrada: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Validade (opcional)</Label>
+                  <Input
+                    type="date"
+                    value={entradaForm.validade}
+                    onChange={(e) => setEntradaForm({ ...entradaForm, validade: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Rateio por Mercadinho</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Soma deve ser igual à quantidade total ({entradaForm.quantidadeTotal || 0})
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-xs">Central</Label>
+                      <Input
+                        type="number"
+                        value={entradaForm.rateioCentral}
+                        onChange={(e) => setEntradaForm({ ...entradaForm, rateioCentral: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Bom Retiro</Label>
+                      <Input
+                        type="number"
+                        value={entradaForm.rateioBomRetiro}
+                        onChange={(e) => setEntradaForm({ ...entradaForm, rateioBomRetiro: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">São Francisco</Label>
+                      <Input
+                        type="number"
+                        value={entradaForm.rateioSaoFrancisco}
+                        onChange={(e) => setEntradaForm({ ...entradaForm, rateioSaoFrancisco: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 p-2 bg-muted rounded-lg text-center text-sm">
+                    Soma atual: <strong>{somaRateioNovoProduto()}</strong> / {entradaForm.quantidadeTotal || 0}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowDialog(false)}>
                 Cancelar
@@ -332,11 +797,136 @@ const AdminProdutos = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Camera Scanner Modal */}
+      {/* Dialog Entrada para Produto Existente */}
+      <Dialog open={showEntradaDialog} onOpenChange={setShowEntradaDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Entrada / Reposição</DialogTitle>
+          </DialogHeader>
+          
+          {sucessoEntrada ? (
+            <div className="text-center py-8">
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-green-600">Entrada Registrada!</h2>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-4">
+              {produtoEntrada && (
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <h2 className="text-xl font-bold">{produtoEntrada.nome}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Código: {produtoEntrada.codigo_barras}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Quantidade Total *</Label>
+                  <Input
+                    type="number"
+                    value={entradaProdutoForm.quantidadeTotal}
+                    onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, quantidadeTotal: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label>Preço Compra *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={entradaProdutoForm.precoCompraEntrada}
+                    onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, precoCompraEntrada: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label>Preço Venda *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={entradaProdutoForm.precoVendaEntrada}
+                    onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, precoVendaEntrada: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Validade (opcional)</Label>
+                <Input
+                  type="date"
+                  value={entradaProdutoForm.validade}
+                  onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, validade: e.target.value })}
+                />
+              </div>
+
+              <div className="border-t pt-4 space-y-2">
+                <Label>Rateio por Mercadinho</Label>
+                <p className="text-sm text-muted-foreground">
+                  Soma deve ser igual à quantidade total ({entradaProdutoForm.quantidadeTotal || 0})
+                </p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs">Central</Label>
+                    <Input
+                      type="number"
+                      value={entradaProdutoForm.rateioCentral}
+                      onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, rateioCentral: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Bom Retiro</Label>
+                    <Input
+                      type="number"
+                      value={entradaProdutoForm.rateioBomRetiro}
+                      onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, rateioBomRetiro: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">São Francisco</Label>
+                    <Input
+                      type="number"
+                      value={entradaProdutoForm.rateioSaoFrancisco}
+                      onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, rateioSaoFrancisco: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 p-2 bg-muted rounded-lg text-center text-sm">
+                  Soma atual: <strong>{somaRateioEntrada()}</strong> / {entradaProdutoForm.quantidadeTotal || 0}
+                </div>
+              </div>
+
+              <Button
+                className="w-full h-12"
+                onClick={handleSalvarEntradaProduto}
+                disabled={salvandoEntrada}
+              >
+                {salvandoEntrada && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                Registrar Entrada
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Camera Scanner Modal (para novo produto) */}
       {showCameraScanner && (
         <CameraScanner
           onDetected={handleCameraDetected}
           onClose={() => setShowCameraScanner(false)}
+          title="Escaneie o código de barras"
+        />
+      )}
+
+      {/* Camera Scanner Modal (para entrada) */}
+      {showCameraScannerEntrada && (
+        <CameraScanner
+          onDetected={handleCameraScannerEntrada}
+          onClose={() => setShowCameraScannerEntrada(false)}
           title="Escaneie o código de barras"
         />
       )}
