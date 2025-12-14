@@ -18,7 +18,6 @@ import AdminPromocoes from "./pages/admin/AdminPromocoes";
 import AdminCompras from "./pages/admin/AdminCompras";
 import AdminClientes from "./pages/admin/AdminClientes";
 import AdminTelaDescanso from "./pages/admin/AdminTelaDescanso";
-import AdminEntradaEstoque from "./pages/admin/AdminEntradaEstoque";
 import AdminPrateleirasEstoque from "./pages/admin/AdminPrateleirasEstoque";
 import AdminConfiguracoes from "./pages/admin/AdminConfiguracoes";
 import AdminCadernetas from "./pages/admin/AdminCadernetas";
@@ -90,7 +89,6 @@ const AppContent = () => {
 
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/produtos" element={<AdminProdutos />} />
-        <Route path="/admin/entrada-estoque" element={<AdminEntradaEstoque />} />
         <Route path="/admin/prateleiras-estoque" element={<AdminPrateleirasEstoque />} />
         <Route path="/admin/estoque" element={<AdminEstoque />} />
         <Route path="/admin/promocoes" element={<AdminPromocoes />} />

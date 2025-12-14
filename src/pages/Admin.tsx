@@ -13,7 +13,6 @@ import {
   LogOut,
   ArrowLeft,
   Loader2,
-  PackagePlus,
   LayoutGrid,
   Settings,
   BookOpen,
@@ -109,7 +108,6 @@ const Admin = () => {
 
   const menuItems = [
     { title: "Produtos", icon: Package, route: "/admin/produtos" },
-    { title: "Entrada / Reposição", icon: PackagePlus, route: "/admin/entrada-estoque" },
     { title: "Prateleiras / Estoque", icon: LayoutGrid, route: "/admin/prateleiras-estoque" },
     { title: "Estoque / Lotes", icon: Boxes, route: "/admin/estoque" },
     { title: "Promoções", icon: Tag, route: "/admin/promocoes" },

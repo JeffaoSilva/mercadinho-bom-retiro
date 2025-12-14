@@ -45,8 +45,8 @@ const AdminPrateleirasEstoque = () => {
   const [filtroBarras, setFiltroBarras] = useState("");
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   
-  // Toggles combináveis
-  const [showBR, setShowBR] = useState(true);
+  // Toggles combináveis - todos iniciam desligados para forçar seleção manual
+  const [showBR, setShowBR] = useState(false);
   const [showSF, setShowSF] = useState(false);
   const [showGeral, setShowGeral] = useState(false);
 
