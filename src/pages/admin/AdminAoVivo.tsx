@@ -28,7 +28,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { useConfigNotifStore } from "@/stores/configNotifStore";
+import { useConfigNotifStore, ConfigNotif } from "@/stores/configNotifStore";
 import { useSaleNotifications } from "@/hooks/useSaleNotifications";
 import { format } from "date-fns";
 
@@ -46,6 +46,7 @@ const AdminAoVivo = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const config = useConfigNotifStore((s) => s.config);
+  const setConfig = useConfigNotifStore((s) => s.setConfig);
 
   // Estado local de mute (não persiste)
   const [isMuted, setIsMuted] = useState(false);
@@ -230,7 +231,7 @@ const AdminAoVivo = () => {
   };
 
   const salvarConfigContador = async () => {
-    const updates: Record<string, any> = {};
+    const updates: Partial<ConfigNotif> = {};
 
     if (configMercadinho === 1) {
       updates.ao_vivo_contador_br_metrica = tempMetrica;
@@ -240,16 +241,31 @@ const AdminAoVivo = () => {
       updates.ao_vivo_contador_sf_periodo = tempPeriodo;
     }
 
+    // Atualização otimista: atualizar store imediatamente
+    setConfig(updates);
+    setShowConfigModal(false);
+
     const { error } = await supabase
       .from("config_sistema")
       .update(updates)
       .eq("id", 1);
 
     if (error) {
+      // Reverter em caso de erro
+      if (configMercadinho === 1) {
+        setConfig({
+          ao_vivo_contador_br_metrica: config.ao_vivo_contador_br_metrica,
+          ao_vivo_contador_br_periodo: config.ao_vivo_contador_br_periodo,
+        });
+      } else {
+        setConfig({
+          ao_vivo_contador_sf_metrica: config.ao_vivo_contador_sf_metrica,
+          ao_vivo_contador_sf_periodo: config.ao_vivo_contador_sf_periodo,
+        });
+      }
       toast.error("Erro ao salvar configuração");
     } else {
       toast.success("Configuração salva!");
-      setShowConfigModal(false);
     }
   };
 
