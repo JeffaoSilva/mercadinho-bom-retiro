@@ -223,22 +223,49 @@ export type Database = {
       }
       config_sistema: {
         Row: {
+          ao_vivo_contador_br_metrica: string
+          ao_vivo_contador_br_periodo: string
+          ao_vivo_contador_sf_metrica: string
+          ao_vivo_contador_sf_periodo: string
           bip_ativo: boolean
           bip_volume: number
           criado_em: string
           id: number
+          notif_venda_popup_ativo: boolean
+          notif_venda_som_ativo: boolean
+          notif_venda_som_br: string
+          notif_venda_som_sf: string
+          notif_venda_som_volume: number
         }
         Insert: {
+          ao_vivo_contador_br_metrica?: string
+          ao_vivo_contador_br_periodo?: string
+          ao_vivo_contador_sf_metrica?: string
+          ao_vivo_contador_sf_periodo?: string
           bip_ativo?: boolean
           bip_volume?: number
           criado_em?: string
           id?: number
+          notif_venda_popup_ativo?: boolean
+          notif_venda_som_ativo?: boolean
+          notif_venda_som_br?: string
+          notif_venda_som_sf?: string
+          notif_venda_som_volume?: number
         }
         Update: {
+          ao_vivo_contador_br_metrica?: string
+          ao_vivo_contador_br_periodo?: string
+          ao_vivo_contador_sf_metrica?: string
+          ao_vivo_contador_sf_periodo?: string
           bip_ativo?: boolean
           bip_volume?: number
           criado_em?: string
           id?: number
+          notif_venda_popup_ativo?: boolean
+          notif_venda_som_ativo?: boolean
+          notif_venda_som_br?: string
+          notif_venda_som_sf?: string
+          notif_venda_som_volume?: number
         }
         Relationships: []
       }

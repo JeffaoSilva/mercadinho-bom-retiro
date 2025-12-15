@@ -33,13 +33,22 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { cn } from "@/lib/utils";
+import { playNotifyBeep, BEEP_OPTIONS } from "@/utils/notifySounds";
 
 interface ConfigSistema {
   bip_ativo: boolean;
   bip_volume: number;
+}
+
+interface ConfigNotif {
+  notif_venda_popup_ativo: boolean;
+  notif_venda_som_ativo: boolean;
+  notif_venda_som_volume: number;
+  notif_venda_som_br: string;
+  notif_venda_som_sf: string;
 }
 
 interface ConfigMensal {
@@ -55,9 +64,17 @@ const AdminConfiguracoes = () => {
     bip_ativo: true,
     bip_volume: 70,
   });
+  const [configNotif, setConfigNotif] = useState<ConfigNotif>({
+    notif_venda_popup_ativo: true,
+    notif_venda_som_ativo: true,
+    notif_venda_som_volume: 70,
+    notif_venda_som_br: 'beep1',
+    notif_venda_som_sf: 'beep2',
+  });
   const [configMensais, setConfigMensais] = useState<ConfigMensal[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingNotif, setSavingNotif] = useState(false);
 
   // Modal para adicionar/editar config mensal
   const [showModal, setShowModal] = useState(false);
@@ -76,10 +93,14 @@ const AdminConfiguracoes = () => {
   const loadData = async () => {
     setLoading(true);
 
-    // Carregar config_sistema
+    // Carregar config_sistema (som + notificações)
     const { data: sistema } = await supabase
       .from("config_sistema")
-      .select("bip_ativo, bip_volume")
+      .select(`
+        bip_ativo, bip_volume,
+        notif_venda_popup_ativo, notif_venda_som_ativo, notif_venda_som_volume,
+        notif_venda_som_br, notif_venda_som_sf
+      `)
       .eq("id", 1)
       .maybeSingle();
 
@@ -87,6 +108,13 @@ const AdminConfiguracoes = () => {
       setConfigSistema({
         bip_ativo: sistema.bip_ativo,
         bip_volume: sistema.bip_volume,
+      });
+      setConfigNotif({
+        notif_venda_popup_ativo: sistema.notif_venda_popup_ativo,
+        notif_venda_som_ativo: sistema.notif_venda_som_ativo,
+        notif_venda_som_volume: sistema.notif_venda_som_volume,
+        notif_venda_som_br: sistema.notif_venda_som_br,
+        notif_venda_som_sf: sistema.notif_venda_som_sf,
       });
     }
 
@@ -117,8 +145,38 @@ const AdminConfiguracoes = () => {
     if (error) {
       toast.error("Erro ao salvar configurações");
     } else {
-      toast.success("Configurações salvas!");
+      toast.success("Configurações de som salvas!");
     }
+  };
+
+  const salvarConfigNotif = async () => {
+    setSavingNotif(true);
+
+    const { error } = await supabase
+      .from("config_sistema")
+      .upsert({
+        id: 1,
+        notif_venda_popup_ativo: configNotif.notif_venda_popup_ativo,
+        notif_venda_som_ativo: configNotif.notif_venda_som_ativo,
+        notif_venda_som_volume: configNotif.notif_venda_som_volume,
+        notif_venda_som_br: configNotif.notif_venda_som_br,
+        notif_venda_som_sf: configNotif.notif_venda_som_sf,
+      } as any);
+
+    setSavingNotif(false);
+
+    if (error) {
+      toast.error("Erro ao salvar configurações");
+    } else {
+      toast.success("Configurações de notificação salvas!");
+    }
+  };
+
+  const testarSom = (beepKey: string) => {
+    playNotifyBeep(
+      beepKey as "beep1" | "beep2" | "beep3" | "beep4",
+      configNotif.notif_venda_som_volume
+    );
   };
 
   const gerarMesesDisponiveis = () => {
@@ -255,6 +313,132 @@ const AdminConfiguracoes = () => {
 
             <Button onClick={salvarConfigSistema} disabled={saving}>
               {saving ? "Salvando..." : "Salvar Configurações de Som"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Notificações de Venda */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Volume2 className="h-5 w-5" />
+              Notificações de Venda
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Popup de venda (visual)</Label>
+                <p className="text-sm text-muted-foreground">Exibe notificação visual ao receber nova venda</p>
+              </div>
+              <Switch
+                checked={configNotif.notif_venda_popup_ativo}
+                onCheckedChange={(checked) =>
+                  setConfigNotif({ ...configNotif, notif_venda_popup_ativo: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Som de venda</Label>
+                <p className="text-sm text-muted-foreground">Toca um som ao receber nova venda</p>
+              </div>
+              <Switch
+                checked={configNotif.notif_venda_som_ativo}
+                onCheckedChange={(checked) =>
+                  setConfigNotif({ ...configNotif, notif_venda_som_ativo: checked })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Volume do som das notificações: {configNotif.notif_venda_som_volume}%</Label>
+              <Slider
+                value={[configNotif.notif_venda_som_volume]}
+                onValueChange={(v) =>
+                  setConfigNotif({ ...configNotif, notif_venda_som_volume: v[0] })
+                }
+                min={0}
+                max={100}
+                step={5}
+                className="w-64"
+                disabled={!configNotif.notif_venda_som_ativo}
+              />
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <Label className="text-base font-semibold">Som por Mercadinho</Label>
+              
+              {/* Bom Retiro */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-1">
+                  <Label>Bom Retiro</Label>
+                  <Select
+                    value={configNotif.notif_venda_som_br}
+                    onValueChange={(v) =>
+                      setConfigNotif({ ...configNotif, notif_venda_som_br: v })
+                    }
+                    disabled={!configNotif.notif_venda_som_ativo}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BEEP_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testarSom(configNotif.notif_venda_som_br)}
+                  disabled={!configNotif.notif_venda_som_ativo}
+                >
+                  Testar
+                </Button>
+              </div>
+
+              {/* São Francisco */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-1">
+                  <Label>São Francisco</Label>
+                  <Select
+                    value={configNotif.notif_venda_som_sf}
+                    onValueChange={(v) =>
+                      setConfigNotif({ ...configNotif, notif_venda_som_sf: v })
+                    }
+                    disabled={!configNotif.notif_venda_som_ativo}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BEEP_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testarSom(configNotif.notif_venda_som_sf)}
+                  disabled={!configNotif.notif_venda_som_ativo}
+                >
+                  Testar
+                </Button>
+              </div>
+            </div>
+
+            <Button onClick={salvarConfigNotif} disabled={savingNotif}>
+              {savingNotif ? "Salvando..." : "Salvar Configurações de Notificação"}
             </Button>
           </CardContent>
         </Card>
