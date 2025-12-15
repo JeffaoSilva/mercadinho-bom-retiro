@@ -60,6 +60,7 @@ const AdminProdutos = () => {
 
   // Campos de entrada inicial (para novo produto)
   const [showEntradaInicial, setShowEntradaInicial] = useState(false);
+  const [precosEntradaEditados, setPrecosEntradaEditados] = useState(false);
   const [entradaForm, setEntradaForm] = useState({
     quantidadeTotal: "",
     precoCompraEntrada: "",
@@ -167,6 +168,7 @@ const AdminProdutos = () => {
     setEditingProduto(null);
     setForm({ nome: "", codigo_barras: "", preco_compra: "", preco_venda: "", ativo: true });
     setShowEntradaInicial(true);
+    setPrecosEntradaEditados(false);
     setEntradaForm({
       quantidadeTotal: "",
       precoCompraEntrada: "",
@@ -328,31 +330,65 @@ const AdminProdutos = () => {
         const bomRetiro = parseInt(entradaForm.rateioBomRetiro) || 0;
         const saoFrancisco = parseInt(entradaForm.rateioSaoFrancisco) || 0;
 
+        // Usar preços do formulário principal se entrada não foi editada
+        const precoCompraEntrada = entradaForm.precoCompraEntrada || form.preco_compra;
+        const precoVendaEntrada = entradaForm.precoVendaEntrada || form.preco_venda;
+
+        // Validar quantidade
+        if (qtdTotal <= 0) {
+          toast.error("Quantidade total deve ser maior que 0");
+          return;
+        }
+
+        // Validar preços
+        const precoCompraNum = parseFloat(precoCompraEntrada);
+        const precoVendaNum = parseFloat(precoVendaEntrada);
+        if (isNaN(precoCompraNum) || isNaN(precoVendaNum)) {
+          toast.error("Preços de compra e venda da entrada são inválidos");
+          return;
+        }
+
         if (!validarRateio(qtdTotal, central, bomRetiro, saoFrancisco)) return;
-      }
 
-      // Inserir produto
-      const { data: novoProduto, error } = await supabase
-        .from("produtos")
-        .insert(payload)
-        .select()
-        .single();
+        // Atualizar entradaForm com preços sincronizados antes de criar
+        const entradaFormFinal = {
+          ...entradaForm,
+          precoCompraEntrada,
+          precoVendaEntrada,
+        };
 
-      if (error || !novoProduto) {
-        toast.error("Erro ao criar produto");
-        return;
-      }
+        // Inserir produto
+        const { data: novoProduto, error } = await supabase
+          .from("produtos")
+          .insert(payload)
+          .select()
+          .single();
 
-      // Se tem entrada inicial, executar
-      if (showEntradaInicial && entradaForm.quantidadeTotal) {
+        if (error || !novoProduto) {
+          toast.error("Erro ao criar produto");
+          return;
+        }
+
         try {
-          await executarEntrada(novoProduto.id, entradaForm);
+          await executarEntrada(novoProduto.id, entradaFormFinal);
           toast.success("Produto criado com entrada registrada");
-        } catch (err) {
+        } catch (err: any) {
           console.error("Erro ao registrar entrada:", err);
-          toast.error("Produto criado, mas houve erro na entrada");
+          const mensagem = err?.message || "Erro desconhecido ao registrar entrada";
+          toast.error(`Erro na entrada: ${mensagem}`);
         }
       } else {
+        // Sem entrada inicial
+        const { data: novoProduto, error } = await supabase
+          .from("produtos")
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error || !novoProduto) {
+          toast.error("Erro ao criar produto");
+          return;
+        }
         toast.success("Produto criado");
       }
     }
@@ -680,7 +716,14 @@ const AdminProdutos = () => {
                   type="number"
                   step="0.01"
                   value={form.preco_compra}
-                  onChange={(e) => setForm({ ...form, preco_compra: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, preco_compra: val });
+                    // Sincronizar com entrada se não editado manualmente
+                    if (!precosEntradaEditados && !editingProduto) {
+                      setEntradaForm((prev) => ({ ...prev, precoCompraEntrada: val }));
+                    }
+                  }}
                 />
               </div>
               <div>
@@ -689,7 +732,14 @@ const AdminProdutos = () => {
                   type="number"
                   step="0.01"
                   value={form.preco_venda}
-                  onChange={(e) => setForm({ ...form, preco_venda: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, preco_venda: val });
+                    // Sincronizar com entrada se não editado manualmente
+                    if (!precosEntradaEditados && !editingProduto) {
+                      setEntradaForm((prev) => ({ ...prev, precoVendaEntrada: val }));
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -721,8 +771,11 @@ const AdminProdutos = () => {
                       type="number"
                       step="0.01"
                       value={entradaForm.precoCompraEntrada}
-                      onChange={(e) => setEntradaForm({ ...entradaForm, precoCompraEntrada: e.target.value })}
-                      placeholder="0.00"
+                      onChange={(e) => {
+                        setPrecosEntradaEditados(true);
+                        setEntradaForm({ ...entradaForm, precoCompraEntrada: e.target.value });
+                      }}
+                      placeholder={form.preco_compra || "0.00"}
                     />
                   </div>
                   <div>
@@ -731,8 +784,11 @@ const AdminProdutos = () => {
                       type="number"
                       step="0.01"
                       value={entradaForm.precoVendaEntrada}
-                      onChange={(e) => setEntradaForm({ ...entradaForm, precoVendaEntrada: e.target.value })}
-                      placeholder="0.00"
+                      onChange={(e) => {
+                        setPrecosEntradaEditados(true);
+                        setEntradaForm({ ...entradaForm, precoVendaEntrada: e.target.value });
+                      }}
+                      placeholder={form.preco_venda || "0.00"}
                     />
                   </div>
                 </div>
