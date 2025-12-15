@@ -22,6 +22,7 @@ import AdminPrateleirasEstoque from "./pages/admin/AdminPrateleirasEstoque";
 import AdminConfiguracoes from "./pages/admin/AdminConfiguracoes";
 import AdminCadernetas from "./pages/admin/AdminCadernetas";
 import AdminCodigosTres from "./pages/admin/AdminCodigosTres";
+import AdminAoVivo from "./pages/admin/AdminAoVivo";
 import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
@@ -98,6 +99,7 @@ const AppContent = () => {
         <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
         <Route path="/admin/cadernetas" element={<AdminCadernetas />} />
         <Route path="/admin/codigos-tres" element={<AdminCodigosTres />} />
+        <Route path="/admin/ao-vivo" element={<AdminAoVivo />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

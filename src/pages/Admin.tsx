@@ -17,8 +17,10 @@ import {
   Settings,
   BookOpen,
   Key,
+  Radio,
 } from "lucide-react";
 import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
+import { AdminNotifications } from "@/components/admin/AdminNotifications";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -107,6 +109,7 @@ const Admin = () => {
   }
 
   const menuItems = [
+    { title: "Ao Vivo", icon: Radio, route: "/admin/ao-vivo" },
     { title: "Produtos", icon: Package, route: "/admin/produtos" },
     { title: "Prateleiras / Estoque", icon: LayoutGrid, route: "/admin/prateleiras-estoque" },
     { title: "Lotes", icon: Boxes, route: "/admin/estoque" },
@@ -120,6 +123,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background p-6">
+      <AdminNotifications />
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Painel Administrativo</h1>
