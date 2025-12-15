@@ -473,6 +473,8 @@ export type Database = {
       }
       produtos: {
         Row: {
+          alerta_estoque_baixo_ativo: boolean
+          alerta_estoque_baixo_min: number
           ativo: boolean
           codigo_barras: string | null
           criado_em: string
@@ -483,6 +485,8 @@ export type Database = {
           quantidade_atual: number
         }
         Insert: {
+          alerta_estoque_baixo_ativo?: boolean
+          alerta_estoque_baixo_min?: number
           ativo?: boolean
           codigo_barras?: string | null
           criado_em?: string
@@ -493,6 +497,8 @@ export type Database = {
           quantidade_atual?: number
         }
         Update: {
+          alerta_estoque_baixo_ativo?: boolean
+          alerta_estoque_baixo_min?: number
           ativo?: boolean
           codigo_barras?: string | null
           criado_em?: string

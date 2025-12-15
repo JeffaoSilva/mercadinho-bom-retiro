@@ -34,6 +34,8 @@ interface Produto {
   ativo: boolean;
   quantidade_atual: number;
   quantidade_total: number;
+  alerta_estoque_baixo_ativo: boolean;
+  alerta_estoque_baixo_min: number;
 }
 
 const AdminProdutos = () => {
@@ -55,6 +57,8 @@ const AdminProdutos = () => {
     preco_compra: "",
     preco_venda: "",
     ativo: true,
+    alerta_estoque_baixo_ativo: false,
+    alerta_estoque_baixo_min: "2",
   });
 
   // Campos de entrada inicial (para novo produto)
@@ -168,7 +172,7 @@ const AdminProdutos = () => {
 
   const openNew = () => {
     setEditingProduto(null);
-    setForm({ nome: "", codigo_barras: "", preco_compra: "", preco_venda: "", ativo: true });
+    setForm({ nome: "", codigo_barras: "", preco_compra: "", preco_venda: "", ativo: true, alerta_estoque_baixo_ativo: false, alerta_estoque_baixo_min: "2" });
     setShowEntradaInicial(true);
     setPrecosEntradaEditados(false);
     setEntradaForm({
@@ -191,6 +195,8 @@ const AdminProdutos = () => {
       preco_compra: produto.preco_compra.toString(),
       preco_venda: produto.preco_venda.toString(),
       ativo: produto.ativo,
+      alerta_estoque_baixo_ativo: produto.alerta_estoque_baixo_ativo,
+      alerta_estoque_baixo_min: produto.alerta_estoque_baixo_min.toString(),
     });
     setShowEntradaInicial(false);
     setShowDialog(true);
@@ -310,6 +316,8 @@ const AdminProdutos = () => {
       preco_compra: parseFloat(form.preco_compra),
       preco_venda: parseFloat(form.preco_venda),
       ativo: form.ativo,
+      alerta_estoque_baixo_ativo: form.alerta_estoque_baixo_ativo,
+      alerta_estoque_baixo_min: Math.max(1, parseInt(form.alerta_estoque_baixo_min) || 2),
     };
 
     if (editingProduto) {
@@ -466,6 +474,8 @@ const AdminProdutos = () => {
         preco_compra: "",
         preco_venda: "",
         ativo: true,
+        alerta_estoque_baixo_ativo: false,
+        alerta_estoque_baixo_min: "2",
       });
       setShowEntradaInicial(true);
       setEntradaForm({
@@ -757,6 +767,29 @@ const AdminProdutos = () => {
                 onCheckedChange={(checked) => setForm({ ...form, ativo: checked })}
               />
               <Label>Produto ativo</Label>
+            </div>
+
+            {/* Configuração de alerta de estoque baixo */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.alerta_estoque_baixo_ativo}
+                  onCheckedChange={(checked) => setForm({ ...form, alerta_estoque_baixo_ativo: checked })}
+                />
+                <Label>Alerta de estoque baixo</Label>
+              </div>
+              {form.alerta_estoque_baixo_ativo && (
+                <div>
+                  <Label>Quantidade mínima para alertar</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.alerta_estoque_baixo_min}
+                    onChange={(e) => setForm({ ...form, alerta_estoque_baixo_min: e.target.value })}
+                    className="w-32"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Entrada Inicial (apenas para novo produto) */}
