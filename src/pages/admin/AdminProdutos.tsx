@@ -36,15 +36,14 @@ interface Produto {
   quantidade_total: number;
 }
 
-type FilterType = "disponiveis" | "esgotados";
-
 const AdminProdutos = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterType>("disponiveis");
+  const [showDisponiveis, setShowDisponiveis] = useState(true);
+  const [showEsgotados, setShowEsgotados] = useState(false);
   
   // Dialog de novo/editar produto
   const [showDialog, setShowDialog] = useState(false);
@@ -137,14 +136,15 @@ const AdminProdutos = () => {
       somaLotes.set(l.produto_id, atual + l.quantidade);
     }
 
-    // Adicionar quantidade_total a cada produto (central + prateleiras + lotes)
-    const produtosComTotal = (produtosData || []).map((prod) => ({
-      ...prod,
-      quantidade_total: 
-        prod.quantidade_atual + 
-        (somaPrateleiras.get(prod.id) || 0) + 
-        (somaLotes.get(prod.id) || 0),
-    }));
+    // quantidade_total = max(central + prateleiras, lotes) para não dobrar
+    const produtosComTotal = (produtosData || []).map((prod) => {
+      const totalLocal = prod.quantidade_atual + (somaPrateleiras.get(prod.id) || 0);
+      const totalLotes = somaLotes.get(prod.id) || 0;
+      return {
+        ...prod,
+        quantidade_total: Math.max(totalLocal, totalLotes),
+      };
+    });
 
     setProdutos(produtosComTotal);
     setLoading(false);
@@ -156,12 +156,14 @@ const AdminProdutos = () => {
       p.nome.toLowerCase().includes(search.toLowerCase()) ||
       (p.codigo_barras && p.codigo_barras.toLowerCase().includes(search.toLowerCase()));
     
-    const matchFilter = 
-      filter === "disponiveis" 
-        ? p.quantidade_total > 0 
-        : p.quantidade_total === 0;
-
-    return matchSearch && matchFilter;
+    // Se nenhum filtro ativo, não mostrar nada
+    if (!showDisponiveis && !showEsgotados) return false;
+    // Se ambos ativos, mostrar todos
+    if (showDisponiveis && showEsgotados) return matchSearch;
+    // Se só disponíveis
+    if (showDisponiveis) return matchSearch && p.quantidade_total > 0;
+    // Se só esgotados
+    return matchSearch && p.quantidade_total === 0;
   });
 
   const openNew = () => {
@@ -587,9 +589,9 @@ const AdminProdutos = () => {
         {/* Filtros */}
         <div className="grid grid-cols-2 gap-4">
           <Button
-            onClick={() => setFilter("disponiveis")}
+            onClick={() => setShowDisponiveis(!showDisponiveis)}
             className={`h-16 text-lg font-semibold transition-all ${
-              filter === "disponiveis"
+              showDisponiveis
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
@@ -598,9 +600,9 @@ const AdminProdutos = () => {
             Disponíveis
           </Button>
           <Button
-            onClick={() => setFilter("esgotados")}
+            onClick={() => setShowEsgotados(!showEsgotados)}
             className={`h-16 text-lg font-semibold transition-all ${
-              filter === "esgotados"
+              showEsgotados
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
@@ -621,58 +623,64 @@ const AdminProdutos = () => {
           />
         </div>
 
-        {/* Tabela */}
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Código</TableHead>
-                <TableHead className="text-right">Compra</TableHead>
-                <TableHead className="text-right">Venda</TableHead>
-                <TableHead className="text-right">Qtd Total</TableHead>
-                <TableHead className="text-center">Ativo</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProdutos.length === 0 ? (
+        {/* Tabela ou mensagem de filtro */}
+        {!showDisponiveis && !showEsgotados ? (
+          <div className="border rounded-lg p-8 text-center text-muted-foreground">
+            Selecione um filtro acima.
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhum produto encontrado
-                  </TableCell>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Código</TableHead>
+                  <TableHead className="text-right">Compra</TableHead>
+                  <TableHead className="text-right">Venda</TableHead>
+                  <TableHead className="text-right">Qtd Total</TableHead>
+                  <TableHead className="text-center">Ativo</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
-              ) : (
-                filteredProdutos.map((produto) => (
-                  <TableRow key={produto.id}>
-                    <TableCell className="font-medium">{produto.nome}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {produto.codigo_barras || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      R$ {produto.preco_compra.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      R$ {produto.preco_venda.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">{produto.quantidade_total}</TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={produto.ativo}
-                        onCheckedChange={() => toggleAtivo(produto)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(produto)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {filteredProdutos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Nenhum produto encontrado
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  filteredProdutos.map((produto) => (
+                    <TableRow key={produto.id}>
+                      <TableCell className="font-medium">{produto.nome}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {produto.codigo_barras || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        R$ {produto.preco_compra.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        R$ {produto.preco_venda.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">{produto.quantidade_total}</TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={produto.ativo}
+                          onCheckedChange={() => toggleAtivo(produto)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(produto)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* Dialog Novo/Editar Produto */}

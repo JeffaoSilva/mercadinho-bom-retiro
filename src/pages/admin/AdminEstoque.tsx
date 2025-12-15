@@ -27,6 +27,7 @@ interface Produto {
   id: number;
   nome: string;
   quantidade_atual: number;
+  preco_compra: number;
 }
 
 interface Lote {
@@ -68,17 +69,41 @@ const AdminEstoque = () => {
   }, [isAuthenticated, authLoading, navigate]);
 
   const loadProdutos = async () => {
-    const { data, error } = await supabase
+    // Buscar produtos ativos com preco_compra
+    const { data: produtosData, error: produtosError } = await supabase
       .from("produtos")
-      .select("id, nome, quantidade_atual")
+      .select("id, nome, quantidade_atual, preco_compra")
       .eq("ativo", true)
       .order("nome");
 
-    if (error) {
+    if (produtosError) {
       toast.error("Erro ao carregar produtos");
+      setLoading(false);
       return;
     }
-    setProdutos(data || []);
+
+    // Buscar lotes ativos com preco_compra_lote
+    const { data: lotesData } = await supabase
+      .from("lotes_produtos")
+      .select("produto_id, preco_compra_lote")
+      .eq("ativo", true);
+
+    // Criar Set de produtos com lote de custo diferente
+    const produtoIdsComCustoDiferente = new Set<number>();
+    for (const lote of lotesData || []) {
+      if (lote.preco_compra_lote == null) continue;
+      const produto = (produtosData || []).find((p) => p.id === lote.produto_id);
+      if (produto && lote.preco_compra_lote !== produto.preco_compra) {
+        produtoIdsComCustoDiferente.add(lote.produto_id);
+      }
+    }
+
+    // Filtrar apenas produtos com lotes de custo diferente
+    const produtosFiltrados = (produtosData || []).filter((p) =>
+      produtoIdsComCustoDiferente.has(p.id)
+    );
+
+    setProdutos(produtosFiltrados);
     setLoading(false);
   };
 
@@ -221,7 +246,7 @@ const AdminEstoque = () => {
           <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-3xl font-bold">Estoque / Lotes</h1>
+          <h1 className="text-3xl font-bold">Lotes</h1>
         </div>
 
         <div className="relative">
