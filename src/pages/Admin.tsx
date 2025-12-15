@@ -109,7 +109,7 @@ const Admin = () => {
   const menuItems = [
     { title: "Produtos", icon: Package, route: "/admin/produtos" },
     { title: "Prateleiras / Estoque", icon: LayoutGrid, route: "/admin/prateleiras-estoque" },
-    { title: "Estoque / Lotes", icon: Boxes, route: "/admin/estoque" },
+    { title: "Lotes", icon: Boxes, route: "/admin/estoque" },
     { title: "Promoções", icon: Tag, route: "/admin/promocoes" },
     { title: "Cadernetas", icon: BookOpen, route: "/admin/cadernetas" },
     { title: "Compras", icon: ShoppingBag, route: "/admin/compras" },
