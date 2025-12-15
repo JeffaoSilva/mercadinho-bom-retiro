@@ -9,6 +9,7 @@ interface PrateleiraBaixa {
   quantidade_prateleira: number;
   mercadinho_nome: string;
   mercadinho_id: number;
+  alerta_estoque_baixo_min: number;
 }
 
 const AlertaEstoqueBaixo = () => {
@@ -28,12 +29,14 @@ const AlertaEstoqueBaixo = () => {
         quantidade_prateleira,
         mercadinho_id,
         mercadinhos (nome),
-        produtos (nome)
+        produtos (
+          nome,
+          alerta_estoque_baixo_ativo,
+          alerta_estoque_baixo_min
+        )
       `)
       .eq("ativo", true)
-      .lte("quantidade_prateleira", 2)
-      .gt("quantidade_prateleira", 0)
-      .order("quantidade_prateleira", { ascending: true });
+      .gt("quantidade_prateleira", 0);
 
     setLoading(false);
 
@@ -42,13 +45,29 @@ const AlertaEstoqueBaixo = () => {
       return;
     }
 
-    const formatted: PrateleiraBaixa[] = (data || []).map((item: any) => ({
+    // Filtrar no JS: só incluir se alerta ativo E quantidade <= min
+    const filtered = (data || []).filter((item: any) => {
+      const alertaAtivo = item.produtos?.alerta_estoque_baixo_ativo === true;
+      const minQtd = item.produtos?.alerta_estoque_baixo_min ?? 2;
+      return alertaAtivo && item.quantidade_prateleira <= minQtd;
+    });
+
+    // Ordenar por quantidade asc, depois nome
+    filtered.sort((a: any, b: any) => {
+      if (a.quantidade_prateleira !== b.quantidade_prateleira) {
+        return a.quantidade_prateleira - b.quantidade_prateleira;
+      }
+      return (a.produtos?.nome || "").localeCompare(b.produtos?.nome || "");
+    });
+
+    const formatted: PrateleiraBaixa[] = filtered.map((item: any) => ({
       id: item.id,
       produto_nome: item.produtos?.nome || "Produto",
       preco_venda_prateleira: item.preco_venda_prateleira,
       quantidade_prateleira: item.quantidade_prateleira,
       mercadinho_nome: item.mercadinhos?.nome || "Mercadinho",
       mercadinho_id: item.mercadinho_id,
+      alerta_estoque_baixo_min: item.produtos?.alerta_estoque_baixo_min ?? 2,
     }));
 
     setItens(formatted);
