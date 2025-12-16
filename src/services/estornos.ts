@@ -1,61 +1,38 @@
 import { supabase } from "@/integrations/supabase/client";
 
-interface ItemCompraEstorno {
-  id: number;
-  produto_id: number;
-  quantidade: number;
-  valor_total: number;
-  produto?: { nome: string; quantidade_atual: number };
+interface EstornoCompraResult {
+  ok: boolean;
+  itens_estornados?: number;
+  compra_removida?: boolean;
+  erro?: string;
 }
 
 /**
- * Estorna uma compra completa:
- * 1. Reverte estoque de cada item (quantidade_atual)
- * 2. Deleta todos os itens da compra
- * 3. Deleta a compra
+ * Estorna uma compra completa via RPC:
+ * - Estorna todos os itens automaticamente para sua prateleira de origem
+ * - Remove a compra
  */
 export async function estornarCompraCompleta(
   compraId: number,
-  itens: ItemCompraEstorno[]
+  devolverEstoque: boolean = true,
+  motivo?: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    // Reverter estoque de cada item
-    for (const item of itens) {
-      if (item.produto) {
-        const { error } = await supabase
-          .from("produtos")
-          .update({
-            quantidade_atual: item.produto.quantidade_atual + item.quantidade,
-          })
-          .eq("id", item.produto_id);
+    const { data, error } = await supabase.rpc("admin_estornar_compra" as any, {
+      p_compra_id: compraId,
+      p_devolver_estoque: devolverEstoque,
+      p_motivo: motivo ?? null,
+    });
 
-        if (error) {
-          console.error("Erro ao reverter estoque:", error);
-          return { ok: false, error: "Erro ao reverter estoque" };
-        }
-      }
+    if (error) {
+      console.error("Erro ao estornar compra:", error);
+      return { ok: false, error: "Erro ao estornar compra" };
     }
 
-    // Deletar itens
-    const { error: itensError } = await supabase
-      .from("itens_compra")
-      .delete()
-      .eq("compra_id", compraId);
-
-    if (itensError) {
-      console.error("Erro ao deletar itens:", itensError);
-      return { ok: false, error: "Erro ao deletar itens" };
-    }
-
-    // Deletar compra
-    const { error: compraError } = await supabase
-      .from("compras")
-      .delete()
-      .eq("id", compraId);
-
-    if (compraError) {
-      console.error("Erro ao deletar compra:", compraError);
-      return { ok: false, error: "Erro ao deletar compra" };
+    const result = data as EstornoCompraResult;
+    
+    if (!result.ok) {
+      return { ok: false, error: result.erro || "Erro desconhecido" };
     }
 
     return { ok: true };

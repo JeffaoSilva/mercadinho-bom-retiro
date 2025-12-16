@@ -318,6 +318,8 @@ export type Database = {
           compra_id: number
           criado_em: string
           id: number
+          lote_id: number | null
+          prateleira_id: number | null
           produto_id: number
           quantidade: number
           valor_total: number
@@ -327,6 +329,8 @@ export type Database = {
           compra_id: number
           criado_em?: string
           id?: number
+          lote_id?: number | null
+          prateleira_id?: number | null
           produto_id: number
           quantidade?: number
           valor_total?: number
@@ -336,6 +340,8 @@ export type Database = {
           compra_id?: number
           criado_em?: string
           id?: number
+          lote_id?: number | null
+          prateleira_id?: number | null
           produto_id?: number
           quantidade?: number
           valor_total?: number
@@ -347,6 +353,13 @@ export type Database = {
             columns: ["compra_id"]
             isOneToOne: false
             referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_compra_prateleira_id_fkey"
+            columns: ["prateleira_id"]
+            isOneToOne: false
+            referencedRelation: "prateleiras_produtos"
             referencedColumns: ["id"]
           },
           {
@@ -687,6 +700,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_estornar_compra: {
+        Args: {
+          p_compra_id: number
+          p_devolver_estoque: boolean
+          p_motivo?: string
+        }
+        Returns: Json
+      }
       admin_estornar_item: {
         Args: {
           p_devolver_estoque: boolean
