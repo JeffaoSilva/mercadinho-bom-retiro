@@ -85,15 +85,23 @@ const Index = () => {
     ? `/admin?tablet_id=${tabletIdResolvido}`
     : "/admin";
 
+  const homeTitle = "Mercadinho Bom Retiro";
+  const homeSubtitle =
+    tabletIdResolvido === "1"
+      ? "Loja Matriz"
+      : tabletIdResolvido === "2"
+      ? "Loja São Francisco"
+      : "";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-6 relative">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-800 mb-4">
-          Mercadinho Autoatendimento
+          {homeTitle}
         </h1>
-        <p className="text-xl text-gray-600">
-          Escolha uma opção para começar
-        </p>
+        {homeSubtitle && (
+          <p className="text-xl text-gray-600">{homeSubtitle}</p>
+        )}
       </div>
 
       <div className="flex flex-col gap-6 w-full max-w-md">

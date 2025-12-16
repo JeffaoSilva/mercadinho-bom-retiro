@@ -233,9 +233,14 @@ const AdminCadernetas = () => {
   };
 
   const handleEstornoCompraCompleta = async () => {
-    if (!selectedCompra || itensCompra.length === 0) return;
+    if (!selectedCompra) return;
 
-    const result = await estornarCompraCompleta(selectedCompra.id, itensCompra);
+    // Usa a RPC que estorna todos itens para suas prateleiras de origem automaticamente
+    const result = await estornarCompraCompleta(
+      selectedCompra.id,
+      estornoComDevolucao, // usa o estado de devolução configurado
+      null // motivo opcional
+    );
     
     setConfirmEstornoCompra(false);
 
