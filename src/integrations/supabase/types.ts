@@ -313,6 +313,74 @@ export type Database = {
           },
         ]
       }
+      estornos: {
+        Row: {
+          compra_id: number
+          criado_em: string
+          devolveu_estoque: boolean
+          id: number
+          item_compra_id: number | null
+          motivo: string | null
+          prateleira_id: number | null
+          produto_id: number
+          quantidade: number
+          valor_estornado: number
+        }
+        Insert: {
+          compra_id: number
+          criado_em?: string
+          devolveu_estoque?: boolean
+          id?: number
+          item_compra_id?: number | null
+          motivo?: string | null
+          prateleira_id?: number | null
+          produto_id: number
+          quantidade: number
+          valor_estornado?: number
+        }
+        Update: {
+          compra_id?: number
+          criado_em?: string
+          devolveu_estoque?: boolean
+          id?: number
+          item_compra_id?: number | null
+          motivo?: string | null
+          prateleira_id?: number | null
+          produto_id?: number
+          quantidade?: number
+          valor_estornado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estornos_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estornos_item_compra_id_fkey"
+            columns: ["item_compra_id"]
+            isOneToOne: false
+            referencedRelation: "itens_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estornos_prateleira_id_fkey"
+            columns: ["prateleira_id"]
+            isOneToOne: false
+            referencedRelation: "prateleiras_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estornos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_compra: {
         Row: {
           compra_id: number

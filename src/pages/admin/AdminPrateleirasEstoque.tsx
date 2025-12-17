@@ -63,7 +63,7 @@ const AdminPrateleirasEstoque = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Buscar prateleiras BR (mercadinho_id = 1)
+      // Buscar prateleiras BR (mercadinho_id = 1) com quantidade > 0
       const { data: br } = await supabase
         .from("prateleiras_produtos")
         .select(`
@@ -71,10 +71,12 @@ const AdminPrateleirasEstoque = () => {
           produtos (nome, codigo_barras, preco_compra, preco_venda, ativo)
         `)
         .eq("mercadinho_id", 1)
+        .eq("ativo", true)
+        .gt("quantidade_prateleira", 0)
         .order("produto_id")
         .order("preco_venda_prateleira");
 
-      // Buscar prateleiras SF (mercadinho_id = 2)
+      // Buscar prateleiras SF (mercadinho_id = 2) com quantidade > 0
       const { data: sf } = await supabase
         .from("prateleiras_produtos")
         .select(`
@@ -82,13 +84,17 @@ const AdminPrateleirasEstoque = () => {
           produtos (nome, codigo_barras, preco_compra, preco_venda, ativo)
         `)
         .eq("mercadinho_id", 2)
+        .eq("ativo", true)
+        .gt("quantidade_prateleira", 0)
         .order("produto_id")
         .order("preco_venda_prateleira");
 
-      // Buscar estoque geral
+      // Buscar estoque geral com quantidade > 0
       const { data: geral } = await supabase
         .from("produtos")
         .select("id, nome, codigo_barras, preco_compra, preco_venda, quantidade_atual, ativo")
+        .eq("ativo", true)
+        .gt("quantidade_atual", 0)
         .order("nome");
 
       // Buscar validades dos lotes

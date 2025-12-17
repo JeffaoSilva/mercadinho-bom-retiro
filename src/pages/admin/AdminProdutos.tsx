@@ -121,12 +121,6 @@ const AdminProdutos = () => {
       .select("produto_id, quantidade_prateleira")
       .eq("ativo", true);
 
-    // Buscar lotes ativos
-    const { data: lotesData } = await supabase
-      .from("lotes_produtos")
-      .select("produto_id, quantidade")
-      .eq("ativo", true);
-
     // Montar mapa de soma por produto_id
     const somaPrateleiras = new Map<number, number>();
     for (const p of prateleirasData || []) {
@@ -134,21 +128,11 @@ const AdminProdutos = () => {
       somaPrateleiras.set(p.produto_id, atual + p.quantidade_prateleira);
     }
 
-    const somaLotes = new Map<number, number>();
-    for (const l of lotesData || []) {
-      const atual = somaLotes.get(l.produto_id) || 0;
-      somaLotes.set(l.produto_id, atual + l.quantidade);
-    }
-
-    // quantidade_total = max(central + prateleiras, lotes) para não dobrar
-    const produtosComTotal = (produtosData || []).map((prod) => {
-      const totalLocal = prod.quantidade_atual + (somaPrateleiras.get(prod.id) || 0);
-      const totalLotes = somaLotes.get(prod.id) || 0;
-      return {
-        ...prod,
-        quantidade_total: Math.max(totalLocal, totalLotes),
-      };
-    });
+    // quantidade_total = central + prateleiras (não considera lotes)
+    const produtosComTotal = (produtosData || []).map((prod) => ({
+      ...prod,
+      quantidade_total: prod.quantidade_atual + (somaPrateleiras.get(prod.id) || 0),
+    }));
 
     setProdutos(produtosComTotal);
     setLoading(false);
