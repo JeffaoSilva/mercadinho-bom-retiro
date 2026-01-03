@@ -24,6 +24,7 @@ import { ArrowLeft, Plus, Pencil, Search, Camera, Loader2, CheckCircle, PackageP
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
+import { MoneyInput } from "@/components/MoneyInput";
 
 interface Produto {
   id: number;
@@ -54,8 +55,8 @@ const AdminProdutos = () => {
   const [form, setForm] = useState({
     nome: "",
     codigo_barras: "",
-    preco_compra: "",
-    preco_venda: "",
+    preco_compra: null as number | null,
+    preco_venda: null as number | null,
     ativo: true,
     alerta_estoque_baixo_ativo: false,
     alerta_estoque_baixo_min: "2",
@@ -66,8 +67,8 @@ const AdminProdutos = () => {
   const [precosEntradaEditados, setPrecosEntradaEditados] = useState(false);
   const [entradaForm, setEntradaForm] = useState({
     quantidadeTotal: "",
-    precoCompraEntrada: "",
-    precoVendaEntrada: "",
+    precoCompraEntrada: null as number | null,
+    precoVendaEntrada: null as number | null,
     validade: "",
     rateioCentral: "",
     rateioBomRetiro: "",
@@ -79,8 +80,8 @@ const AdminProdutos = () => {
   const [produtoEntrada, setProdutoEntrada] = useState<Produto | null>(null);
   const [entradaProdutoForm, setEntradaProdutoForm] = useState({
     quantidadeTotal: "",
-    precoCompraEntrada: "",
-    precoVendaEntrada: "",
+    precoCompraEntrada: null as number | null,
+    precoVendaEntrada: null as number | null,
     validade: "",
     rateioCentral: "",
     rateioBomRetiro: "",
@@ -156,13 +157,13 @@ const AdminProdutos = () => {
 
   const openNew = () => {
     setEditingProduto(null);
-    setForm({ nome: "", codigo_barras: "", preco_compra: "", preco_venda: "", ativo: true, alerta_estoque_baixo_ativo: false, alerta_estoque_baixo_min: "2" });
+    setForm({ nome: "", codigo_barras: "", preco_compra: null, preco_venda: null, ativo: true, alerta_estoque_baixo_ativo: false, alerta_estoque_baixo_min: "2" });
     setShowEntradaInicial(true);
     setPrecosEntradaEditados(false);
     setEntradaForm({
       quantidadeTotal: "",
-      precoCompraEntrada: "",
-      precoVendaEntrada: "",
+      precoCompraEntrada: null,
+      precoVendaEntrada: null,
       validade: "",
       rateioCentral: "",
       rateioBomRetiro: "",
@@ -176,8 +177,8 @@ const AdminProdutos = () => {
     setForm({
       nome: produto.nome,
       codigo_barras: produto.codigo_barras || "",
-      preco_compra: (produto.preco_compra ?? 0).toString(),
-      preco_venda: produto.preco_venda.toString(),
+      preco_compra: produto.preco_compra ?? 0,
+      preco_venda: produto.preco_venda,
       ativo: produto.ativo,
       alerta_estoque_baixo_ativo: produto.alerta_estoque_baixo_ativo,
       alerta_estoque_baixo_min: produto.alerta_estoque_baixo_min.toString(),
@@ -200,8 +201,8 @@ const AdminProdutos = () => {
     const central = parseInt(entrada.rateioCentral) || 0;
     const bomRetiro = parseInt(entrada.rateioBomRetiro) || 0;
     const saoFrancisco = parseInt(entrada.rateioSaoFrancisco) || 0;
-    const precoCompraNum = parseFloat(entrada.precoCompraEntrada);
-    const precoVendaNum = parseFloat(entrada.precoVendaEntrada);
+    const precoCompraNum = entrada.precoCompraEntrada ?? 0;
+    const precoVendaNum = entrada.precoVendaEntrada ?? 0;
 
     // A) Inserir histórico em entradas_estoque
     const { error: entradaError } = await supabase.from("entradas_estoque").insert({
@@ -289,18 +290,16 @@ const AdminProdutos = () => {
   };
 
   const handleSave = async () => {
-    if (!form.nome || !form.preco_venda) {
+    if (!form.nome || form.preco_venda === null || form.preco_venda === undefined) {
       toast.error("Preencha os campos obrigatórios (nome e preço de venda)");
       return;
     }
 
-    const precoCompraValue = form.preco_compra.trim() ? parseFloat(form.preco_compra) : null;
-
     const payload = {
       nome: form.nome.trim(),
       codigo_barras: form.codigo_barras.trim() || null,
-      preco_compra: precoCompraValue,
-      preco_venda: parseFloat(form.preco_venda),
+      preco_compra: form.preco_compra,
+      preco_venda: form.preco_venda,
       ativo: form.ativo,
       alerta_estoque_baixo_ativo: form.alerta_estoque_baixo_ativo,
       alerta_estoque_baixo_min: Math.max(1, parseInt(form.alerta_estoque_baixo_min) || 2),
@@ -327,8 +326,8 @@ const AdminProdutos = () => {
         const saoFrancisco = parseInt(entradaForm.rateioSaoFrancisco) || 0;
 
         // Usar preços do formulário principal se entrada não foi editada
-        const precoCompraEntrada = entradaForm.precoCompraEntrada || form.preco_compra;
-        const precoVendaEntrada = entradaForm.precoVendaEntrada || form.preco_venda;
+        const precoCompraEntrada = precosEntradaEditados ? entradaForm.precoCompraEntrada : form.preco_compra;
+        const precoVendaEntrada = precosEntradaEditados ? entradaForm.precoVendaEntrada : form.preco_venda;
 
         // Validar quantidade
         if (qtdTotal <= 0) {
@@ -337,10 +336,8 @@ const AdminProdutos = () => {
         }
 
         // Validar preços
-        const precoCompraNum = parseFloat(precoCompraEntrada);
-        const precoVendaNum = parseFloat(precoVendaEntrada);
-        if (isNaN(precoCompraNum) || isNaN(precoVendaNum)) {
-          toast.error("Preços de compra e venda da entrada são inválidos");
+        if (precoCompraEntrada === null || precoVendaEntrada === null) {
+          toast.error("Preços de compra e venda da entrada são obrigatórios");
           return;
         }
 
@@ -442,8 +439,8 @@ const AdminProdutos = () => {
       setProdutoEntrada(produtoComTotal);
       setEntradaProdutoForm({
         quantidadeTotal: "",
-        precoCompraEntrada: (produto.preco_compra ?? 0).toString(),
-        precoVendaEntrada: produto.preco_venda.toString(),
+        precoCompraEntrada: produto.preco_compra ?? 0,
+        precoVendaEntrada: produto.preco_venda,
         validade: "",
         rateioCentral: "",
         rateioBomRetiro: "",
@@ -457,8 +454,8 @@ const AdminProdutos = () => {
       setForm({
         nome: "",
         codigo_barras: codigo.trim(),
-        preco_compra: "",
-        preco_venda: "",
+        preco_compra: null,
+        preco_venda: null,
         ativo: true,
         alerta_estoque_baixo_ativo: false,
         alerta_estoque_baixo_min: "2",
@@ -466,8 +463,8 @@ const AdminProdutos = () => {
       setShowEntradaInicial(true);
       setEntradaForm({
         quantidadeTotal: "",
-        precoCompraEntrada: "",
-        precoVendaEntrada: "",
+        precoCompraEntrada: null,
+        precoVendaEntrada: null,
         validade: "",
         rateioCentral: "",
         rateioBomRetiro: "",
@@ -488,7 +485,7 @@ const AdminProdutos = () => {
   const handleSalvarEntradaProduto = async () => {
     if (!produtoEntrada) return;
 
-    if (!entradaProdutoForm.quantidadeTotal || !entradaProdutoForm.precoCompraEntrada || !entradaProdutoForm.precoVendaEntrada) {
+    if (!entradaProdutoForm.quantidadeTotal || entradaProdutoForm.precoCompraEntrada === null || entradaProdutoForm.precoVendaEntrada === null) {
       toast.error("Preencha quantidade e preços");
       return;
     }
@@ -653,7 +650,7 @@ const AdminProdutos = () => {
                         {produto.codigo_barras || "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        R$ {produto.preco_compra.toFixed(2)}
+                        R$ {(produto.preco_compra ?? 0).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
                         R$ {produto.preco_venda.toFixed(2)}
@@ -715,29 +712,24 @@ const AdminProdutos = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Preço Compra *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <Label>Preço Compra</Label>
+                <MoneyInput
                   value={form.preco_compra}
-                  onChange={(e) => {
-                    const val = e.target.value;
+                  onChange={(val) => {
                     setForm({ ...form, preco_compra: val });
                     // Sincronizar com entrada se não editado manualmente
                     if (!precosEntradaEditados && !editingProduto) {
                       setEntradaForm((prev) => ({ ...prev, precoCompraEntrada: val }));
                     }
                   }}
+                  allowEmpty
                 />
               </div>
               <div>
                 <Label>Preço Venda *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <MoneyInput
                   value={form.preco_venda}
-                  onChange={(e) => {
-                    const val = e.target.value;
+                  onChange={(val) => {
                     setForm({ ...form, preco_venda: val });
                     // Sincronizar com entrada se não editado manualmente
                     if (!precosEntradaEditados && !editingProduto) {
@@ -794,28 +786,25 @@ const AdminProdutos = () => {
                   </div>
                   <div>
                     <Label>Preço Compra Entrada</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <MoneyInput
                       value={entradaForm.precoCompraEntrada}
-                      onChange={(e) => {
+                      onChange={(val) => {
                         setPrecosEntradaEditados(true);
-                        setEntradaForm({ ...entradaForm, precoCompraEntrada: e.target.value });
+                        setEntradaForm({ ...entradaForm, precoCompraEntrada: val });
                       }}
-                      placeholder={form.preco_compra || "0.00"}
+                      placeholder={(form.preco_compra ?? 0).toFixed(2).replace(".", ",")}
+                      allowEmpty
                     />
                   </div>
                   <div>
                     <Label>Preço Venda Entrada</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <MoneyInput
                       value={entradaForm.precoVendaEntrada}
-                      onChange={(e) => {
+                      onChange={(val) => {
                         setPrecosEntradaEditados(true);
-                        setEntradaForm({ ...entradaForm, precoVendaEntrada: e.target.value });
+                        setEntradaForm({ ...entradaForm, precoVendaEntrada: val });
                       }}
-                      placeholder={form.preco_venda || "0.00"}
+                      placeholder={(form.preco_venda ?? 0).toFixed(2).replace(".", ",")}
                     />
                   </div>
                 </div>
@@ -915,22 +904,16 @@ const AdminProdutos = () => {
                 </div>
                 <div>
                   <Label>Preço Compra *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <MoneyInput
                     value={entradaProdutoForm.precoCompraEntrada}
-                    onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, precoCompraEntrada: e.target.value })}
-                    placeholder="0.00"
+                    onChange={(val) => setEntradaProdutoForm({ ...entradaProdutoForm, precoCompraEntrada: val })}
                   />
                 </div>
                 <div>
                   <Label>Preço Venda *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <MoneyInput
                     value={entradaProdutoForm.precoVendaEntrada}
-                    onChange={(e) => setEntradaProdutoForm({ ...entradaProdutoForm, precoVendaEntrada: e.target.value })}
-                    placeholder="0.00"
+                    onChange={(val) => setEntradaProdutoForm({ ...entradaProdutoForm, precoVendaEntrada: val })}
                   />
                 </div>
               </div>

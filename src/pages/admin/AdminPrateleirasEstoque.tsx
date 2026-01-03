@@ -21,7 +21,7 @@ interface PrateleiraItem {
   produtos: {
     nome: string;
     codigo_barras: string | null;
-    preco_compra: number;
+    preco_compra: number | null;
     preco_venda: number;
     ativo: boolean;
   } | null;
@@ -31,7 +31,7 @@ interface ProdutoGeral {
   id: number;
   nome: string;
   codigo_barras: string | null;
-  preco_compra: number;
+  preco_compra: number | null;
   preco_venda: number;
   quantidade_atual: number;
   ativo: boolean;
@@ -195,7 +195,7 @@ const AdminPrateleirasEstoque = () => {
               </div>
               <div className="text-center p-2 bg-muted rounded-lg">
                 <p className="text-muted-foreground text-xs">Compra</p>
-                <p className="font-semibold">R$ {produto.preco_compra.toFixed(2)}</p>
+                <p className="font-semibold">R$ {(produto.preco_compra ?? 0).toFixed(2)}</p>
               </div>
               <div className="text-center p-2 bg-muted rounded-lg">
                 <p className="text-muted-foreground text-xs">Validade Próx.</p>
@@ -239,7 +239,7 @@ const AdminPrateleirasEstoque = () => {
               </div>
               <div className="text-center p-2 bg-muted rounded-lg">
                 <p className="text-muted-foreground text-xs">Compra</p>
-                <p className="font-semibold">R$ {produto.preco_compra.toFixed(2)}</p>
+                <p className="font-semibold">R$ {(produto.preco_compra ?? 0).toFixed(2)}</p>
               </div>
               <div className="text-center p-2 bg-muted rounded-lg">
                 <p className="text-muted-foreground text-xs">Validade Próx.</p>
@@ -370,16 +370,16 @@ const AdminPrateleirasEstoque = () => {
               <CardTitle className="text-2xl flex items-center gap-3">
                 <Store className="h-6 w-6" />
                 Bom Retiro (Prateleira)
-                <Badge variant="secondary">{prateleiraBR.length} itens</Badge>
+                <Badge variant="secondary">{prateleiraBRFiltrada.length} itens</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
-              {prateleiraBR.length === 0 ? (
+              {prateleiraBRFiltrada.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   Nenhum produto na prateleira.
                 </p>
               ) : (
-                prateleiraBR.map(renderPrateleiraItem)
+                prateleiraBRFiltrada.map(renderPrateleiraItem)
               )}
             </CardContent>
           </Card>
@@ -392,16 +392,16 @@ const AdminPrateleirasEstoque = () => {
               <CardTitle className="text-2xl flex items-center gap-3">
                 <Store className="h-6 w-6" />
                 São Francisco (Prateleira)
-                <Badge variant="secondary">{prateleiraSF.length} itens</Badge>
+                <Badge variant="secondary">{prateleiraSFFiltrada.length} itens</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
-              {prateleiraSF.length === 0 ? (
+              {prateleiraSFFiltrada.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   Nenhum produto na prateleira.
                 </p>
               ) : (
-                prateleiraSF.map(renderPrateleiraItem)
+                prateleiraSFFiltrada.map(renderPrateleiraItem)
               )}
             </CardContent>
           </Card>
