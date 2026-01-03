@@ -290,7 +290,7 @@ const AdminCompras = () => {
           </Table>
 
           <div className="text-right font-bold">
-            Total: R$ {selectedCompra?.valor_total.toFixed(2)}
+            Total: R$ {(selectedCompra?.valor_total ?? 0).toFixed(2)}
           </div>
         </DialogContent>
       </Dialog>
