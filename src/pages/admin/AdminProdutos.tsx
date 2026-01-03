@@ -29,7 +29,7 @@ interface Produto {
   id: number;
   nome: string;
   codigo_barras: string | null;
-  preco_compra: number;
+  preco_compra: number | null;
   preco_venda: number;
   ativo: boolean;
   quantidade_atual: number;
@@ -176,7 +176,7 @@ const AdminProdutos = () => {
     setForm({
       nome: produto.nome,
       codigo_barras: produto.codigo_barras || "",
-      preco_compra: produto.preco_compra.toString(),
+      preco_compra: (produto.preco_compra ?? 0).toString(),
       preco_venda: produto.preco_venda.toString(),
       ativo: produto.ativo,
       alerta_estoque_baixo_ativo: produto.alerta_estoque_baixo_ativo,
@@ -289,15 +289,17 @@ const AdminProdutos = () => {
   };
 
   const handleSave = async () => {
-    if (!form.nome || !form.preco_compra || !form.preco_venda) {
-      toast.error("Preencha os campos obrigatórios");
+    if (!form.nome || !form.preco_venda) {
+      toast.error("Preencha os campos obrigatórios (nome e preço de venda)");
       return;
     }
+
+    const precoCompraValue = form.preco_compra.trim() ? parseFloat(form.preco_compra) : null;
 
     const payload = {
       nome: form.nome.trim(),
       codigo_barras: form.codigo_barras.trim() || null,
-      preco_compra: parseFloat(form.preco_compra),
+      preco_compra: precoCompraValue,
       preco_venda: parseFloat(form.preco_venda),
       ativo: form.ativo,
       alerta_estoque_baixo_ativo: form.alerta_estoque_baixo_ativo,
@@ -440,7 +442,7 @@ const AdminProdutos = () => {
       setProdutoEntrada(produtoComTotal);
       setEntradaProdutoForm({
         quantidadeTotal: "",
-        precoCompraEntrada: produto.preco_compra.toString(),
+        precoCompraEntrada: (produto.preco_compra ?? 0).toString(),
         precoVendaEntrada: produto.preco_venda.toString(),
         validade: "",
         rateioCentral: "",

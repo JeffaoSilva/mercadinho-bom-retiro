@@ -588,7 +588,7 @@ export type Database = {
           criado_em: string
           id: number
           nome: string
-          preco_compra: number
+          preco_compra: number | null
           preco_venda: number
           quantidade_atual: number
         }
@@ -600,7 +600,7 @@ export type Database = {
           criado_em?: string
           id?: number
           nome: string
-          preco_compra: number
+          preco_compra?: number | null
           preco_venda: number
           quantidade_atual?: number
         }
@@ -612,7 +612,7 @@ export type Database = {
           criado_em?: string
           id?: number
           nome?: string
-          preco_compra?: number
+          preco_compra?: number | null
           preco_venda?: number
           quantidade_atual?: number
         }
