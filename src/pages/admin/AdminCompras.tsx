@@ -18,12 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Eye } from "lucide-react";
@@ -64,10 +59,12 @@ interface Mercadinho {
 const AdminCompras = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
+
   const [compras, setCompras] = useState<Compra[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [mercadinhos, setMercadinhos] = useState<Mercadinho[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [showItens, setShowItens] = useState(false);
   const [selectedCompra, setSelectedCompra] = useState<Compra | null>(null);
   const [itensCompra, setItensCompra] = useState<ItemCompra[]>([]);
@@ -81,10 +78,12 @@ const AdminCompras = () => {
 
   useEffect(() => {
     if (authLoading) return;
+
     if (!isAuthenticated) {
       navigate("/admin");
       return;
     }
+
     loadData();
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -120,6 +119,7 @@ const AdminCompras = () => {
       toast.error("Erro ao carregar itens");
       return;
     }
+
     setItensCompra(data || []);
   };
 
@@ -133,169 +133,164 @@ const AdminCompras = () => {
     if (filtros.cliente_id && c.cliente_id?.toString() !== filtros.cliente_id) return false;
     if (filtros.mercadinho_id && c.mercadinho_id.toString() !== filtros.mercadinho_id) return false;
     if (filtros.tipo_pagamento && c.tipo_pagamento !== filtros.tipo_pagamento) return false;
+
     if (filtros.mes) {
       const compraMonth = format(new Date(c.data_compra), "yyyy-MM");
       if (compraMonth !== filtros.mes) return false;
     }
+
     return true;
   });
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl">Carregando...</p>
-      </div>
-    );
+    return <div>Carregando...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-3xl font-bold">Compras / Cadernetas</h1>
+    <div className="space-y-4">
+      <Button variant="ghost" onClick={() => navigate("/admin")}>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Voltar
+      </Button>
+
+      <h1 className="text-2xl font-bold">Compras / Cadernetas</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <Label>Cliente</Label>
+          <Select
+            value={filtros.cliente_id || "all"}
+            onValueChange={(v) =>
+              setFiltros({ ...filtros, cliente_id: v === "all" ? "" : v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {clientes.map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <Label>Cliente</Label>
-            <Select
-              value={filtros.cliente_id}
-              onValueChange={(v) => setFiltros({ ...filtros, cliente_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                {clientes.map((c) => (
-                  <SelectItem key={c.id} value={c.id.toString()}>
-                    {c.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Mercadinho</Label>
-            <Select
-              value={filtros.mercadinho_id}
-              onValueChange={(v) => setFiltros({ ...filtros, mercadinho_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                {mercadinhos.map((m) => (
-                  <SelectItem key={m.id} value={m.id.toString()}>
-                    {m.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Tipo Pagamento</Label>
-            <Select
-              value={filtros.tipo_pagamento}
-              onValueChange={(v) => setFiltros({ ...filtros, tipo_pagamento: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                <SelectItem value="caderneta">Caderneta</SelectItem>
-                <SelectItem value="pix">PIX</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Mês</Label>
-            <Input
-              type="month"
-              value={filtros.mes}
-              onChange={(e) => setFiltros({ ...filtros, mes: e.target.value })}
-            />
-          </div>
+        <div>
+          <Label>Mercadinho</Label>
+          <Select
+            value={filtros.mercadinho_id || "all"}
+            onValueChange={(v) =>
+              setFiltros({ ...filtros, mercadinho_id: v === "all" ? "" : v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {mercadinhos.map((m) => (
+                <SelectItem key={m.id} value={m.id.toString()}>
+                  {m.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
+        <div>
+          <Label>Tipo Pagamento</Label>
+          <Select
+            value={filtros.tipo_pagamento || "all"}
+            onValueChange={(v) =>
+              setFiltros({ ...filtros, tipo_pagamento: v === "all" ? "" : v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="caderneta">Caderneta</SelectItem>
+              <SelectItem value="pix">PIX</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Mês</Label>
+          <Input
+            type="month"
+            value={filtros.mes}
+            onChange={(e) => setFiltros({ ...filtros, mes: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Data</TableHead>
+            <TableHead>Cliente</TableHead>
+            <TableHead>Mercadinho</TableHead>
+            <TableHead>Pagamento</TableHead>
+            <TableHead>Total</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {filteredCompras.map((compra) => (
+            <TableRow key={compra.id}>
+              <TableCell>{format(new Date(compra.data_compra), "dd/MM/yyyy HH:mm")}</TableCell>
+              <TableCell>
+                {compra.eh_visitante ? "VISITANTE" : compra.cliente?.nome || "-"}
+              </TableCell>
+              <TableCell>{compra.mercadinho?.nome || "-"}</TableCell>
+              <TableCell>{compra.tipo_pagamento}</TableCell>
+              <TableCell>R$ {compra.valor_total.toFixed(2)}</TableCell>
+              <TableCell>
+                <Button variant="ghost" size="icon" onClick={() => openItens(compra)}>
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Dialog open={showItens} onOpenChange={setShowItens}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Itens da Compra #{selectedCompra?.id}</DialogTitle>
+          </DialogHeader>
+
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Mercadinho</TableHead>
-                <TableHead>Pagamento</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead></TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead>Qtd</TableHead>
+                <TableHead>Unit.</TableHead>
+                <TableHead>Total</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {filteredCompras.map((compra) => (
-                <TableRow key={compra.id}>
-                  <TableCell>
-                    {format(new Date(compra.data_compra), "dd/MM/yyyy HH:mm")}
-                  </TableCell>
-                  <TableCell>
-                    {compra.eh_visitante ? "VISITANTE" : compra.cliente?.nome || "-"}
-                  </TableCell>
-                  <TableCell>{compra.mercadinho?.nome || "-"}</TableCell>
-                  <TableCell className="capitalize">{compra.tipo_pagamento}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    R$ {compra.valor_total.toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => openItens(compra)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+              {itensCompra.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.produto?.nome || "-"}</TableCell>
+                  <TableCell>{item.quantidade}</TableCell>
+                  <TableCell>R$ {item.valor_unitario.toFixed(2)}</TableCell>
+                  <TableCell>R$ {item.valor_total.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
-      </div>
 
-      <Dialog open={showItens} onOpenChange={setShowItens}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Itens da Compra #{selectedCompra?.id}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="pt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="text-center">Qtd</TableHead>
-                  <TableHead className="text-right">Unit.</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itensCompra.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.produto?.nome || "-"}</TableCell>
-                    <TableCell className="text-center">{item.quantidade}</TableCell>
-                    <TableCell className="text-right">
-                      R$ {item.valor_unitario.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      R$ {item.valor_total.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="mt-4 text-right text-xl font-bold">
-              Total: R$ {selectedCompra?.valor_total.toFixed(2)}
-            </div>
+          <div className="text-right font-bold">
+            Total: R$ {selectedCompra?.valor_total.toFixed(2)}
           </div>
         </DialogContent>
       </Dialog>
