@@ -8,12 +8,13 @@ import { ArrowLeft, Search, Package, Loader2, CheckCircle, Camera } from "lucide
 import { toast } from "sonner";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
+import { MoneyInput } from "@/components/MoneyInput";
 
 interface Produto {
   id: number;
   nome: string;
   codigo_barras: string | null;
-  preco_compra: number;
+  preco_compra: number | null;
   preco_venda: number;
 }
 
@@ -35,8 +36,8 @@ const AdminEntradaEstoque = () => {
 
   // Campos do formulário
   const [quantidadeTotal, setQuantidadeTotal] = useState("");
-  const [precoCompra, setPrecoCompra] = useState("");
-  const [precoVenda, setPrecoVenda] = useState("");
+  const [precoCompra, setPrecoCompra] = useState<number | null>(null);
+  const [precoVenda, setPrecoVenda] = useState<number | null>(null);
   const [rateioCentral, setRateioCentral] = useState("");
   const [rateioBomRetiro, setRateioBomRetiro] = useState("");
   const [rateioSaoFrancisco, setRateioSaoFrancisco] = useState("");
@@ -74,8 +75,8 @@ const AdminEntradaEstoque = () => {
 
     if (data) {
       setProduto(data);
-      setPrecoCompra(data.preco_compra.toString());
-      setPrecoVenda(data.preco_venda.toString());
+      setPrecoCompra(data.preco_compra ?? 0);
+      setPrecoVenda(data.preco_venda);
       // Beep ao encontrar produto
       playBeep();
     } else {
@@ -106,8 +107,8 @@ const AdminEntradaEstoque = () => {
 
     if (data) {
       setProduto(data);
-      setPrecoCompra(data.preco_compra.toString());
-      setPrecoVenda(data.preco_venda.toString());
+      setPrecoCompra(data.preco_compra ?? 0);
+      setPrecoVenda(data.preco_venda);
       playBeep();
     } else {
       toast.error("Produto não encontrado");
@@ -139,7 +140,7 @@ const AdminEntradaEstoque = () => {
   const handleSalvar = async () => {
     if (!produto) return;
 
-    if (!quantidadeTotal || !precoCompra || !precoVenda) {
+    if (!quantidadeTotal || precoCompra === null || precoVenda === null) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -153,8 +154,8 @@ const AdminEntradaEstoque = () => {
       const central = parseInt(rateioCentral) || 0;
       const bomRetiro = parseInt(rateioBomRetiro) || 0;
       const saoFrancisco = parseInt(rateioSaoFrancisco) || 0;
-      const precoCompraNum = parseFloat(precoCompra);
-      const precoVendaNum = parseFloat(precoVenda);
+      const precoCompraNum = precoCompra ?? 0;
+      const precoVendaNum = precoVenda ?? 0;
 
       // A) Inserir histórico em entradas_estoque
       const { error: entradaError } = await supabase.from("entradas_estoque").insert({
@@ -246,8 +247,8 @@ const AdminEntradaEstoque = () => {
         setProduto(null);
         setCodigoBarras("");
         setQuantidadeTotal("");
-        setPrecoCompra("");
-        setPrecoVenda("");
+        setPrecoCompra(null);
+        setPrecoVenda(null);
         setRateioCentral("");
         setRateioBomRetiro("");
         setRateioSaoFrancisco("");
@@ -354,23 +355,17 @@ const AdminEntradaEstoque = () => {
               </div>
               <div className="space-y-2">
                 <Label>Preço Compra *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <MoneyInput
                   value={precoCompra}
-                  onChange={(e) => setPrecoCompra(e.target.value)}
-                  placeholder="0.00"
+                  onChange={setPrecoCompra}
                   className="text-lg"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Preço Venda *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <MoneyInput
                   value={precoVenda}
-                  onChange={(e) => setPrecoVenda(e.target.value)}
-                  placeholder="0.00"
+                  onChange={setPrecoVenda}
                   className="text-lg"
                 />
               </div>
