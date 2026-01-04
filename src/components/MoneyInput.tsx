@@ -14,56 +14,65 @@ interface MoneyInputProps {
  * Input monetário com máscara automática pt-BR
  * - Usuário digita números e a vírgula se move automaticamente
  * - Aceita colar valores com vírgula, ponto ou R$
- * - Converte ponto para vírgula no display
  * - Retorna number para salvar no Supabase
  */
 const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
   ({ value, onChange, placeholder = "0,00", disabled = false, allowEmpty = false, className }, ref) => {
-    // Converter value (number) para string formatada pt-BR
-    const formatDisplay = (val: number | null): string => {
-      if (val === null || val === undefined) {
-        return allowEmpty ? "" : "0,00";
+    
+    // Estado interno: string contendo apenas dígitos (centavos)
+    const [digits, setDigits] = React.useState<string>(() => {
+      if (value === null || value === undefined) {
+        return allowEmpty ? "" : "0";
       }
-      return val.toFixed(2).replace(".", ",");
-    };
+      // Converter number para centavos como string
+      const cents = Math.round(value * 100);
+      return cents.toString();
+    });
 
-    const [displayValue, setDisplayValue] = React.useState(() => formatDisplay(value));
-
-    // Sync quando value externo muda
+    // Sync quando value externo muda (ex: edição de produto existente)
+    const prevValueRef = React.useRef(value);
     React.useEffect(() => {
-      setDisplayValue(formatDisplay(value));
+      if (prevValueRef.current !== value) {
+        prevValueRef.current = value;
+        if (value === null || value === undefined) {
+          setDigits(allowEmpty ? "" : "0");
+        } else {
+          const cents = Math.round(value * 100);
+          setDigits(cents.toString());
+        }
+      }
     }, [value, allowEmpty]);
 
-    // Converter string formatada para centavos
-    const parseToCents = (str: string): number => {
-      // Remove tudo que não é dígito
-      const digits = str.replace(/\D/g, "");
-      return parseInt(digits, 10) || 0;
+    // Converter digits para display formatado pt-BR
+    const formatDisplay = (d: string): string => {
+      if (d === "" && allowEmpty) return "";
+      const cents = parseInt(d, 10) || 0;
+      const reais = cents / 100;
+      return new Intl.NumberFormat("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(reais);
     };
 
-    // Converter centavos para number (reais)
-    const centsToNumber = (cents: number): number => {
+    // Converter digits para number
+    const digitsToNumber = (d: string): number | null => {
+      if (d === "" && allowEmpty) return null;
+      const cents = parseInt(d, 10) || 0;
       return cents / 100;
     };
 
-    // Formatar centavos para display
-    const formatFromCents = (cents: number): string => {
-      const reais = cents / 100;
-      return reais.toFixed(2).replace(".", ",");
-    };
-
-    // Parse de string colada/digitada manualmente (3,50 ou 3.50 ou R$ 3,50)
-    const parseFlexible = (str: string): number | null => {
+    // Parse de string colada (3,50 ou 3.50 ou R$ 3,50 ou 1.234,56)
+    const parseFlexible = (str: string): string => {
       // Remove R$, espaços
       let cleaned = str.replace(/R\$\s*/gi, "").trim();
       
-      // Se está vazio
-      if (!cleaned) return allowEmpty ? null : 0;
+      if (!cleaned) return allowEmpty ? "" : "0";
       
-      // Detectar se tem separador decimal
-      // Se tem vírgula E ponto, vírgula é milhar e ponto é decimal (formato 1.234,56) ou vice-versa
+      // Detectar formato
       const hasComma = cleaned.includes(",");
       const hasDot = cleaned.includes(".");
+      
+      let numericValue: number;
       
       if (hasComma && hasDot) {
         // Formato brasileiro: 1.234,56 -> vírgula é decimal
@@ -73,71 +82,80 @@ const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
           // Formato americano: 1,234.56 -> ponto é decimal
           cleaned = cleaned.replace(/,/g, "");
         }
+        numericValue = parseFloat(cleaned);
       } else if (hasComma) {
         // Só vírgula: trocar por ponto
         cleaned = cleaned.replace(",", ".");
+        numericValue = parseFloat(cleaned);
+      } else if (hasDot) {
+        // Só ponto: pode ser decimal
+        numericValue = parseFloat(cleaned);
+      } else {
+        // Só dígitos
+        numericValue = parseFloat(cleaned);
       }
-      // Se só tem ponto, já está ok
       
-      const num = parseFloat(cleaned);
-      return isNaN(num) ? (allowEmpty ? null : 0) : num;
+      if (isNaN(numericValue)) return allowEmpty ? "" : "0";
+      
+      // Converter para centavos
+      const cents = Math.round(numericValue * 100);
+      return cents.toString();
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
       
       // Se usuário limpou o campo
-      if (!rawValue) {
-        setDisplayValue("");
+      if (!rawValue || rawValue.trim() === "") {
+        setDigits(allowEmpty ? "" : "0");
         onChange(allowEmpty ? null : 0);
         return;
       }
 
-      // Verificar se é digitação normal (só números) ou input livre (colagem)
-      const onlyDigits = rawValue.replace(/\D/g, "");
-      const hasNonDigit = rawValue !== onlyDigits;
-
-      if (hasNonDigit) {
-        // Usuário colou ou digitou com vírgula/ponto - parse flexível
-        const parsed = parseFlexible(rawValue);
-        const formatted = parsed !== null ? formatDisplay(parsed) : "";
-        setDisplayValue(formatted);
-        onChange(parsed);
-      } else {
-        // Modo "digita números e vírgula se move"
-        const cents = parseInt(onlyDigits, 10) || 0;
-        const formatted = formatFromCents(cents);
-        setDisplayValue(formatted);
-        onChange(centsToNumber(cents));
+      // Extrair apenas dígitos do valor atual
+      const newDigits = rawValue.replace(/\D/g, "");
+      
+      // Se não tem dígitos após limpeza
+      if (!newDigits) {
+        setDigits(allowEmpty ? "" : "0");
+        onChange(allowEmpty ? null : 0);
+        return;
       }
+
+      // Remover zeros à esquerda (exceto se for só zeros)
+      const normalizedDigits = newDigits.replace(/^0+/, "") || "0";
+      
+      setDigits(normalizedDigits);
+      onChange(digitsToNumber(normalizedDigits));
     };
 
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
       e.preventDefault();
       const pasted = e.clipboardData.getData("text");
-      const parsed = parseFlexible(pasted);
-      const formatted = parsed !== null ? formatDisplay(parsed) : "";
-      setDisplayValue(formatted);
-      onChange(parsed);
+      const newDigits = parseFlexible(pasted);
+      setDigits(newDigits);
+      onChange(digitsToNumber(newDigits));
     };
 
     const handleBlur = () => {
-      // Garantir formatação correta ao sair do campo
-      if (displayValue === "" && allowEmpty) {
+      // Garantir estado consistente ao sair
+      if (digits === "" && allowEmpty) {
         onChange(null);
         return;
       }
-      const parsed = parseFlexible(displayValue);
-      const formatted = parsed !== null ? formatDisplay(parsed) : "0,00";
-      setDisplayValue(formatted);
-      onChange(parsed);
+      const normalizedDigits = digits.replace(/^0+/, "") || "0";
+      setDigits(normalizedDigits);
+      onChange(digitsToNumber(normalizedDigits));
     };
+
+    const displayValue = formatDisplay(digits);
 
     return (
       <input
         ref={ref}
         type="text"
         inputMode="numeric"
+        pattern="[0-9]*"
         value={displayValue}
         onChange={handleChange}
         onPaste={handlePaste}
