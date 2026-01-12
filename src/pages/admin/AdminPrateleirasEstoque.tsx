@@ -1,11 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Store, Warehouse, Package, Search, Camera, X } from "lucide-react";
+import { ArrowLeft, Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import CameraScanner from "@/components/CameraScanner";
@@ -37,6 +52,8 @@ interface ProdutoGeral {
   ativo: boolean;
 }
 
+type SortOption = "nome-asc" | "qtd-asc" | "qtd-desc";
+
 const AdminPrateleirasEstoque = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -49,6 +66,9 @@ const AdminPrateleirasEstoque = () => {
   const [showBR, setShowBR] = useState(false);
   const [showSF, setShowSF] = useState(false);
   const [showGeral, setShowGeral] = useState(false);
+
+  // Ordenação
+  const [sortOption, setSortOption] = useState<SortOption>("nome-asc");
 
   // Dados
   const [prateleiraBR, setPrateleiraBR] = useState<PrateleiraItem[]>([]);
@@ -132,6 +152,10 @@ const AdminPrateleirasEstoque = () => {
     }
   };
 
+  const formatMoney = (value: number | null) => {
+    return `R$ ${(value ?? 0).toFixed(2).replace(".", ",")}`;
+  };
+
   // Filtrar itens por código de barras
   const filtrarPorBarras = (item: PrateleiraItem) => {
     if (!filtroBarras.trim()) return true;
@@ -143,10 +167,59 @@ const AdminPrateleirasEstoque = () => {
     return produto.codigo_barras?.includes(filtroBarras.trim()) || false;
   };
 
-  // Dados filtrados
-  const prateleiraBRFiltrada = prateleiraBR.filter(filtrarPorBarras);
-  const prateleiraSFFiltrada = prateleiraSF.filter(filtrarPorBarras);
-  const produtosGeralFiltrados = produtosGeral.filter(filtrarProdutoPorBarras);
+  // Função de ordenação para prateleiras
+  const sortPrateleiraItems = (items: PrateleiraItem[]): PrateleiraItem[] => {
+    return [...items].sort((a, b) => {
+      const nomeA = a.produtos?.nome?.toLowerCase() || "";
+      const nomeB = b.produtos?.nome?.toLowerCase() || "";
+      
+      switch (sortOption) {
+        case "nome-asc":
+          return nomeA.localeCompare(nomeB, "pt-BR");
+        case "qtd-asc":
+          return a.quantidade_prateleira - b.quantidade_prateleira;
+        case "qtd-desc":
+          return b.quantidade_prateleira - a.quantidade_prateleira;
+        default:
+          return nomeA.localeCompare(nomeB, "pt-BR");
+      }
+    });
+  };
+
+  // Função de ordenação para produtos gerais
+  const sortProdutosGeral = (items: ProdutoGeral[]): ProdutoGeral[] => {
+    return [...items].sort((a, b) => {
+      const nomeA = a.nome?.toLowerCase() || "";
+      const nomeB = b.nome?.toLowerCase() || "";
+      
+      switch (sortOption) {
+        case "nome-asc":
+          return nomeA.localeCompare(nomeB, "pt-BR");
+        case "qtd-asc":
+          return a.quantidade_atual - b.quantidade_atual;
+        case "qtd-desc":
+          return b.quantidade_atual - a.quantidade_atual;
+        default:
+          return nomeA.localeCompare(nomeB, "pt-BR");
+      }
+    });
+  };
+
+  // Dados filtrados e ordenados
+  const prateleiraBRFiltrada = useMemo(() => 
+    sortPrateleiraItems(prateleiraBR.filter(filtrarPorBarras)),
+    [prateleiraBR, filtroBarras, sortOption]
+  );
+  
+  const prateleiraSFFiltrada = useMemo(() => 
+    sortPrateleiraItems(prateleiraSF.filter(filtrarPorBarras)),
+    [prateleiraSF, filtroBarras, sortOption]
+  );
+  
+  const produtosGeralFiltrados = useMemo(() => 
+    sortProdutosGeral(produtosGeral.filter(filtrarProdutoPorBarras)),
+    [produtosGeral, filtroBarras, sortOption]
+  );
 
   // Handler para código detectado pela câmera
   const handleCameraDetected = (code: string) => {
@@ -156,101 +229,6 @@ const AdminPrateleirasEstoque = () => {
   };
 
   const nenhumToggleAtivo = !showBR && !showSF && !showGeral;
-
-  const renderPrateleiraItem = (item: PrateleiraItem) => {
-    const produto = item.produtos;
-    if (!produto) return null;
-
-    const isInativo = !produto.ativo || !item.ativo;
-    const validade = validadeMap.get(item.produto_id);
-
-    return (
-      <Card key={item.id} className={`${isInativo ? "opacity-60" : ""}`}>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-lg">{produto.nome}</h3>
-                {isInativo && (
-                  <Badge variant="destructive">INATIVO</Badge>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground font-mono">
-                {produto.codigo_barras || "Sem código"}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Qtd Prateleira</p>
-                <p className="font-bold text-lg">{item.quantidade_prateleira}</p>
-              </div>
-              <div className="text-center p-2 bg-primary/10 rounded-lg">
-                <p className="text-muted-foreground text-xs">Venda Prateleira</p>
-                <p className="font-bold text-primary">R$ {item.preco_venda_prateleira.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Venda Padrão</p>
-                <p className="font-semibold">R$ {produto.preco_venda.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Compra</p>
-                <p className="font-semibold">R$ {(produto.preco_compra ?? 0).toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Validade Próx.</p>
-                <p className="font-semibold">{formatValidade(validade)}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderProdutoGeral = (produto: ProdutoGeral) => {
-    const validade = validadeMap.get(produto.id);
-    const isInativo = !produto.ativo;
-
-    return (
-      <Card key={produto.id} className={`${isInativo ? "opacity-60" : ""}`}>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-lg">{produto.nome}</h3>
-                {isInativo && (
-                  <Badge variant="destructive">INATIVO</Badge>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground font-mono">
-                {produto.codigo_barras || "Sem código"}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Qtd Central</p>
-                <p className="font-bold text-lg">{produto.quantidade_atual}</p>
-              </div>
-              <div className="text-center p-2 bg-primary/10 rounded-lg">
-                <p className="text-muted-foreground text-xs">Venda Padrão</p>
-                <p className="font-bold text-primary">R$ {produto.preco_venda.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Compra</p>
-                <p className="font-semibold">R$ {(produto.preco_compra ?? 0).toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-xs">Validade Próx.</p>
-                <p className="font-semibold">{formatValidade(validade)}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   if (loading) {
     return (
@@ -271,9 +249,9 @@ const AdminPrateleirasEstoque = () => {
           <h1 className="text-3xl font-bold">Prateleiras / Estoque</h1>
         </div>
 
-        {/* Filtro por código de barras */}
+        {/* Filtro por código de barras + Ordenação */}
         <div className="bg-card p-4 rounded-lg border">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
@@ -302,6 +280,18 @@ const AdminPrateleirasEstoque = () => {
             >
               <Camera className="h-5 w-5" />
             </Button>
+            {/* Ordenação */}
+            <Select value={sortOption} onValueChange={(v) => setSortOption(v as SortOption)}>
+              <SelectTrigger className="w-full sm:w-[200px] h-12">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Ordenar por..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nome-asc">Nome (A → Z)</SelectItem>
+                <SelectItem value="qtd-asc">Quantidade (menor)</SelectItem>
+                <SelectItem value="qtd-desc">Quantidade (maior)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -373,13 +363,51 @@ const AdminPrateleirasEstoque = () => {
                 <Badge variant="secondary">{prateleiraBRFiltrada.length} itens</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-0">
               {prateleiraBRFiltrada.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   Nenhum produto na prateleira.
                 </p>
               ) : (
-                prateleiraBRFiltrada.map(renderPrateleiraItem)
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">Produto</TableHead>
+                        <TableHead className="text-center w-[100px]">Qtd</TableHead>
+                        <TableHead className="text-right w-[120px]">Compra</TableHead>
+                        <TableHead className="text-right w-[120px]">Venda</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {prateleiraBRFiltrada.map((item) => {
+                        const produto = item.produtos;
+                        if (!produto) return null;
+                        const isInativo = !produto.ativo || !item.ativo;
+                        
+                        return (
+                          <TableRow key={item.id} className={isInativo ? "opacity-60" : ""}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{produto.nome}</span>
+                                {isInativo && <Badge variant="destructive" className="text-xs">INATIVO</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-lg">
+                              {item.quantidade_prateleira}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatMoney(produto.preco_compra)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">
+                              {formatMoney(item.preco_venda_prateleira)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -395,13 +423,51 @@ const AdminPrateleirasEstoque = () => {
                 <Badge variant="secondary">{prateleiraSFFiltrada.length} itens</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-0">
               {prateleiraSFFiltrada.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   Nenhum produto na prateleira.
                 </p>
               ) : (
-                prateleiraSFFiltrada.map(renderPrateleiraItem)
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">Produto</TableHead>
+                        <TableHead className="text-center w-[100px]">Qtd</TableHead>
+                        <TableHead className="text-right w-[120px]">Compra</TableHead>
+                        <TableHead className="text-right w-[120px]">Venda</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {prateleiraSFFiltrada.map((item) => {
+                        const produto = item.produtos;
+                        if (!produto) return null;
+                        const isInativo = !produto.ativo || !item.ativo;
+                        
+                        return (
+                          <TableRow key={item.id} className={isInativo ? "opacity-60" : ""}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{produto.nome}</span>
+                                {isInativo && <Badge variant="destructive" className="text-xs">INATIVO</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-lg">
+                              {item.quantidade_prateleira}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatMoney(produto.preco_compra)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">
+                              {formatMoney(item.preco_venda_prateleira)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -417,13 +483,49 @@ const AdminPrateleirasEstoque = () => {
                 <Badge variant="secondary">{produtosGeralFiltrados.length} itens</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-0">
               {produtosGeralFiltrados.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   {filtroBarras ? "Nenhum produto encontrado com esse código." : "Nenhum produto cadastrado."}
                 </p>
               ) : (
-                produtosGeralFiltrados.map(renderProdutoGeral)
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">Produto</TableHead>
+                        <TableHead className="text-center w-[100px]">Qtd</TableHead>
+                        <TableHead className="text-right w-[120px]">Compra</TableHead>
+                        <TableHead className="text-right w-[120px]">Venda</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {produtosGeralFiltrados.map((produto) => {
+                        const isInativo = !produto.ativo;
+                        
+                        return (
+                          <TableRow key={produto.id} className={isInativo ? "opacity-60" : ""}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{produto.nome}</span>
+                                {isInativo && <Badge variant="destructive" className="text-xs">INATIVO</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-lg">
+                              {produto.quantidade_atual}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatMoney(produto.preco_compra)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">
+                              {formatMoney(produto.preco_venda)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
