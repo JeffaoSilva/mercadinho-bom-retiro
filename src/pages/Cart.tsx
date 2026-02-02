@@ -81,10 +81,9 @@ const Cart = () => {
   // Handler para abrir teclado manualmente
   const handleOpenKeyboard = useCallback(() => {
     setKeyboardOpen(true);
-    // Pequeno delay para garantir que readOnly seja removido antes do focus
+    // Pequeno delay para garantir que inputMode mude antes do focus
     setTimeout(() => {
       if (inputRef.current) {
-        inputRef.current.readOnly = false;
         inputRef.current.focus();
         // Trigger virtual keyboard by simulating click
         inputRef.current.click();
@@ -157,27 +156,48 @@ const Cart = () => {
   };
 
   // Função que realmente adiciona o produto ao carrinho
-  const addProductByBarcode = async (code: string) => {
-    // Normalizar: remover tudo que não for dígito
-    const normalizado = code.replace(/[^\d]/g, "").trim();
+  // Suporta busca por código de barras OU nome do produto
+  const addProductByBarcodeOrName = async (code: string) => {
+    const termo = code.trim();
     
-    if (!normalizado) {
-      toast.error("Código de barras inválido");
+    if (!termo) {
+      toast.error("Digite um código ou nome de produto");
       return;
     }
 
-    setBarcode(normalizado);
+    setBarcode(termo);
     const mercadinhoId = mercadinhoAtualId || 1;
 
     try {
-      // Buscar produto pelo código de barras normalizado
-      const { data: produto, error } = await supabase
-        .from("produtos")
-        .select("*")
-        .eq("codigo_barras", normalizado)
-        .maybeSingle();
+      let produto = null;
 
-      if (error) throw error;
+      // Se for somente dígitos, buscar por código de barras exato
+      const somenteDigitos = /^\d+$/.test(termo);
+      
+      if (somenteDigitos) {
+        const { data, error } = await supabase
+          .from("produtos")
+          .select("*")
+          .eq("codigo_barras", termo)
+          .maybeSingle();
+
+        if (error) throw error;
+        produto = data;
+      }
+
+      // Se não encontrou por código, buscar por nome (case-insensitive)
+      if (!produto) {
+        const { data, error } = await supabase
+          .from("produtos")
+          .select("*")
+          .ilike("nome", `%${termo}%`)
+          .eq("ativo", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+        produto = data;
+      }
 
       if (!produto) {
         toast.error("Produto não encontrado");
@@ -250,13 +270,13 @@ const Cart = () => {
   // Handler para formulário (Enter ou submit manual)
   const handleBarcodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await addProductByBarcode(barcode);
+    await addProductByBarcodeOrName(barcode);
   };
 
   // Handler para código detectado pela câmera - adiciona automaticamente
   const handleCameraDetected = async (code: string) => {
     setShowCameraScanner(false);
-    await addProductByBarcode(code);
+    await addProductByBarcodeOrName(code);
   };
 
   // Agrupar itens por produto_id para detectar múltiplos preços
@@ -390,9 +410,8 @@ const Cart = () => {
             <Input
               ref={inputRef}
               type="text"
-              inputMode="none"
-              readOnly={!keyboardOpen}
-              placeholder="Escaneie o código de barras..."
+              inputMode={keyboardOpen ? "text" : "none"}
+              placeholder="Código de barras ou nome do produto..."
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               onBlur={() => {
