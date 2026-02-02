@@ -156,15 +156,21 @@ const AdminPrateleirasEstoque = () => {
     return `R$ ${(value ?? 0).toFixed(2).replace(".", ",")}`;
   };
 
-  // Filtrar itens por código de barras
-  const filtrarPorBarras = (item: PrateleiraItem) => {
+  // Filtrar itens por código de barras OU nome do produto
+  const filtrarPorBarrasOuNome = (item: PrateleiraItem) => {
     if (!filtroBarras.trim()) return true;
-    return item.produtos?.codigo_barras?.includes(filtroBarras.trim()) || false;
+    const termo = filtroBarras.trim().toLowerCase();
+    const matchNome = item.produtos?.nome?.toLowerCase().includes(termo) || false;
+    const matchBarras = item.produtos?.codigo_barras?.includes(filtroBarras.trim()) || false;
+    return matchNome || matchBarras;
   };
 
-  const filtrarProdutoPorBarras = (produto: ProdutoGeral) => {
+  const filtrarProdutoPorBarrasOuNome = (produto: ProdutoGeral) => {
     if (!filtroBarras.trim()) return true;
-    return produto.codigo_barras?.includes(filtroBarras.trim()) || false;
+    const termo = filtroBarras.trim().toLowerCase();
+    const matchNome = produto.nome?.toLowerCase().includes(termo) || false;
+    const matchBarras = produto.codigo_barras?.includes(filtroBarras.trim()) || false;
+    return matchNome || matchBarras;
   };
 
   // Função de ordenação para prateleiras
@@ -207,17 +213,17 @@ const AdminPrateleirasEstoque = () => {
 
   // Dados filtrados e ordenados
   const prateleiraBRFiltrada = useMemo(() => 
-    sortPrateleiraItems(prateleiraBR.filter(filtrarPorBarras)),
+    sortPrateleiraItems(prateleiraBR.filter(filtrarPorBarrasOuNome)),
     [prateleiraBR, filtroBarras, sortOption]
   );
   
   const prateleiraSFFiltrada = useMemo(() => 
-    sortPrateleiraItems(prateleiraSF.filter(filtrarPorBarras)),
+    sortPrateleiraItems(prateleiraSF.filter(filtrarPorBarrasOuNome)),
     [prateleiraSF, filtroBarras, sortOption]
   );
   
   const produtosGeralFiltrados = useMemo(() => 
-    sortProdutosGeral(produtosGeral.filter(filtrarProdutoPorBarras)),
+    sortProdutosGeral(produtosGeral.filter(filtrarProdutoPorBarrasOuNome)),
     [produtosGeral, filtroBarras, sortOption]
   );
 
@@ -257,7 +263,7 @@ const AdminPrateleirasEstoque = () => {
               <Input
                 value={filtroBarras}
                 onChange={(e) => setFiltroBarras(e.target.value)}
-                placeholder="Filtrar por código de barras..."
+                placeholder="Buscar por nome ou código de barras..."
                 className="pl-10 h-12"
               />
               {filtroBarras && (

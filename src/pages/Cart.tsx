@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout, CartItem } from "@/hooks/useCheckout";
-import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle, Camera } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle, Camera, Keyboard } from "lucide-react";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
 import { toast } from "sonner";
@@ -47,6 +47,7 @@ const Cart = () => {
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   // Cache de exposições por produto
   const [exposicoesCache, setExposicoesCache] = useState<Map<number, Exposicao[]>>(new Map());
@@ -65,9 +66,31 @@ const Cart = () => {
     navigate("/");
   };
 
+  // Foco sem abrir teclado ao montar/atualizar carrinho
   useEffect(() => {
-    inputRef.current?.focus();
-  }, [cart]);
+    // Usar setTimeout para garantir que o foco aconteça após o render
+    // readOnly inicial impede abertura do teclado
+    const timer = setTimeout(() => {
+      if (inputRef.current && !keyboardOpen) {
+        inputRef.current.focus();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [cart, keyboardOpen]);
+
+  // Handler para abrir teclado manualmente
+  const handleOpenKeyboard = useCallback(() => {
+    setKeyboardOpen(true);
+    // Pequeno delay para garantir que readOnly seja removido antes do focus
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.readOnly = false;
+        inputRef.current.focus();
+        // Trigger virtual keyboard by simulating click
+        inputRef.current.click();
+      }
+    }, 50);
+  }, []);
 
   useEffect(() => {
     loadPromocoes();
@@ -367,9 +390,15 @@ const Cart = () => {
             <Input
               ref={inputRef}
               type="text"
+              inputMode="none"
+              readOnly={!keyboardOpen}
               placeholder="Escaneie o código de barras..."
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
+              onBlur={() => {
+                // Fechar modo teclado quando o input perde foco
+                setKeyboardOpen(false);
+              }}
               className="text-lg flex-1"
             />
             <Button
@@ -380,6 +409,15 @@ const Cart = () => {
               title="Ler pela câmera"
             >
               <Camera className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleOpenKeyboard}
+              title="Digitar manualmente"
+            >
+              <Keyboard className="w-5 h-5" />
             </Button>
           </div>
         </form>

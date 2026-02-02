@@ -177,6 +177,7 @@ const Checkout = () => {
 
           <Button
             size="lg"
+            variant="outline"
             className="w-full h-24 text-2xl"
             onClick={handlePixClick}
             disabled={loading}
