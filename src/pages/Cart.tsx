@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout, CartItem } from "@/hooks/useCheckout";
 import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle, Camera, Keyboard } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
 import { toast } from "sonner";
@@ -49,6 +50,17 @@ const Cart = () => {
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
+  // Autocomplete state
+  interface Sugestao {
+    id: number;
+    nome: string;
+    codigo_barras: string | null;
+  }
+  const [sugestoes, setSugestoes] = useState<Sugestao[]>([]);
+  const [showSugestoes, setShowSugestoes] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   // Cache de exposições por produto
   const [exposicoesCache, setExposicoesCache] = useState<Map<number, Exposicao[]>>(new Map());
 
@@ -89,6 +101,74 @@ const Cart = () => {
         inputRef.current.click();
       }
     }, 50);
+  }, []);
+
+  // Autocomplete: busca sugestões em tempo real
+  const buscarSugestoes = useCallback(async (termo: string) => {
+    if (!termo || termo.length < 2) {
+      setSugestoes([]);
+      setShowSugestoes(false);
+      return;
+    }
+    try {
+      if (/^\d+$/.test(termo)) {
+        setSugestoes([]);
+        setShowSugestoes(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("produtos")
+        .select("id, nome, codigo_barras")
+        .eq("ativo", true)
+        .ilike("nome", `%${termo}%`)
+        .limit(10);
+      if (error) throw error;
+      const termoLower = termo.toLowerCase();
+      const sorted = (data || []).sort((a, b) => {
+        const aStarts = a.nome.toLowerCase().startsWith(termoLower) ? 0 : 1;
+        const bStarts = b.nome.toLowerCase().startsWith(termoLower) ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        return a.nome.localeCompare(b.nome);
+      }).slice(0, 5);
+      setSugestoes(sorted);
+      setShowSugestoes(sorted.length > 0);
+    } catch {
+      setSugestoes([]);
+      setShowSugestoes(false);
+    }
+  }, []);
+
+  const handleInputChange = useCallback((value: string) => {
+    setBarcode(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      buscarSugestoes(value);
+    }, 250);
+  }, [buscarSugestoes]);
+
+  const handleSelectSugestao = useCallback(async (produto: Sugestao) => {
+    setShowSugestoes(false);
+    setSugestoes([]);
+    setBarcode("");
+    await addProductByBarcodeOrName(produto.nome);
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.focus();
+    }, 50);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSugestoes(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -405,41 +485,67 @@ const Cart = () => {
           </div>
         </div>
 
-        <form id="barcode-form" onSubmit={handleBarcodeSubmit} className="bg-card p-4 rounded-lg border">
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              type="text"
-              inputMode={keyboardOpen ? "text" : "none"}
-              placeholder="Código de barras ou nome do produto..."
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              onBlur={() => {
-                // Fechar modo teclado quando o input perde foco
-                setKeyboardOpen(false);
-              }}
-              className="text-lg flex-1"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setShowCameraScanner(true)}
-              title="Ler pela câmera"
+        <div className="relative">
+          <form id="barcode-form" onSubmit={handleBarcodeSubmit} className="bg-card p-4 rounded-lg border">
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                type="text"
+                inputMode={keyboardOpen ? "text" : "none"}
+                placeholder="Código de barras ou nome do produto..."
+                value={barcode}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onBlur={() => {
+                  setKeyboardOpen(false);
+                }}
+                className="text-lg flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowCameraScanner(true)}
+                title="Ler pela câmera"
+              >
+                <Camera className="w-5 h-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleOpenKeyboard}
+                title="Digitar manualmente"
+              >
+                <Keyboard className="w-5 h-5" />
+              </Button>
+            </div>
+          </form>
+
+          {/* Autocomplete suggestions */}
+          {showSugestoes && sugestoes.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover border rounded-lg shadow-lg overflow-hidden"
             >
-              <Camera className="w-5 h-5" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleOpenKeyboard}
-              title="Digitar manualmente"
-            >
-              <Keyboard className="w-5 h-5" />
-            </Button>
-          </div>
-        </form>
+              {sugestoes.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="w-full text-left px-4 py-3 text-base hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0 cursor-pointer"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent input blur
+                    handleSelectSugestao(s);
+                  }}
+                >
+                  <span className="font-medium">{s.nome}</span>
+                  {s.codigo_barras && (
+                    <span className="ml-2 text-sm text-muted-foreground">({s.codigo_barras})</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Camera Scanner Modal */}
         {showCameraScanner && (
