@@ -91,7 +91,7 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
           // Mostrar popup (apenas fora do Ao Vivo)
           if (!isAoVivoRoute && config.notif_venda_popup_ativo) {
             toast.success(
-              `🛒 Nova venda — ${mercadinhoNome} — R$ ${newSale.valor_total.toFixed(2)} — ${clienteNome}`,
+              `🛒 ${mercadinhoNome} — R$ ${newSale.valor_total.toFixed(2)} — ${clienteNome}`,
               { duration: 5000 }
             );
           }

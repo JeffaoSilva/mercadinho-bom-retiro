@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -30,6 +29,7 @@ import {
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useConfigNotifStore, ConfigNotif } from "@/stores/configNotifStore";
 import { useSaleNotifications } from "@/hooks/useSaleNotifications";
+import { MercadinhoBadge } from "@/components/admin/MercadinhoBadge";
 import { format } from "date-fns";
 
 interface VendaFeed {
@@ -425,13 +425,10 @@ const AdminAoVivo = () => {
                           <span className="font-mono text-muted-foreground">
                             {venda.hora}
                           </span>
-                          <Badge
-                            variant={
-                              venda.mercadinho_id === 1 ? "default" : "secondary"
-                            }
-                          >
-                            {venda.mercadinho_nome}
-                          </Badge>
+                          <MercadinhoBadge
+                            mercadinhoId={venda.mercadinho_id}
+                            nomeLoja={venda.mercadinho_nome}
+                          />
                           <span className="font-medium">{venda.cliente_nome}</span>
                         </div>
                         <span className="font-bold text-primary">
