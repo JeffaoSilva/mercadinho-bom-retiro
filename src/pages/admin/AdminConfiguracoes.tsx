@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,10 +34,11 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { cn } from "@/lib/utils";
 import { playNotifyBeep, BEEP_OPTIONS } from "@/utils/notifySounds";
+import { invalidateMercadinhoBadgeCache } from "@/components/admin/MercadinhoBadge";
 
 interface ConfigSistema {
   bip_ativo: boolean;
@@ -55,6 +57,31 @@ interface ConfigMensal {
   mes_referencia: string;
   data_limite: string | null;
 }
+
+interface Mercadinho {
+  id: number;
+  nome: string;
+  badge_bg_color: string | null;
+  badge_text_color: string | null;
+}
+
+interface BadgeConfig {
+  bg: string;
+  text: string;
+  bgCustom: string;
+  textCustom: string;
+  bgMode: "palette" | "custom";
+  textMode: "palette" | "custom";
+}
+
+// Paleta fixa de 18 cores modernas
+const PALETTE = [
+  "#1a73e8", "#0f9d58", "#ea4335", "#f9ab00",
+  "#9c27b0", "#e91e63", "#00bcd4", "#ff5722",
+  "#607d8b", "#795548", "#3f51b5", "#009688",
+  "#ff9800", "#8bc34a", "#673ab7", "#f06292",
+  "#4db6ac", "#1e1e1e",
+];
 
 const AdminConfiguracoes = () => {
   const navigate = useNavigate();
@@ -75,6 +102,11 @@ const AdminConfiguracoes = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingNotif, setSavingNotif] = useState(false);
+
+  // Identidade visual por loja
+  const [mercadinhos, setMercadinhos] = useState<Mercadinho[]>([]);
+  const [badgeConfigs, setBadgeConfigs] = useState<Record<number, BadgeConfig>>({});
+  const [savingBadge, setSavingBadge] = useState<Record<number, boolean>>({});
 
   // Modal para adicionar/editar config mensal
   const [showModal, setShowModal] = useState(false);
@@ -125,6 +157,30 @@ const AdminConfiguracoes = () => {
       .order("mes_referencia", { ascending: false });
 
     setConfigMensais((mensais || []) as ConfigMensal[]);
+
+    // Carregar mercadinhos com cores de badge
+    const { data: mercs } = await supabase
+      .from("mercadinhos")
+      .select("id, nome, badge_bg_color, badge_text_color")
+      .order("id");
+
+    if (mercs) {
+      setMercadinhos(mercs as Mercadinho[]);
+      const configs: Record<number, BadgeConfig> = {};
+      mercs.forEach((m: Mercadinho) => {
+        const bg = m.badge_bg_color || "";
+        const text = m.badge_text_color || "";
+        configs[m.id] = {
+          bg: PALETTE.includes(bg) ? bg : bg ? bg : PALETTE[m.id === 1 ? 0 : 1],
+          text: PALETTE.includes(text) ? text : text ? text : "#ffffff",
+          bgCustom: PALETTE.includes(bg) ? "" : bg,
+          textCustom: PALETTE.includes(text) ? "" : text,
+          bgMode: bg && !PALETTE.includes(bg) ? "custom" : "palette",
+          textMode: text && !PALETTE.includes(text) ? "custom" : "palette",
+        };
+      });
+      setBadgeConfigs(configs);
+    }
 
     setLoading(false);
   };
@@ -178,6 +234,62 @@ const AdminConfiguracoes = () => {
       configNotif.notif_venda_som_volume
     );
   };
+
+  // ─── Identidade Visual por Loja ───────────────────────────────────────────
+  const updateBadge = (id: number, patch: Partial<BadgeConfig>) => {
+    setBadgeConfigs((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], ...patch },
+    }));
+  };
+
+  const isValidHex = (hex: string) => /^#[0-9A-Fa-f]{6}$/.test(hex);
+
+  const getEffectiveBg = (id: number) => {
+    const c = badgeConfigs[id];
+    if (!c) return "#1a73e8";
+    return c.bgMode === "custom" ? c.bgCustom : c.bg;
+  };
+
+  const getEffectiveText = (id: number) => {
+    const c = badgeConfigs[id];
+    if (!c) return "#ffffff";
+    return c.textMode === "custom" ? c.textCustom : c.text;
+  };
+
+  const salvarBadge = async (mercadinho: Mercadinho) => {
+    const id = mercadinho.id;
+    const bgColor = getEffectiveBg(id);
+    const textColor = getEffectiveText(id);
+
+    if (!isValidHex(bgColor)) {
+      toast.error("Cor de fundo inválida. Use formato #RRGGBB");
+      return;
+    }
+    if (!isValidHex(textColor)) {
+      toast.error("Cor da fonte inválida. Use formato #RRGGBB");
+      return;
+    }
+
+    setSavingBadge((prev) => ({ ...prev, [id]: true }));
+
+    const { error } = await supabase
+      .from("mercadinhos")
+      .update({ badge_bg_color: bgColor, badge_text_color: textColor } as any)
+      .eq("id", id);
+
+    setSavingBadge((prev) => ({ ...prev, [id]: false }));
+
+    if (error) {
+      toast.error("Erro ao salvar identidade visual");
+    } else {
+      invalidateMercadinhoBadgeCache(id);
+      toast.success(`Identidade visual de ${mercadinho.nome} salva!`);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+
 
   const gerarMesesDisponiveis = () => {
     const meses: string[] = [];
@@ -488,6 +600,153 @@ const AdminConfiguracoes = () => {
                 </TableBody>
               </Table>
             )}
+          </CardContent>
+        </Card>
+
+        {/* 🎨 Identidade Visual por Loja */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              Identidade Visual por Loja
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            {mercadinhos.map((m) => {
+              const cfg = badgeConfigs[m.id];
+              if (!cfg) return null;
+              const effectiveBg = getEffectiveBg(m.id);
+              const effectiveText = getEffectiveText(m.id);
+
+              return (
+                <div key={m.id} className="space-y-4 pb-6 border-b last:border-b-0 last:pb-0">
+                  <h3 className="font-semibold text-base">{m.nome}</h3>
+
+                  {/* Cor de Fundo */}
+                  <div className="space-y-2">
+                    <Label>Cor de Fundo</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {PALETTE.map((cor) => (
+                        <button
+                          key={cor}
+                          type="button"
+                          title={cor}
+                          onClick={() => updateBadge(m.id, { bg: cor, bgMode: "palette" })}
+                          className={cn(
+                            "w-7 h-7 rounded-full border-2 transition-transform hover:scale-110",
+                            cfg.bgMode === "palette" && cfg.bg === cor
+                              ? "border-foreground scale-110"
+                              : "border-transparent"
+                          )}
+                          style={{ backgroundColor: cor }}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => updateBadge(m.id, { bgMode: "custom" })}
+                        className={cn(
+                          "px-2 h-7 rounded border text-xs font-medium transition-colors",
+                          cfg.bgMode === "custom"
+                            ? "border-foreground bg-accent"
+                            : "border-muted-foreground/40 text-muted-foreground"
+                        )}
+                      >
+                        Personalizado
+                      </button>
+                    </div>
+                    {cfg.bgMode === "custom" && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={cfg.bgCustom}
+                          onChange={(e) => updateBadge(m.id, { bgCustom: e.target.value })}
+                          placeholder="#000000"
+                          className="w-32 font-mono text-sm"
+                          maxLength={7}
+                        />
+                        {isValidHex(cfg.bgCustom) && (
+                          <div
+                            className="w-7 h-7 rounded-full border"
+                            style={{ backgroundColor: cfg.bgCustom }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cor da Fonte */}
+                  <div className="space-y-2">
+                    <Label>Cor da Fonte</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {PALETTE.map((cor) => (
+                        <button
+                          key={cor}
+                          type="button"
+                          title={cor}
+                          onClick={() => updateBadge(m.id, { text: cor, textMode: "palette" })}
+                          className={cn(
+                            "w-7 h-7 rounded-full border-2 transition-transform hover:scale-110",
+                            cfg.textMode === "palette" && cfg.text === cor
+                              ? "border-foreground scale-110"
+                              : "border-transparent"
+                          )}
+                          style={{ backgroundColor: cor }}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => updateBadge(m.id, { textMode: "custom" })}
+                        className={cn(
+                          "px-2 h-7 rounded border text-xs font-medium transition-colors",
+                          cfg.textMode === "custom"
+                            ? "border-foreground bg-accent"
+                            : "border-muted-foreground/40 text-muted-foreground"
+                        )}
+                      >
+                        Personalizado
+                      </button>
+                    </div>
+                    {cfg.textMode === "custom" && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={cfg.textCustom}
+                          onChange={(e) => updateBadge(m.id, { textCustom: e.target.value })}
+                          placeholder="#ffffff"
+                          className="w-32 font-mono text-sm"
+                          maxLength={7}
+                        />
+                        {isValidHex(cfg.textCustom) && (
+                          <div
+                            className="w-7 h-7 rounded-full border"
+                            style={{ backgroundColor: cfg.textCustom }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Preview</Label>
+                    <div>
+                      <span
+                        className="inline-flex items-center px-3 py-1 rounded text-sm font-semibold"
+                        style={{ backgroundColor: effectiveBg, color: effectiveText }}
+                      >
+                        {m.nome}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => salvarBadge(m)}
+                    disabled={savingBadge[m.id]}
+                    size="sm"
+                  >
+                    {savingBadge[m.id] ? "Salvando..." : "Salvar identidade visual"}
+                  </Button>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 

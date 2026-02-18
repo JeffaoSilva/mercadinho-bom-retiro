@@ -479,16 +479,22 @@ export type Database = {
       }
       mercadinhos: {
         Row: {
+          badge_bg_color: string | null
+          badge_text_color: string | null
           criado_em: string
           id: number
           nome: string
         }
         Insert: {
+          badge_bg_color?: string | null
+          badge_text_color?: string | null
           criado_em?: string
           id?: number
           nome: string
         }
         Update: {
+          badge_bg_color?: string | null
+          badge_text_color?: string | null
           criado_em?: string
           id?: number
           nome?: string
