@@ -44,6 +44,9 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
   const isAoVivoMutedRef = useRef(isAoVivoMuted);
   const isAoVivoRouteRef = useRef(isAoVivoRoute);
 
+  // Flag: só exibe toast de erro se a subscription já tiver conectado ao menos uma vez
+  const hasBeenSubscribedRef = useRef(false);
+
   // Fila de notificações e estado do processador
   const queueRef = useRef<QueuedNotification[]>([]);
   const isProcessingRef = useRef(false);
@@ -175,6 +178,7 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
       .subscribe((status) => {
         console.log(`[SaleNotifications] Status da subscription: ${status}`);
         if (status === "SUBSCRIBED") {
+          hasBeenSubscribedRef.current = true;
           console.log(
             "[SaleNotifications] ✅ Realtime conectado — escutando INSERT em 'compras'"
           );
@@ -186,13 +190,16 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
           console.error(
             `[SaleNotifications] ❌ Falha na subscription: ${status}`
           );
-          toast.error(
-            "⚠️ Realtime desconectado. Atualize a página se necessário.",
-            {
-              id: "realtime-error",
-              duration: 8000,
-            }
-          );
+          // Só exibe toast de erro se já tiver conectado antes (evita falso alarme na fase inicial)
+          if (hasBeenSubscribedRef.current) {
+            toast.error(
+              "⚠️ Realtime desconectado. Atualize a página se necessário.",
+              {
+                id: "realtime-error",
+                duration: 8000,
+              }
+            );
+          }
         }
       });
 
