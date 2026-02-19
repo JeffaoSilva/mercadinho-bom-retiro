@@ -5,6 +5,10 @@ import { useConfigNotifStore } from "@/stores/configNotifStore";
 import { playNotifyBeep } from "@/utils/notifySounds";
 import { toast } from "sonner";
 
+// ⚠️ IMPORTANTE: Para o Realtime funcionar, a tabela `compras` precisa estar
+// com Realtime habilitado no Supabase Dashboard:
+// Database > Replication > Supabase Realtime > habilitar a tabela `compras`
+
 interface SaleNotificationOptions {
   isAoVivoMuted?: boolean;
 }
@@ -17,8 +21,20 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isAoVivoRoute = location.pathname === "/admin/ao-vivo";
 
-  // Ref para callback de nova venda (usado na tela Ao Vivo)
+  // Guarda para não criar subscription duplicada
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Ref para o callback de nova venda (usado na tela Ao Vivo via setOnNewSale)
   const onNewSaleRef = useRef<((sale: any) => void) | null>(null);
+
+  // Ref para config e mute, para evitar re-criar subscription a cada mudança
+  const configRef = useRef(config);
+  const isAoVivoMutedRef = useRef(isAoVivoMuted);
+  const isAoVivoRouteRef = useRef(isAoVivoRoute);
+
+  useEffect(() => { configRef.current = config; }, [config]);
+  useEffect(() => { isAoVivoMutedRef.current = isAoVivoMuted; }, [isAoVivoMuted]);
+  useEffect(() => { isAoVivoRouteRef.current = isAoVivoRoute; }, [isAoVivoRoute]);
 
   const setOnNewSale = (callback: (sale: any) => void) => {
     onNewSaleRef.current = callback;
@@ -26,9 +42,13 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
 
   useEffect(() => {
     if (!isAdminRoute) return;
+    // Guard: não criar subscription duplicada
+    if (channelRef.current) return;
+
+    console.log("[SaleNotifications] Criando subscription em 'compras'...");
 
     const channel = supabase
-      .channel("sales_notifications")
+      .channel("global_sales_notifications")
       .on(
         "postgres_changes",
         {
@@ -45,9 +65,9 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
             eh_visitante: boolean;
           };
 
-          console.log("[SaleNotification] Nova venda detectada:", newSale);
+          console.log("[SaleNotifications] Nova venda detectada:", newSale);
 
-          // Buscar nome do cliente se houver
+          // Buscar nome do cliente
           let clienteNome = "Visitante";
           if (newSale.cliente_id && !newSale.eh_visitante) {
             const { data: cliente } = await supabase
@@ -55,15 +75,12 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
               .select("nome")
               .eq("id", newSale.cliente_id)
               .maybeSingle();
-            if (cliente) {
-              clienteNome = cliente.nome;
-            }
+            if (cliente) clienteNome = cliente.nome;
           }
 
-          // Buscar nome do mercadinho
-          let mercadinhoNome = newSale.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco";
+          const mercadinhoNome = newSale.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco";
 
-          // Callback para Ao Vivo
+          // Disparar callback para Ao Vivo (se estiver montado)
           if (onNewSaleRef.current) {
             onNewSaleRef.current({
               ...newSale,
@@ -72,24 +89,26 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
             });
           }
 
+          const cfg = configRef.current;
+
           // Tocar som
           const shouldPlaySound =
-            config.notif_venda_som_ativo &&
-            (!isAoVivoRoute || !isAoVivoMuted);
+            cfg.notif_venda_som_ativo &&
+            (!isAoVivoRouteRef.current || !isAoVivoMutedRef.current);
 
           if (shouldPlaySound) {
             const beepKey =
               newSale.mercadinho_id === 1
-                ? config.notif_venda_som_br
-                : config.notif_venda_som_sf;
+                ? cfg.notif_venda_som_br
+                : cfg.notif_venda_som_sf;
             playNotifyBeep(
               beepKey as "beep1" | "beep2" | "beep3" | "beep4",
-              config.notif_venda_som_volume
+              cfg.notif_venda_som_volume
             );
           }
 
           // Mostrar popup (apenas fora do Ao Vivo)
-          if (!isAoVivoRoute && config.notif_venda_popup_ativo) {
+          if (!isAoVivoRouteRef.current && cfg.notif_venda_popup_ativo) {
             toast.success(
               `🛒 ${mercadinhoNome} — R$ ${newSale.valor_total.toFixed(2)} — ${clienteNome}`,
               { duration: 5000 }
@@ -97,12 +116,31 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[SaleNotifications] Status da subscription: ${status}`);
+        if (status === "SUBSCRIBED") {
+          console.log("[SaleNotifications] ✅ Realtime conectado — escutando INSERT em 'compras'");
+        } else if (status === "TIMED_OUT" || status === "CHANNEL_ERROR" || status === "CLOSED") {
+          console.error(`[SaleNotifications] ❌ Falha na subscription: ${status}`);
+          // Toast apenas no Admin (não notificar em rotas públicas)
+          toast.error("⚠️ Realtime desconectado. Atualize a página se necessário.", {
+            id: "realtime-error",
+            duration: 8000,
+          });
+        }
+      });
+
+    channelRef.current = channel;
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        console.log("[SaleNotifications] Removendo subscription...");
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [isAdminRoute, isAoVivoRoute, isAoVivoMuted, config]);
+  // Apenas re-cria se a rota mudar de admin para não-admin
+  }, [isAdminRoute]);
 
   return { setOnNewSale };
 }

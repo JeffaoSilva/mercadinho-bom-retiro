@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,12 +25,17 @@ import {
   VolumeX,
   Radio,
   Settings,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useConfigNotifStore, ConfigNotif } from "@/stores/configNotifStore";
 import { useSaleNotifications } from "@/hooks/useSaleNotifications";
 import { MercadinhoBadge } from "@/components/admin/MercadinhoBadge";
 import { format } from "date-fns";
+
+// ⚠️ IMPORTANTE: A tabela `compras` precisa estar com Realtime habilitado no Supabase:
+// Dashboard > Database > Replication > Supabase Realtime > habilitar `compras`
 
 interface VendaFeed {
   id: number;
@@ -42,34 +47,32 @@ interface VendaFeed {
   itens_resumo: string;
 }
 
+type RealtimeStatus = "connecting" | "connected" | "error" | "disconnected";
+
 const AdminAoVivo = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const config = useConfigNotifStore((s) => s.config);
   const setConfig = useConfigNotifStore((s) => s.setConfig);
 
-  // Estado local de mute (não persiste)
   const [isMuted, setIsMuted] = useState(false);
-
-  // Filtro do feed
   const [feedFilter, setFeedFilter] = useState<"todos" | 1 | 2>("todos");
-
-  // Feed de vendas
   const [vendas, setVendas] = useState<VendaFeed[]>([]);
-
-  // Contadores
   const [contadorBR, setContadorBR] = useState<number>(0);
   const [contadorSF, setContadorSF] = useState<number>(0);
-
-  // Modal de configuração de contador
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configMercadinho, setConfigMercadinho] = useState<1 | 2>(1);
   const [tempMetrica, setTempMetrica] = useState("qtd");
   const [tempPeriodo, setTempPeriodo] = useState("dia");
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
 
-  // Hook de notificações
+  // Guard para não criar subscription duplicada
+  const feedChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Hook global de notificações (toast + som) — não criar subscription duplicada
   const { setOnNewSale } = useSaleNotifications({ isAoVivoMuted: isMuted });
 
+  // ─── Carregar dados iniciais ────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
@@ -82,45 +85,113 @@ const AdminAoVivo = () => {
 
   // Atualizar contadores quando config muda
   useEffect(() => {
-    loadContadores();
-  }, [config]);
+    if (isAuthenticated) loadContadores();
+  }, [config, isAuthenticated]);
 
-  // Callback quando nova venda chega
+  // ─── Subscription própria do feed Ao Vivo ─────────────────────────────────
   useEffect(() => {
-    setOnNewSale(async (sale: any) => {
-      // Buscar itens da compra com retry
-      let itensResumo = "(carregando...)";
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const { data: itens } = await supabase
-          .from("itens_compra")
-          .select("quantidade, produtos(nome)")
-          .eq("compra_id", sale.id);
+    if (!isAuthenticated) return;
+    if (feedChannelRef.current) return; // guard anti-duplicata
 
-        if (itens && itens.length > 0) {
-          itensResumo = itens
-            .map((item: any) => `${item.produtos?.nome || "?"} ${item.quantidade}x`)
-            .join(", ");
-          break;
+    console.log("[AdminAoVivo] Criando subscription do feed em 'compras'...");
+    setRealtimeStatus("connecting");
+
+    const channel = supabase
+      .channel("ao_vivo_feed")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "compras",
+        },
+        async (payload) => {
+          const newSale = payload.new as {
+            id: number;
+            mercadinho_id: number;
+            valor_total: number;
+            cliente_id: number | null;
+            eh_visitante: boolean;
+            criado_em: string;
+          };
+
+          console.log("[AdminAoVivo] Nova venda no feed:", newSale);
+
+          // Buscar nome do cliente
+          let clienteNome = "Visitante";
+          if (newSale.cliente_id && !newSale.eh_visitante) {
+            const { data: cliente } = await supabase
+              .from("clientes")
+              .select("nome")
+              .eq("id", newSale.cliente_id)
+              .maybeSingle();
+            if (cliente) clienteNome = cliente.nome;
+          }
+
+          const mercadinhoNome =
+            newSale.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco";
+
+          // Buscar itens com retry (podem ainda não estar commitados)
+          let itensResumo = "(carregando...)";
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const { data: itens } = await supabase
+              .from("itens_compra")
+              .select("quantidade, produtos(nome)")
+              .eq("compra_id", newSale.id);
+
+            if (itens && itens.length > 0) {
+              itensResumo = itens
+                .map((item: any) => `${item.produtos?.nome || "?"} ${item.quantidade}x`)
+                .join(", ");
+              break;
+            }
+            await new Promise((r) =>
+              setTimeout(r, attempt === 0 ? 300 : 800)
+            );
+          }
+
+          const novaVenda: VendaFeed = {
+            id: newSale.id,
+            hora: format(new Date(), "HH:mm"),
+            mercadinho_id: newSale.mercadinho_id,
+            mercadinho_nome: mercadinhoNome,
+            cliente_nome: clienteNome,
+            valor_total: newSale.valor_total,
+            itens_resumo: itensResumo,
+          };
+
+          setVendas((prev) => [novaVenda, ...prev].slice(0, 50));
+          // Atualizar contadores após nova venda
+          loadContadores();
         }
-        // Wait antes de retry
-        await new Promise((r) => setTimeout(r, attempt === 0 ? 300 : 800));
+      )
+      .subscribe((status) => {
+        console.log(`[AdminAoVivo] Status da subscription do feed: ${status}`);
+        if (status === "SUBSCRIBED") {
+          console.log("[AdminAoVivo] ✅ Feed realtime conectado");
+          setRealtimeStatus("connected");
+        } else if (
+          status === "TIMED_OUT" ||
+          status === "CHANNEL_ERROR" ||
+          status === "CLOSED"
+        ) {
+          console.error(`[AdminAoVivo] ❌ Falha no feed realtime: ${status}`);
+          setRealtimeStatus("error");
+        }
+      });
+
+    feedChannelRef.current = channel;
+
+    return () => {
+      if (feedChannelRef.current) {
+        console.log("[AdminAoVivo] Removendo subscription do feed...");
+        supabase.removeChannel(feedChannelRef.current);
+        feedChannelRef.current = null;
       }
+    };
+  }, [isAuthenticated]);
 
-      const novaVenda: VendaFeed = {
-        id: sale.id,
-        hora: format(new Date(), "HH:mm"),
-        mercadinho_id: sale.mercadinho_id,
-        mercadinho_nome: sale.mercadinho_nome,
-        cliente_nome: sale.cliente_nome,
-        valor_total: sale.valor_total,
-        itens_resumo: itensResumo,
-      };
-
-      setVendas((prev) => [novaVenda, ...prev].slice(0, 50));
-      loadContadores();
-    });
-  }, [setOnNewSale]);
-
+  // ─── Carregar vendas recentes ───────────────────────────────────────────────
   const loadVendasRecentes = async () => {
     const { data } = await supabase
       .from("compras")
@@ -139,7 +210,6 @@ const AdminAoVivo = () => {
     if (!data) return;
 
     const vendasComItens: VendaFeed[] = [];
-
     for (const compra of data) {
       const { data: itens } = await supabase
         .from("itens_compra")
@@ -156,7 +226,8 @@ const AdminAoVivo = () => {
         id: compra.id,
         hora: format(new Date(compra.criado_em), "HH:mm"),
         mercadinho_id: compra.mercadinho_id,
-        mercadinho_nome: compra.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco",
+        mercadinho_nome:
+          compra.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco",
         cliente_nome: compra.eh_visitante
           ? "Visitante"
           : (compra.clientes as any)?.nome || "Visitante",
@@ -164,12 +235,11 @@ const AdminAoVivo = () => {
         itens_resumo: itensResumo,
       });
     }
-
     setVendas(vendasComItens);
   };
 
+  // ─── Contadores ────────────────────────────────────────────────────────────
   const loadContadores = async () => {
-    // BR
     const valorBR = await calcularContador(
       1,
       config.ao_vivo_contador_br_metrica,
@@ -177,7 +247,6 @@ const AdminAoVivo = () => {
     );
     setContadorBR(valorBR);
 
-    // SF
     const valorSF = await calcularContador(
       2,
       config.ao_vivo_contador_sf_metrica,
@@ -199,7 +268,6 @@ const AdminAoVivo = () => {
     } else if (periodo === "semana") {
       dataInicio = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else {
-      // mes
       dataInicio = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
@@ -218,6 +286,7 @@ const AdminAoVivo = () => {
     }
   };
 
+  // ─── Config de contador ────────────────────────────────────────────────────
   const abrirConfigContador = (mercadinho: 1 | 2) => {
     setConfigMercadinho(mercadinho);
     if (mercadinho === 1) {
@@ -241,7 +310,6 @@ const AdminAoVivo = () => {
       updates.ao_vivo_contador_sf_periodo = tempPeriodo;
     }
 
-    // Atualização otimista: atualizar store imediatamente
     setConfig(updates);
     setShowConfigModal(false);
 
@@ -251,7 +319,6 @@ const AdminAoVivo = () => {
       .eq("id", 1);
 
     if (error) {
-      // Reverter em caso de erro
       if (configMercadinho === 1) {
         setConfig({
           ao_vivo_contador_br_metrica: config.ao_vivo_contador_br_metrica,
@@ -270,28 +337,21 @@ const AdminAoVivo = () => {
   };
 
   const formatarValorContador = (valor: number, metrica: string) => {
-    if (metrica === "qtd") {
-      return valor.toString();
-    }
+    if (metrica === "qtd") return valor.toString();
     return `R$ ${valor.toFixed(2)}`;
   };
 
   const getPeriodoLabel = (periodo: string) => {
     switch (periodo) {
-      case "dia":
-        return "Hoje";
-      case "semana":
-        return "Semana";
-      case "mes":
-        return "Mês";
-      default:
-        return periodo;
+      case "dia": return "Hoje";
+      case "semana": return "Semana";
+      case "mes": return "Mês";
+      default: return periodo;
     }
   };
 
-  const getMetricaLabel = (metrica: string) => {
-    return metrica === "qtd" ? "Vendas" : "Total";
-  };
+  const getMetricaLabel = (metrica: string) =>
+    metrica === "qtd" ? "Vendas" : "Total";
 
   const vendasFiltradas =
     feedFilter === "todos"
@@ -321,18 +381,55 @@ const AdminAoVivo = () => {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMuted(!isMuted)}
-            title={isMuted ? "Ativar som" : "Mutar som"}
-          >
-            {isMuted ? (
-              <VolumeX className="h-6 w-6 text-muted-foreground" />
-            ) : (
-              <Volume2 className="h-6 w-6 text-primary" />
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Indicador de status Realtime */}
+            <div
+              title={
+                realtimeStatus === "connected"
+                  ? "Realtime conectado"
+                  : realtimeStatus === "connecting"
+                  ? "Conectando..."
+                  : "Realtime desconectado"
+              }
+              className="flex items-center gap-1"
+            >
+            {realtimeStatus === "connected" ? (
+                <Wifi className="h-4 w-4 text-primary" />
+              ) : realtimeStatus === "connecting" ? (
+                <Wifi className="h-4 w-4 text-muted-foreground animate-pulse" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-destructive" />
+              )}
+              <span
+                className={`text-xs ${
+                  realtimeStatus === "connected"
+                    ? "text-primary"
+                    : realtimeStatus === "connecting"
+                    ? "text-muted-foreground"
+                    : "text-destructive"
+                }`}
+              >
+                {realtimeStatus === "connected"
+                  ? "Ao vivo"
+                  : realtimeStatus === "connecting"
+                  ? "Conectando"
+                  : "Desconectado"}
+              </span>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMuted(!isMuted)}
+              title={isMuted ? "Ativar som" : "Mutar som"}
+            >
+              {isMuted ? (
+                <VolumeX className="h-6 w-6 text-muted-foreground" />
+              ) : (
+                <Volume2 className="h-6 w-6 text-primary" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Contadores */}
@@ -348,7 +445,8 @@ const AdminAoVivo = () => {
                 <Settings className="h-4 w-4 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">
-                {getMetricaLabel(config.ao_vivo_contador_br_metrica)} • {getPeriodoLabel(config.ao_vivo_contador_br_periodo)}
+                {getMetricaLabel(config.ao_vivo_contador_br_metrica)} •{" "}
+                {getPeriodoLabel(config.ao_vivo_contador_br_periodo)}
               </p>
             </CardHeader>
             <CardContent>
@@ -369,7 +467,8 @@ const AdminAoVivo = () => {
                 <Settings className="h-4 w-4 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">
-                {getMetricaLabel(config.ao_vivo_contador_sf_metrica)} • {getPeriodoLabel(config.ao_vivo_contador_sf_periodo)}
+                {getMetricaLabel(config.ao_vivo_contador_sf_metrica)} •{" "}
+                {getPeriodoLabel(config.ao_vivo_contador_sf_periodo)}
               </p>
             </CardHeader>
             <CardContent>
@@ -454,7 +553,8 @@ const AdminAoVivo = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Configurar Contador — {configMercadinho === 1 ? "Bom Retiro" : "São Francisco"}
+              Configurar Contador —{" "}
+              {configMercadinho === 1 ? "Bom Retiro" : "São Francisco"}
             </DialogTitle>
           </DialogHeader>
 
