@@ -79,11 +79,11 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
       playNotifyBeep(item.beepKey, item.volume);
     }
 
-    // Aguardar ~2s antes de processar o próximo da fila
+    // Aguardar ~3s antes de processar o próximo da fila
     processorTimerRef.current = setTimeout(() => {
       isProcessingRef.current = false;
       processQueue();
-    }, 2000);
+    }, 3000);
   };
 
   // Enfileira uma notificação e dispara o processador se estiver ocioso
