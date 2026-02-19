@@ -44,8 +44,11 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
   const isAoVivoMutedRef = useRef(isAoVivoMuted);
   const isAoVivoRouteRef = useRef(isAoVivoRoute);
 
-  // Flag: só exibe toast de erro se a subscription já tiver conectado ao menos uma vez
-  const hasBeenSubscribedRef = useRef(false);
+  // Controla transição de estado real da subscription:
+  // null  = nunca tentou / fase inicial
+  // true  = atualmente conectado (SUBSCRIBED)
+  // false = estava conectado e perdeu a conexão
+  const isConnectedRef = useRef<boolean | null>(null);
 
   // Fila de notificações e estado do processador
   const queueRef = useRef<QueuedNotification[]>([]);
@@ -178,22 +181,30 @@ export function useSaleNotifications(options: SaleNotificationOptions = {}) {
       .subscribe((status) => {
         console.log(`[SaleNotifications] Status da subscription: ${status}`);
         if (status === "SUBSCRIBED") {
-          hasBeenSubscribedRef.current = true;
+          const wasDisconnected = isConnectedRef.current === false;
+          isConnectedRef.current = true;
           console.log(
             "[SaleNotifications] ✅ Realtime conectado — escutando INSERT em 'compras'"
           );
+          // Exibe toast de reconexão apenas se houve queda prévia (não na primeira conexão)
+          if (wasDisconnected) {
+            toast.success("✅ Realtime reconectado.", {
+              id: "realtime-reconnected",
+              duration: 4000,
+            });
+          }
         } else if (
-          status === "TIMED_OUT" ||
           status === "CHANNEL_ERROR" ||
           status === "CLOSED"
         ) {
           console.error(
             `[SaleNotifications] ❌ Falha na subscription: ${status}`
           );
-          // Só exibe toast de erro se já tiver conectado antes (evita falso alarme na fase inicial)
-          if (hasBeenSubscribedRef.current) {
+          // Só exibe toast de erro na transição de conectado → desconectado
+          if (isConnectedRef.current === true) {
+            isConnectedRef.current = false;
             toast.error(
-              "⚠️ Realtime desconectado. Atualize a página se necessário.",
+              "⚠️ Realtime desconectado. Tentando reconectar...",
               {
                 id: "realtime-error",
                 duration: 8000,
