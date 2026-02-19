@@ -74,13 +74,16 @@ interface BadgeConfig {
   textMode: "palette" | "custom";
 }
 
-// Paleta fixa de 18 cores modernas
+// Paleta fixa: 7 cores principais + branco
 const PALETTE = [
-  "#1a73e8", "#0f9d58", "#ea4335", "#f9ab00",
-  "#9c27b0", "#e91e63", "#00bcd4", "#ff5722",
-  "#607d8b", "#795548", "#3f51b5", "#009688",
-  "#ff9800", "#8bc34a", "#673ab7", "#f06292",
-  "#4db6ac", "#1e1e1e",
+  "#1a73e8", // Azul
+  "#0f9d58", // Verde
+  "#ea4335", // Vermelho
+  "#f9ab00", // Amarelo
+  "#9c27b0", // Roxo
+  "#ff5722", // Laranja
+  "#1e1e1e", // Preto
+  "#ffffff", // Branco
 ];
 
 const AdminConfiguracoes = () => {
