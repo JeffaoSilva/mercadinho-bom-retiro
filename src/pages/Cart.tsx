@@ -116,15 +116,25 @@ const Cart = () => {
         setShowSugestoes(false);
         return;
       }
+      const mercadinhoId = mercadinhoAtualId || 1;
       const { data, error } = await supabase
-        .from("produtos")
-        .select("id, nome, codigo_barras")
+        .from("prateleiras_produtos")
+        .select("produto_id, quantidade_prateleira, produtos!inner(id, nome, codigo_barras, ativo)")
+        .eq("mercadinho_id", mercadinhoId)
         .eq("ativo", true)
-        .ilike("nome", `%${termo}%`)
+        .gt("quantidade_prateleira", 0)
+        .eq("produtos.ativo", true)
+        .ilike("produtos.nome", `%${termo}%`)
         .limit(10);
       if (error) throw error;
       const termoLower = termo.toLowerCase();
-      const sorted = (data || []).sort((a, b) => {
+      const mapped = (data || []).map((row: any) => ({
+        id: row.produtos.id as number,
+        nome: row.produtos.nome as string,
+        codigo_barras: row.produtos.codigo_barras as string | null,
+      }));
+      const unique = Array.from(new Map(mapped.map((p: Sugestao) => [p.id, p])).values());
+      const sorted = unique.sort((a: Sugestao, b: Sugestao) => {
         const aStarts = a.nome.toLowerCase().startsWith(termoLower) ? 0 : 1;
         const bStarts = b.nome.toLowerCase().startsWith(termoLower) ? 0 : 1;
         if (aStarts !== bStarts) return aStarts - bStarts;
@@ -136,7 +146,7 @@ const Cart = () => {
       setSugestoes([]);
       setShowSugestoes(false);
     }
-  }, []);
+  }, [mercadinhoAtualId]);
 
   const handleInputChange = useCallback((value: string) => {
     setBarcode(value);
@@ -280,7 +290,7 @@ const Cart = () => {
       }
 
       if (!produto) {
-        toast.error("Produto não encontrado");
+        toast.error("Produto indisponível nesta loja.");
         setBarcode("");
         return;
       }
@@ -292,7 +302,7 @@ const Cart = () => {
       const totalDisponivel = await totalDisponivelProduto(mercadinhoId, produto.id);
 
       if (totalDisponivel === 0 || exposicoes.length === 0) {
-        toast.error("Produto não disponível na prateleira");
+        toast.error("Produto esgotado nesta loja.");
         setBarcode("");
         return;
       }
