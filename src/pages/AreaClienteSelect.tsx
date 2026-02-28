@@ -23,6 +23,7 @@ export default function AreaClienteSelect() {
       let query = supabase
         .from("clientes_kiosk")
         .select("id, nome, mercadinho_id")
+        .eq("ativo", true)
         .order("nome");
 
       // Se já soubermos o mercadinho do tablet, filtra por ele
