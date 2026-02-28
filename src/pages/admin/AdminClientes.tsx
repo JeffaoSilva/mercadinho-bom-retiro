@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ interface Cliente {
   telefone: string;
   mercadinho_id: number;
   criado_em: string;
+  ativo: boolean;
   mercadinho?: { nome: string };
 }
 
@@ -67,6 +69,7 @@ const AdminClientes = () => {
     nome: "",
     telefone: "",
     mercadinho_id: "",
+    ativo: true,
   });
 
   useEffect(() => {
@@ -83,6 +86,7 @@ const AdminClientes = () => {
       supabase
         .from("clientes")
         .select("*, mercadinho:mercadinhos(nome)")
+        .order("ativo", { ascending: false })
         .order("nome"),
       supabase.from("mercadinhos").select("id, nome").order("nome"),
     ]);
@@ -116,9 +120,12 @@ const AdminClientes = () => {
     c.telefone.includes(search)
   );
 
+  const clientesAtivos = filteredClientes.filter((c) => c.ativo);
+  const clientesInativos = filteredClientes.filter((c) => !c.ativo);
+
   const openNew = () => {
     setEditingCliente(null);
-    setForm({ nome: "", telefone: "", mercadinho_id: "" });
+    setForm({ nome: "", telefone: "", mercadinho_id: "", ativo: true });
     setShowDialog(true);
   };
 
@@ -128,6 +135,7 @@ const AdminClientes = () => {
       nome: cliente.nome,
       telefone: cliente.telefone,
       mercadinho_id: cliente.mercadinho_id.toString(),
+      ativo: cliente.ativo,
     });
     setShowDialog(true);
   };
@@ -148,6 +156,7 @@ const AdminClientes = () => {
       nome: form.nome.trim(),
       telefone: form.telefone.trim(),
       mercadinho_id: parseInt(form.mercadinho_id),
+      ativo: form.ativo,
     };
 
     if (editingCliente) {
@@ -187,6 +196,45 @@ const AdminClientes = () => {
     }
     toast.success("PIN resetado com sucesso");
   };
+
+  const renderClienteRow = (cliente: Cliente) => (
+    <TableRow key={cliente.id} className={!cliente.ativo ? "opacity-50" : ""}>
+      <TableCell className="font-medium">{cliente.nome}</TableCell>
+      <TableCell>{cliente.telefone}</TableCell>
+      <TableCell>{cliente.mercadinho?.nome || "-"}</TableCell>
+      <TableCell>
+        {format(new Date(cliente.criado_em), "dd/MM/yyyy")}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex gap-1 justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => openEdit(cliente)}
+            title="Editar"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => resetarPin(cliente)}
+            title="Resetar PIN"
+          >
+            <Key className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => openHistorico(cliente)}
+            title="Histórico"
+          >
+            <History className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 
   if (loading) {
     return (
@@ -234,44 +282,20 @@ const AdminClientes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClientes.map((cliente) => (
-                <TableRow key={cliente.id}>
-                  <TableCell className="font-medium">{cliente.nome}</TableCell>
-                  <TableCell>{cliente.telefone}</TableCell>
-                  <TableCell>{cliente.mercadinho?.nome || "-"}</TableCell>
-                  <TableCell>
-                    {format(new Date(cliente.criado_em), "dd/MM/yyyy")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(cliente)}
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => resetarPin(cliente)}
-                        title="Resetar PIN"
-                      >
-                        <Key className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openHistorico(cliente)}
-                        title="Histórico"
-                      >
-                        <History className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {clientesAtivos.map(renderClienteRow)}
+              {clientesInativos.length > 0 && (
+                <>
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center text-sm font-semibold text-muted-foreground bg-muted/50 py-2"
+                    >
+                      — Clientes Inativos —
+                    </TableCell>
+                  </TableRow>
+                  {clientesInativos.map(renderClienteRow)}
+                </>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -318,6 +342,18 @@ const AdminClientes = () => {
                 </SelectContent>
               </Select>
             </div>
+            {editingCliente && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="ativo"
+                  checked={form.ativo}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, ativo: checked === true })
+                  }
+                />
+                <Label htmlFor="ativo" className="cursor-pointer">Ativo</Label>
+              </div>
+            )}
             <div className="flex gap-2 pt-4">
               <Button
                 variant="outline"

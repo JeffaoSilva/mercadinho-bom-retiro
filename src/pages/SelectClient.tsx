@@ -48,6 +48,7 @@ const SelectClient = () => {
         .from('clientes_kiosk')
         .select('id, nome')
         .eq('mercadinho_id', filtroId)
+        .eq('ativo', true)
         .order('nome');
 
       if (error) throw error;
