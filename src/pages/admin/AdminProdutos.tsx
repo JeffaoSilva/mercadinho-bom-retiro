@@ -94,6 +94,7 @@ const AdminProdutos = () => {
   const [codigoEntrada, setCodigoEntrada] = useState("");
   const [buscandoEntrada, setBuscandoEntrada] = useState(false);
   const [showCameraScannerEntrada, setShowCameraScannerEntrada] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -306,6 +307,23 @@ const AdminProdutos = () => {
       alerta_estoque_baixo_min: Math.max(1, parseInt(form.alerta_estoque_baixo_min) || 2),
     };
 
+    // Verificar duplicidade de código de barras ao criar novo produto
+    if (!editingProduto && payload.codigo_barras) {
+      const { data: existente } = await supabase
+        .from("produtos")
+        .select("id")
+        .eq("codigo_barras", payload.codigo_barras)
+        .maybeSingle();
+
+      if (existente) {
+        toast.error("Produto com esse código já existe.");
+        return;
+      }
+    }
+
+    setSalvando(true);
+
+    try {
     if (editingProduto) {
       // Atualizar produto existente
       const { error } = await supabase
@@ -359,7 +377,11 @@ const AdminProdutos = () => {
           .single();
 
         if (error || !novoProduto) {
-          toast.error("Erro ao criar produto");
+          if (error?.code === "23505") {
+            toast.error("Produto com esse código já existe.");
+          } else {
+            toast.error("Erro ao criar produto");
+          }
           return;
         }
 
@@ -380,7 +402,11 @@ const AdminProdutos = () => {
           .single();
 
         if (error || !novoProduto) {
-          toast.error("Erro ao criar produto");
+          if (error?.code === "23505") {
+            toast.error("Produto com esse código já existe.");
+          } else {
+            toast.error("Erro ao criar produto");
+          }
           return;
         }
         toast.success("Produto criado");
@@ -389,6 +415,9 @@ const AdminProdutos = () => {
 
     setShowDialog(false);
     loadProdutos();
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const toggleAtivo = async (produto: Produto) => {
@@ -862,7 +891,8 @@ const AdminProdutos = () => {
               <Button variant="outline" className="flex-1" onClick={() => setShowDialog(false)}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={handleSave}>
+              <Button className="flex-1" onClick={handleSave} disabled={salvando}>
+                {salvando && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Salvar
               </Button>
             </div>
