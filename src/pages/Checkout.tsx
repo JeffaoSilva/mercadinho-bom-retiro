@@ -75,7 +75,6 @@ const Checkout = () => {
       }
 
       setShowSuccess(true);
-      toast.success("Compra finalizada com sucesso!");
 
       setTimeout(() => {
         reset();
