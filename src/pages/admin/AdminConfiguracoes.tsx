@@ -305,8 +305,58 @@ const AdminConfiguracoes = () => {
       toast.success(`Identidade visual de ${mercadinho.nome} salva!`);
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─── PIX Config ─────────────────────────────────────────────────────────
+  const salvarConfigPix = async () => {
+    setSavingPix(true);
+    const { error } = await supabase
+      .from("config_sistema")
+      .update({
+        pix_chave: configPix.pix_chave,
+        pix_qr_code_url: configPix.pix_qr_code_url,
+      } as any)
+      .eq("id", 1);
+    setSavingPix(false);
+    if (error) {
+      toast.error("Erro ao salvar configuração PIX");
+    } else {
+      toast.success("Configuração PIX salva!");
+    }
+  };
 
+  const handleUploadQrCode = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingQr(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `qrcode_pix_${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("pix-qrcode")
+      .upload(fileName, file, { upsert: true });
+    if (uploadError) {
+      toast.error("Erro ao enviar imagem");
+      setUploadingQr(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage
+      .from("pix-qrcode")
+      .getPublicUrl(fileName);
+    setConfigPix((prev) => ({ ...prev, pix_qr_code_url: urlData.publicUrl }));
+    setUploadingQr(false);
+    toast.success("Imagem enviada! Clique em Salvar para confirmar.");
+  };
+
+  const removerQrCode = () => {
+    setConfigPix((prev) => ({ ...prev, pix_qr_code_url: "" }));
+  };
+
+  const getQrSizeClass = () => {
+    switch (pixQrSize) {
+      case "small": return "w-32 h-32";
+      case "large": return "w-80 h-80";
+      default: return "w-52 h-52";
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
 
   const gerarMesesDisponiveis = () => {
