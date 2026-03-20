@@ -144,7 +144,8 @@ const AdminConfiguracoes = () => {
       .select(`
         bip_ativo, bip_volume,
         notif_venda_popup_ativo, notif_venda_som_ativo, notif_venda_som_volume,
-        notif_venda_som_br, notif_venda_som_sf
+        notif_venda_som_br, notif_venda_som_sf,
+        pix_chave, pix_qr_code_url
       `)
       .eq("id", 1)
       .maybeSingle();
