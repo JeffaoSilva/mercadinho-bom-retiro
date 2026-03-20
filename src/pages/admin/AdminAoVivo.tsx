@@ -236,6 +236,7 @@ const AdminAoVivo = () => {
           : (compra.clientes as any)?.nome || "Visitante",
         valor_total: compra.valor_total,
         itens_resumo: itensResumo,
+        forma_pagamento: compra.forma_pagamento || "caderneta",
       });
     }
     setVendas(vendasComItens);
