@@ -159,6 +159,7 @@ const AdminAoVivo = () => {
             cliente_nome: clienteNome,
             valor_total: newSale.valor_total,
             itens_resumo: itensResumo,
+            forma_pagamento: (newSale as any).forma_pagamento || "caderneta",
           };
 
           setVendas((prev) => [novaVenda, ...prev].slice(0, 50));
