@@ -623,6 +623,86 @@ const AdminConfiguracoes = () => {
           </CardContent>
         </Card>
 
+        {/* Configuração PIX */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Configuração do PIX
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Chave PIX</Label>
+              <Input
+                value={configPix.pix_chave}
+                onChange={(e) => setConfigPix({ ...configPix, pix_chave: e.target.value })}
+                placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+              />
+              <p className="text-xs text-muted-foreground">
+                Será exibida na tela de pagamento do cliente.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>QR Code PIX</Label>
+              <div className="flex items-center gap-3">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleUploadQrCode}
+                    disabled={uploadingQr}
+                  />
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent transition-colors">
+                    <Upload className="w-4 h-4" />
+                    {uploadingQr ? "Enviando..." : "Enviar imagem"}
+                  </span>
+                </label>
+                {configPix.pix_qr_code_url && (
+                  <Button variant="ghost" size="sm" onClick={removerQrCode}>
+                    <X className="w-4 h-4 mr-1" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {configPix.pix_qr_code_url && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Preview do QR Code</Label>
+                <div className="flex items-center gap-4">
+                  <Select
+                    value={pixQrSize}
+                    onValueChange={(v) => setPixQrSize(v as "small" | "medium" | "large")}
+                  >
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Pequeno</SelectItem>
+                      <SelectItem value="medium">Médio</SelectItem>
+                      <SelectItem value="large">Grande</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="bg-white p-3 rounded-lg border inline-block">
+                  <img
+                    src={configPix.pix_qr_code_url}
+                    alt="QR Code PIX"
+                    className={`${getQrSizeClass()} object-contain`}
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button onClick={salvarConfigPix} disabled={savingPix}>
+              {savingPix ? "Salvando..." : "Salvar Configuração PIX"}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Data Limite de Pagamento por Mês */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
