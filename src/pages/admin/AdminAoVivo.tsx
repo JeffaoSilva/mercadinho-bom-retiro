@@ -45,6 +45,7 @@ interface VendaFeed {
   cliente_nome: string;
   valor_total: number;
   itens_resumo: string;
+  forma_pagamento: string;
 }
 
 type RealtimeStatus = "connecting" | "connected" | "error" | "disconnected";
