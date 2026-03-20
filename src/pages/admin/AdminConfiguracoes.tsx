@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette, Upload, X, QrCode } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { cn } from "@/lib/utils";
 import { playNotifyBeep, BEEP_OPTIONS } from "@/utils/notifySounds";
@@ -43,6 +43,11 @@ import { invalidateMercadinhoBadgeCache } from "@/components/admin/MercadinhoBad
 interface ConfigSistema {
   bip_ativo: boolean;
   bip_volume: number;
+}
+
+interface ConfigPix {
+  pix_chave: string;
+  pix_qr_code_url: string;
 }
 
 interface ConfigNotif {
@@ -111,6 +116,11 @@ const AdminConfiguracoes = () => {
   const [badgeConfigs, setBadgeConfigs] = useState<Record<number, BadgeConfig>>({});
   const [savingBadge, setSavingBadge] = useState<Record<number, boolean>>({});
 
+  // PIX config
+  const [configPix, setConfigPix] = useState<ConfigPix>({ pix_chave: "", pix_qr_code_url: "" });
+  const [savingPix, setSavingPix] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const [pixQrSize, setPixQrSize] = useState<"small" | "medium" | "large">("medium");
   // Modal para adicionar/editar config mensal
   const [showModal, setShowModal] = useState(false);
   const [editingMes, setEditingMes] = useState<string | null>(null);
@@ -134,7 +144,8 @@ const AdminConfiguracoes = () => {
       .select(`
         bip_ativo, bip_volume,
         notif_venda_popup_ativo, notif_venda_som_ativo, notif_venda_som_volume,
-        notif_venda_som_br, notif_venda_som_sf
+        notif_venda_som_br, notif_venda_som_sf,
+        pix_chave, pix_qr_code_url
       `)
       .eq("id", 1)
       .maybeSingle();
@@ -150,6 +161,10 @@ const AdminConfiguracoes = () => {
         notif_venda_som_volume: sistema.notif_venda_som_volume,
         notif_venda_som_br: sistema.notif_venda_som_br,
         notif_venda_som_sf: sistema.notif_venda_som_sf,
+      });
+      setConfigPix({
+        pix_chave: (sistema as any).pix_chave || "",
+        pix_qr_code_url: (sistema as any).pix_qr_code_url || "",
       });
     }
 
@@ -290,8 +305,58 @@ const AdminConfiguracoes = () => {
       toast.success(`Identidade visual de ${mercadinho.nome} salva!`);
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─── PIX Config ─────────────────────────────────────────────────────────
+  const salvarConfigPix = async () => {
+    setSavingPix(true);
+    const { error } = await supabase
+      .from("config_sistema")
+      .update({
+        pix_chave: configPix.pix_chave,
+        pix_qr_code_url: configPix.pix_qr_code_url,
+      } as any)
+      .eq("id", 1);
+    setSavingPix(false);
+    if (error) {
+      toast.error("Erro ao salvar configuração PIX");
+    } else {
+      toast.success("Configuração PIX salva!");
+    }
+  };
 
+  const handleUploadQrCode = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingQr(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `qrcode_pix_${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("pix-qrcode")
+      .upload(fileName, file, { upsert: true });
+    if (uploadError) {
+      toast.error("Erro ao enviar imagem");
+      setUploadingQr(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage
+      .from("pix-qrcode")
+      .getPublicUrl(fileName);
+    setConfigPix((prev) => ({ ...prev, pix_qr_code_url: urlData.publicUrl }));
+    setUploadingQr(false);
+    toast.success("Imagem enviada! Clique em Salvar para confirmar.");
+  };
+
+  const removerQrCode = () => {
+    setConfigPix((prev) => ({ ...prev, pix_qr_code_url: "" }));
+  };
+
+  const getQrSizeClass = () => {
+    switch (pixQrSize) {
+      case "small": return "w-32 h-32";
+      case "large": return "w-80 h-80";
+      default: return "w-52 h-52";
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
 
   const gerarMesesDisponiveis = () => {
@@ -554,6 +619,86 @@ const AdminConfiguracoes = () => {
 
             <Button onClick={salvarConfigNotif} disabled={savingNotif}>
               {savingNotif ? "Salvando..." : "Salvar Configurações de Notificação"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Configuração PIX */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Configuração do PIX
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Chave PIX</Label>
+              <Input
+                value={configPix.pix_chave}
+                onChange={(e) => setConfigPix({ ...configPix, pix_chave: e.target.value })}
+                placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+              />
+              <p className="text-xs text-muted-foreground">
+                Será exibida na tela de pagamento do cliente.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>QR Code PIX</Label>
+              <div className="flex items-center gap-3">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleUploadQrCode}
+                    disabled={uploadingQr}
+                  />
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent transition-colors">
+                    <Upload className="w-4 h-4" />
+                    {uploadingQr ? "Enviando..." : "Enviar imagem"}
+                  </span>
+                </label>
+                {configPix.pix_qr_code_url && (
+                  <Button variant="ghost" size="sm" onClick={removerQrCode}>
+                    <X className="w-4 h-4 mr-1" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {configPix.pix_qr_code_url && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Preview do QR Code</Label>
+                <div className="flex items-center gap-4">
+                  <Select
+                    value={pixQrSize}
+                    onValueChange={(v) => setPixQrSize(v as "small" | "medium" | "large")}
+                  >
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Pequeno</SelectItem>
+                      <SelectItem value="medium">Médio</SelectItem>
+                      <SelectItem value="large">Grande</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="bg-white p-3 rounded-lg border inline-block">
+                  <img
+                    src={configPix.pix_qr_code_url}
+                    alt="QR Code PIX"
+                    className={`${getQrSizeClass()} object-contain`}
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button onClick={salvarConfigPix} disabled={savingPix}>
+              {savingPix ? "Salvando..." : "Salvar Configuração PIX"}
             </Button>
           </CardContent>
         </Card>

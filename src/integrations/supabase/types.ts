@@ -236,6 +236,8 @@ export type Database = {
           notif_venda_som_br: string
           notif_venda_som_sf: string
           notif_venda_som_volume: number
+          pix_chave: string | null
+          pix_qr_code_url: string | null
         }
         Insert: {
           ao_vivo_contador_br_metrica?: string
@@ -251,6 +253,8 @@ export type Database = {
           notif_venda_som_br?: string
           notif_venda_som_sf?: string
           notif_venda_som_volume?: number
+          pix_chave?: string | null
+          pix_qr_code_url?: string | null
         }
         Update: {
           ao_vivo_contador_br_metrica?: string
@@ -266,6 +270,8 @@ export type Database = {
           notif_venda_som_br?: string
           notif_venda_som_sf?: string
           notif_venda_som_volume?: number
+          pix_chave?: string | null
+          pix_qr_code_url?: string | null
         }
         Relationships: []
       }

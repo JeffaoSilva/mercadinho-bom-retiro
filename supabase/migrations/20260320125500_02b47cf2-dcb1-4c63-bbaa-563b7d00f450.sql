@@ -1,0 +1,1 @@
+INSERT INTO storage.buckets (id, name, public) VALUES ('pix-qrcode', 'pix-qrcode', true) ON CONFLICT (id) DO NOTHING;

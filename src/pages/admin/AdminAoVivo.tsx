@@ -45,6 +45,7 @@ interface VendaFeed {
   cliente_nome: string;
   valor_total: number;
   itens_resumo: string;
+  forma_pagamento: string;
 }
 
 type RealtimeStatus = "connecting" | "connected" | "error" | "disconnected";
@@ -158,6 +159,7 @@ const AdminAoVivo = () => {
             cliente_nome: clienteNome,
             valor_total: newSale.valor_total,
             itens_resumo: itensResumo,
+            forma_pagamento: (newSale as any).forma_pagamento || "caderneta",
           };
 
           setVendas((prev) => [novaVenda, ...prev].slice(0, 50));
@@ -202,6 +204,7 @@ const AdminAoVivo = () => {
         cliente_id,
         eh_visitante,
         valor_total,
+        forma_pagamento,
         clientes(nome)
       `)
       .order("criado_em", { ascending: false })
@@ -233,6 +236,7 @@ const AdminAoVivo = () => {
           : (compra.clientes as any)?.nome || "Visitante",
         valor_total: compra.valor_total,
         itens_resumo: itensResumo,
+        forma_pagamento: compra.forma_pagamento || "caderneta",
       });
     }
     setVendas(vendasComItens);
@@ -528,6 +532,15 @@ const AdminAoVivo = () => {
                             mercadinhoId={venda.mercadinho_id}
                             nomeLoja={venda.mercadinho_nome}
                           />
+                          {venda.forma_pagamento === "pix" ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                              PIX
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                              CADERNETA
+                            </span>
+                          )}
                           <span className="font-medium">{venda.cliente_nome}</span>
                         </div>
                         <span className="font-bold text-primary">
