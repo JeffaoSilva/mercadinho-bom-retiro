@@ -116,6 +116,11 @@ const AdminConfiguracoes = () => {
   const [badgeConfigs, setBadgeConfigs] = useState<Record<number, BadgeConfig>>({});
   const [savingBadge, setSavingBadge] = useState<Record<number, boolean>>({});
 
+  // PIX config
+  const [configPix, setConfigPix] = useState<ConfigPix>({ pix_chave: "", pix_qr_code_url: "" });
+  const [savingPix, setSavingPix] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const [pixQrSize, setPixQrSize] = useState<"small" | "medium" | "large">("medium");
   // Modal para adicionar/editar config mensal
   const [showModal, setShowModal] = useState(false);
   const [editingMes, setEditingMes] = useState<string | null>(null);
