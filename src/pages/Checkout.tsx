@@ -91,12 +91,6 @@ const Checkout = () => {
   const handlePixClick = () => setShowPixQR(true);
   const handleConfirmarPix = () => handleFinalizarCompra("pix");
 
-  const copiarChave = () => {
-    if (pixChave) {
-      navigator.clipboard.writeText(pixChave);
-      toast.success("Chave Pix copiada!");
-    }
-  };
 
   if (showSuccess) {
     return (
