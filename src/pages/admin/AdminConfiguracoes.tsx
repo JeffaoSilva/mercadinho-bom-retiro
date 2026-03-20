@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette, Upload, X, QrCode } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { cn } from "@/lib/utils";
 import { playNotifyBeep, BEEP_OPTIONS } from "@/utils/notifySounds";
