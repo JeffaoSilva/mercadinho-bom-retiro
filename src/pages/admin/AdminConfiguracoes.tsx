@@ -45,6 +45,11 @@ interface ConfigSistema {
   bip_volume: number;
 }
 
+interface ConfigPix {
+  pix_chave: string;
+  pix_qr_code_url: string;
+}
+
 interface ConfigNotif {
   notif_venda_popup_ativo: boolean;
   notif_venda_som_ativo: boolean;
