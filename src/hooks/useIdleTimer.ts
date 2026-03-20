@@ -8,7 +8,7 @@ interface UseIdleTimerOptions {
 
 export const useIdleTimer = ({ timeoutSeconds, onIdle, enabled = true }: UseIdleTimerOptions) => {
   const [isIdle, setIsIdle] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onIdleRef = useRef(onIdle);
 
   // Manter referência atualizada do callback

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
+import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 const Checkout = () => {
@@ -22,14 +22,31 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [showPixQR, setShowPixQR] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [pixChave, setPixChave] = useState("");
+  const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
 
   const total = getTotal();
+
+  // Carregar config PIX
+  useEffect(() => {
+    const loadPixConfig = async () => {
+      const { data } = await supabase
+        .from("config_sistema")
+        .select("pix_chave, pix_qr_code_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setPixChave((data as any).pix_chave || "");
+        setPixQrCodeUrl((data as any).pix_qr_code_url || "");
+      }
+    };
+    loadPixConfig();
+  }, []);
 
   const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
     setLoading(true);
 
     try {
-      // Montar payload para RPC segura
       const payload = {
         cliente_id: isVisitante ? null : clienteId,
         mercadinho_id: mercadinhoAtualId || 1,
@@ -46,7 +63,6 @@ const Checkout = () => {
         })),
       };
 
-      // Chamada única à RPC segura (SECURITY DEFINER)
       const { data, error } = await supabase.rpc("criar_compra_kiosk", {
         payload,
       });
@@ -76,6 +92,13 @@ const Checkout = () => {
   const handlePixClick = () => setShowPixQR(true);
   const handleConfirmarPix = () => handleFinalizarCompra("pix");
 
+  const copiarChave = () => {
+    if (pixChave) {
+      navigator.clipboard.writeText(pixChave);
+      toast.success("Chave Pix copiada!");
+    }
+  };
+
   if (showSuccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
@@ -92,7 +115,7 @@ const Checkout = () => {
   if (showPixQR) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8">
+        <div className="w-full max-w-md space-y-6">
           <Button
             variant="ghost"
             size="icon"
@@ -104,20 +127,56 @@ const Checkout = () => {
 
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold">Pagamento PIX</h1>
-            <p className="text-2xl font-bold text-primary">R$ {total.toFixed(2)}</p>
+            <p className="text-lg text-muted-foreground">
+              Agora realize o pagamento via Pix no valor de{" "}
+              <span className="font-bold text-foreground text-2xl">
+                R$ {total.toFixed(2)}
+              </span>
+              {pixChave && (
+                <>
+                  {" "}através do QR Code abaixo ou pela chave Pix{" "}
+                  <span className="font-bold text-foreground break-all">{pixChave}</span>
+                </>
+              )}
+              .
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Após o pagamento, clique em "Confirmar pagamento".
+            </p>
           </div>
 
-          <div className="bg-white p-8 rounded-xl shadow-lg mx-auto w-fit">
-            <div className="w-64 h-64 border-4 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center bg-muted/20">
-              <QrCode className="w-16 h-16 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground text-center px-4">
-                QR Code PIX será gerado aqui quando a chave PIX for configurada
-              </p>
+          {/* Chave Pix copiável */}
+          {pixChave && (
+            <div className="flex items-center justify-center gap-2">
+              <code className="bg-muted px-3 py-2 rounded text-sm font-mono break-all">
+                {pixChave}
+              </code>
+              <Button variant="outline" size="icon" onClick={copiarChave} title="Copiar chave">
+                <Copy className="w-4 h-4" />
+              </Button>
             </div>
-          </div>
+          )}
 
-          <div className="text-center text-sm text-muted-foreground">
-            <p>Escaneie o QR Code acima com o app do seu banco</p>
+          {/* QR Code */}
+          <div className="flex justify-center">
+            {pixQrCodeUrl ? (
+              <div className="bg-white p-4 rounded-xl shadow-lg">
+                <img
+                  src={pixQrCodeUrl}
+                  alt="QR Code PIX"
+                  className="w-64 h-64 object-contain"
+                />
+              </div>
+            ) : (
+              <div className="bg-white p-8 rounded-xl shadow-lg">
+                <div className="w-64 h-64 border-4 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center bg-muted/20">
+                  <QrCode className="w-16 h-16 text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground text-center px-4">
+                    QR Code não configurado
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -183,7 +242,7 @@ const Checkout = () => {
             disabled={loading}
           >
             <Smartphone className="w-8 h-8 mr-4" />
-            Pagar via PIX
+            Registrar compra e pagar no Pix
           </Button>
         </div>
 
