@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode, Copy } from "lucide-react";
+import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 const Checkout = () => {
