@@ -204,6 +204,7 @@ const AdminAoVivo = () => {
         cliente_id,
         eh_visitante,
         valor_total,
+        forma_pagamento,
         clientes(nome)
       `)
       .order("criado_em", { ascending: false })
