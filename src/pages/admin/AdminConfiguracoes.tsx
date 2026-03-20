@@ -162,6 +162,10 @@ const AdminConfiguracoes = () => {
         notif_venda_som_br: sistema.notif_venda_som_br,
         notif_venda_som_sf: sistema.notif_venda_som_sf,
       });
+      setConfigPix({
+        pix_chave: (sistema as any).pix_chave || "",
+        pix_qr_code_url: (sistema as any).pix_qr_code_url || "",
+      });
     }
 
     // Carregar config_pagamentos_mensais
