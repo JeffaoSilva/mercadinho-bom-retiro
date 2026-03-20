@@ -127,22 +127,12 @@ const Checkout = () => {
               R$ {total.toFixed(2)}
             </p>
             <p className="text-lg text-muted-foreground">
-              {pixChave ? (
-                <>
-                  através do QR Code abaixo ou pela chave Pix{" "}
-                  <span className="font-bold text-foreground">{pixChave}</span>.
-                </>
-              ) : (
-                <>através do QR Code abaixo.</>
-              )}
-            </p>
-            <p className="text-lg text-muted-foreground">
               Após o pagamento, clique em "Confirmar pagamento".
             </p>
           </div>
 
-          {/* QR Code */}
-          <div className="flex justify-center">
+          {/* QR Code + Chave Pix */}
+          <div className="flex flex-col items-center gap-3">
             {pixQrCodeUrl ? (
               <div className="bg-white p-4 rounded-xl shadow-lg">
                 <img
@@ -160,6 +150,11 @@ const Checkout = () => {
                   </p>
                 </div>
               </div>
+            )}
+            {pixChave && (
+              <p className="text-base font-semibold text-foreground text-center">
+                {pixChave}
+              </p>
             )}
           </div>
 
