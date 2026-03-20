@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode, Copy } from "lucide-react";
+import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 const Checkout = () => {
@@ -75,7 +75,6 @@ const Checkout = () => {
       }
 
       setShowSuccess(true);
-      toast.success("Compra finalizada com sucesso!");
 
       setTimeout(() => {
         reset();
@@ -92,12 +91,6 @@ const Checkout = () => {
   const handlePixClick = () => setShowPixQR(true);
   const handleConfirmarPix = () => handleFinalizarCompra("pix");
 
-  const copiarChave = () => {
-    if (pixChave) {
-      navigator.clipboard.writeText(pixChave);
-      toast.success("Chave Pix copiada!");
-    }
-  };
 
   if (showSuccess) {
     return (
@@ -128,34 +121,25 @@ const Checkout = () => {
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold">Pagamento PIX</h1>
             <p className="text-lg text-muted-foreground">
-              Agora realize o pagamento via Pix no valor de{" "}
-              <span className="font-bold text-foreground text-2xl">
-                R$ {total.toFixed(2)}
-              </span>
-              {pixChave && (
-                <>
-                  {" "}através do QR Code abaixo ou pela chave Pix{" "}
-                  <span className="font-bold text-foreground break-all">{pixChave}</span>
-                </>
-              )}
-              .
+              Agora realize o pagamento via Pix no valor de
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-3xl font-bold text-foreground">
+              R$ {total.toFixed(2)}
+            </p>
+            <p className="text-lg text-muted-foreground">
+              {pixChave ? (
+                <>
+                  através do QR Code abaixo ou pela chave Pix{" "}
+                  <span className="font-bold text-foreground">{pixChave}</span>.
+                </>
+              ) : (
+                <>através do QR Code abaixo.</>
+              )}
+            </p>
+            <p className="text-lg text-muted-foreground">
               Após o pagamento, clique em "Confirmar pagamento".
             </p>
           </div>
-
-          {/* Chave Pix copiável */}
-          {pixChave && (
-            <div className="flex items-center justify-center gap-2">
-              <code className="bg-muted px-3 py-2 rounded text-sm font-mono break-all">
-                {pixChave}
-              </code>
-              <Button variant="outline" size="icon" onClick={copiarChave} title="Copiar chave">
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
 
           {/* QR Code */}
           <div className="flex justify-center">
