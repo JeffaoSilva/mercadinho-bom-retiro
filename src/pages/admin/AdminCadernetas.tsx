@@ -34,7 +34,7 @@ import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { estornarCompraCompleta } from "@/services/estornos";
 import { format } from "date-fns";
-import MoneyInput from "@/components/MoneyInput";
+import { MoneyInput } from "@/components/MoneyInput";
 
 interface ClienteDebito {
   cliente_id: number;
