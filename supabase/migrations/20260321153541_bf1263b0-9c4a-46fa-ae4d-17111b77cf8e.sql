@@ -1,0 +1,1 @@
+ALTER TABLE public.pins DROP CONSTRAINT pins_pin_key;
