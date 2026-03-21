@@ -149,12 +149,10 @@ const AdminCompras = () => {
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" onClick={() => navigate("/admin")}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Voltar
-      </Button>
-
-      <h1 className="text-2xl font-bold">Compras / Cadernetas</h1>
+      <div className="flex items-center gap-4">
+        <BackButton to="/admin" />
+        <h1 className="text-2xl font-bold">Compras / Cadernetas</h1>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
