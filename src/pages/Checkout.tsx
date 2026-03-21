@@ -126,8 +126,8 @@ const Checkout = () => {
             <p className="text-3xl font-bold text-foreground">
               R$ {total.toFixed(2)}
             </p>
-            <p className="text-lg text-muted-foreground">
-              Após o pagamento, clique em "Confirmar pagamento".
+            <p className="text-2xl text-muted-foreground">
+              Só após pagar via PIX, clique no botão abaixo "Confirmar pagamento".
             </p>
           </div>
 
