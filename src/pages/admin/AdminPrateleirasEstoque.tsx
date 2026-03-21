@@ -27,7 +27,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown, ArrowRightLeft } from "lucide-react";
+import { Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown, ArrowRightLeft } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import CameraScanner from "@/components/CameraScanner";
