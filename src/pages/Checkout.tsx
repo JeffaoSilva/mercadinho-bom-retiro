@@ -110,14 +110,7 @@ const Checkout = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
         <div className="w-full max-w-md space-y-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowPixQR(false)}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </Button>
+          <BackButton onClick={() => setShowPixQR(false)} />
 
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold">Pagamento PIX</h1>
