@@ -8,6 +8,7 @@ import { useCheckout } from "@/hooks/useCheckout";
 import { useConfigRealtime } from "@/hooks/useConfigRealtime";
 import { useConfigSistemaStore } from "@/stores/configSistemaStore";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import BackButton from "@/components/BackButton";
 
 type ItemHistorico = {
   produto_id: number;
@@ -217,7 +218,10 @@ export default function AreaCliente() {
   return (
     <div className="min-h-screen p-4 flex flex-col gap-4">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Área do Cliente</h1>
+        <div className="flex items-center gap-4">
+          <BackButton to="/" />
+          <h1 className="text-2xl font-bold">Área do Cliente</h1>
+        </div>
 
         <div className="flex items-center justify-between gap-2">
           <div className="text-lg font-semibold">
@@ -301,11 +305,6 @@ export default function AreaCliente() {
         </div>
       )}
 
-      <div className="mt-auto">
-        <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
-          Voltar pra Home
-        </Button>
-      </div>
     </div>
   );
 }

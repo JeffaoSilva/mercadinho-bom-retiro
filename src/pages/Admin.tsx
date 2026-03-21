@@ -11,7 +11,6 @@ import {
   ShoppingBag,
   Users,
   LogOut,
-  ArrowLeft,
   Loader2,
   LayoutGrid,
   Settings,
@@ -20,6 +19,7 @@ import {
   Radio,
 } from "lucide-react";
 import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
+import BackButton from "@/components/BackButton";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 
 const Admin = () => {
@@ -94,14 +94,7 @@ const Admin = () => {
               {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
               Entrar
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-              className="w-full h-12"
-            >
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Voltar
-            </Button>
+            <BackButton to="/" />
           </div>
         </div>
       </div>

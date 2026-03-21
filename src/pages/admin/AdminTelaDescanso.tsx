@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Upload, Trash2, Image } from "lucide-react";
+import { Upload, Trash2, Image } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -308,9 +309,7 @@ const AdminTelaDescanso = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/admin/configuracoes")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <BackButton to="/admin/configuracoes" />
           <h1 className="text-2xl font-bold">Tela de Descanso</h1>
         </div>
 

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCheckout } from "@/hooks/useCheckout";
+import BackButton from "@/components/BackButton";
 
 type ClienteKiosk = {
   id: number;
@@ -67,10 +68,15 @@ export default function AreaClienteSelect() {
   return (
     <div className="min-h-screen p-4 flex flex-col gap-4">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Área do Cliente</h1>
-        <p className="text-muted-foreground">
-          Selecione seu nome para ver seu histórico e fatura.
-        </p>
+        <div className="flex items-center gap-4">
+          <BackButton to="/" />
+          <div>
+            <h1 className="text-2xl font-bold">Área do Cliente</h1>
+            <p className="text-muted-foreground">
+              Selecione seu nome para ver seu histórico e fatura.
+            </p>
+          </div>
+        </div>
 
         <Input
           placeholder="Buscar cliente..."
@@ -98,15 +104,6 @@ export default function AreaClienteSelect() {
         </div>
       )}
 
-      <div className="mt-auto">
-        <Button
-          variant="outline"
-          className="w-full h-12"
-          onClick={() => navigate("/")}
-        >
-          Voltar
-        </Button>
-      </div>
     </div>
   );
 }

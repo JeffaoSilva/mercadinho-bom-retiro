@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Volume2,
   VolumeX,
   Radio,
@@ -28,6 +27,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useConfigNotifStore, ConfigNotif } from "@/stores/configNotifStore";
 import { useSaleNotifications } from "@/hooks/useSaleNotifications";
@@ -376,9 +376,7 @@ const AdminAoVivo = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <BackButton to="/admin" />
             <div className="flex items-center gap-2">
               <Radio className="h-6 w-6 text-destructive animate-pulse" />
               <h1 className="text-2xl sm:text-3xl font-bold">Ao Vivo</h1>

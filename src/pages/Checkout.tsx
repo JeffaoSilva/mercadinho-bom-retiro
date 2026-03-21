@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
+import { Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
 
 const Checkout = () => {
@@ -109,14 +110,7 @@ const Checkout = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
         <div className="w-full max-w-md space-y-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowPixQR(false)}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </Button>
+          <BackButton onClick={() => setShowPixQR(false)} />
 
           <div className="text-center space-y-4">
             <h1 className="text-3xl font-bold">Pagamento PIX</h1>
@@ -185,14 +179,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-2xl space-y-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/cart")}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </Button>
+        <BackButton to="/cart" />
 
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold">Finalizar Compra</h1>
@@ -225,7 +212,7 @@ const Checkout = () => {
           </Button>
         </div>
 
-        <Button variant="ghost" className="w-full" onClick={() => navigate("/cart")}>
+        <Button variant="outline" className="w-full" onClick={() => navigate("/cart")}>
           Voltar ao Carrinho
         </Button>
       </div>

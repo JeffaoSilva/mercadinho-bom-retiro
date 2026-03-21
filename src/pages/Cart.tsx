@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout, CartItem } from "@/hooks/useCheckout";
-import { ArrowLeft, Minus, Plus, Trash2, AlertTriangle, Camera, Keyboard } from "lucide-react";
+import { Minus, Plus, Trash2, AlertTriangle, Camera, Keyboard } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
@@ -480,12 +481,10 @@ const Cart = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={handleBackClick}>
-              <ArrowLeft className="w-6 h-6" />
-            </Button>
+            <BackButton onClick={handleBackClick} />
             <div>
               <h1 className="text-3xl font-bold">Carrinho</h1>
-              <p className="text-lg text-muted-foreground">{clienteNome}</p>
+              <p className="text-2xl font-semibold text-foreground">{clienteNome}</p>
             </div>
           </div>
 

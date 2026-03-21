@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, User } from "lucide-react";
+import { User } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -96,13 +97,7 @@ const SelectClient = () => {
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </Button>
+          <BackButton to="/" />
           <div>
             <h1 className="text-4xl font-bold">Selecione o Cliente</h1>
             {mercadinhoAtualNome && (

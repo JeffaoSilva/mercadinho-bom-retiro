@@ -27,7 +27,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown, ArrowRightLeft } from "lucide-react";
+import { Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown, ArrowRightLeft } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import CameraScanner from "@/components/CameraScanner";
@@ -384,9 +385,7 @@ const AdminPrateleirasEstoque = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
+          <BackButton to="/admin" />
           <h1 className="text-3xl font-bold">Prateleiras / Estoque</h1>
         </div>
 

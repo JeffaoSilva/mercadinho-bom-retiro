@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette, Upload, X, QrCode } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarIcon, Monitor, Volume2, Palette, Upload, X, QrCode } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { cn } from "@/lib/utils";
 import { playNotifyBeep, BEEP_OPTIONS } from "@/utils/notifySounds";
@@ -454,9 +455,7 @@ const AdminConfiguracoes = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <BackButton to="/admin" />
           <h1 className="text-3xl font-bold">Configurações</h1>
         </div>
 

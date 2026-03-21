@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Search, Package, Loader2, CheckCircle, Camera } from "lucide-react";
+import { Search, Package, Loader2, CheckCircle, Camera } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
@@ -277,9 +278,7 @@ const AdminEntradaEstoque = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="w-6 h-6" />
-          </Button>
+          <BackButton to="/admin" />
           <h1 className="text-3xl font-bold">Entrada / Reposição</h1>
         </div>
 
