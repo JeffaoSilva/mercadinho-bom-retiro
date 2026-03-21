@@ -29,11 +29,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Eye, CheckCircle, RotateCcw, Trash2, Users } from "lucide-react";
+import { Search, Eye, CheckCircle, RotateCcw, Trash2, Users, MinusCircle } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { estornarCompraCompleta } from "@/services/estornos";
 import { format } from "date-fns";
+import { MoneyInput } from "@/components/MoneyInput";
 
 interface ClienteDebito {
   cliente_id: number;
@@ -68,6 +69,12 @@ interface Compra {
   cliente?: { nome: string };
 }
 
+interface Abatimento {
+  id: number;
+  valor: number;
+  criado_em: string;
+}
+
 const AdminCadernetas = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
@@ -76,15 +83,24 @@ const AdminCadernetas = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   
+  // Abatimentos por cliente (mapa cliente_id -> total)
+  const [abatimentosPorCliente, setAbatimentosPorCliente] = useState<Record<number, number>>({});
+  
   // Modal de detalhes do cliente
   const [selectedCliente, setSelectedCliente] = useState<ClienteDebito | null>(null);
   const [comprasCliente, setComprasCliente] = useState<Compra[]>([]);
+  const [abatimentosCliente, setAbatimentosCliente] = useState<Abatimento[]>([]);
   const [showDetalhes, setShowDetalhes] = useState(false);
   
   // Modal de itens da compra
   const [selectedCompra, setSelectedCompra] = useState<Compra | null>(null);
   const [itensCompra, setItensCompra] = useState<ItemCompra[]>([]);
   const [showItens, setShowItens] = useState(false);
+  
+  // Modal de abatimento
+  const [showAbatimento, setShowAbatimento] = useState(false);
+  const [abatimentoValor, setAbatimentoValor] = useState(0);
+  const [salvandoAbatimento, setSalvandoAbatimento] = useState(false);
   
   // Confirmações
   const [confirmPagarMes, setConfirmPagarMes] = useState<string | null>(null);
@@ -114,13 +130,25 @@ const AdminCadernetas = () => {
   const loadDebitos = async () => {
     setLoading(true);
     
-    const { data, error } = await supabase.rpc("admin_listar_clientes_debitos" as any);
+    const [debitosRes, abatimentosRes] = await Promise.all([
+      supabase.rpc("admin_listar_clientes_debitos" as any),
+      supabase.from("abatimentos" as any).select("cliente_id, valor"),
+    ]);
     
-    if (error) {
-      console.error("Erro ao carregar débitos", error);
+    if (debitosRes.error) {
+      console.error("Erro ao carregar débitos", debitosRes.error);
       toast.error("Erro ao carregar dados");
     } else {
-      setDebitos(data as unknown as DebitosPayload);
+      setDebitos(debitosRes.data as unknown as DebitosPayload);
+    }
+
+    // Agregar abatimentos por cliente
+    if (!abatimentosRes.error && abatimentosRes.data) {
+      const mapa: Record<number, number> = {};
+      for (const ab of abatimentosRes.data as any[]) {
+        mapa[ab.cliente_id] = (mapa[ab.cliente_id] || 0) + Number(ab.valor);
+      }
+      setAbatimentosPorCliente(mapa);
     }
     
     setLoading(false);
@@ -129,19 +157,27 @@ const AdminCadernetas = () => {
   const abrirDetalhesCliente = async (cliente: ClienteDebito) => {
     setSelectedCliente(cliente);
     
-    const { data, error } = await supabase
-      .from("compras")
-      .select("id, criado_em, valor_total, mes_referencia, forma_pagamento" as any)
-      .eq("cliente_id", cliente.cliente_id)
-      .eq("paga", false)
-      .order("criado_em", { ascending: false });
+    const [comprasRes, abatimentosRes] = await Promise.all([
+      supabase
+        .from("compras")
+        .select("id, criado_em, valor_total, mes_referencia, forma_pagamento" as any)
+        .eq("cliente_id", cliente.cliente_id)
+        .eq("paga", false)
+        .order("criado_em", { ascending: false }),
+      supabase
+        .from("abatimentos" as any)
+        .select("id, valor, criado_em")
+        .eq("cliente_id", cliente.cliente_id)
+        .order("criado_em", { ascending: false }),
+    ]);
     
-    if (error) {
+    if (comprasRes.error) {
       toast.error("Erro ao carregar compras");
       return;
     }
     
-    setComprasCliente((data || []) as unknown as Compra[]);
+    setComprasCliente((comprasRes.data || []) as unknown as Compra[]);
+    setAbatimentosCliente((abatimentosRes.data || []) as unknown as Abatimento[]);
     setShowDetalhes(true);
   };
 
@@ -222,7 +258,6 @@ const AdminCadernetas = () => {
         setShowItens(false);
         setShowDetalhes(false);
         loadDebitos();
-        // Se estava vendo visitantes, recarrega também
         if (showVisitantes) loadComprasVisitante();
       } else {
         toast.success("Item estornado com sucesso");
@@ -236,11 +271,10 @@ const AdminCadernetas = () => {
   const handleEstornoCompraCompleta = async () => {
     if (!selectedCompra) return;
 
-    // Usa a RPC que estorna todos itens para suas prateleiras de origem automaticamente
     const result = await estornarCompraCompleta(
       selectedCompra.id,
-      estornoComDevolucao, // usa o estado de devolução configurado
-      null // motivo opcional
+      estornoComDevolucao,
+      null
     );
     
     setConfirmEstornoCompra(false);
@@ -250,10 +284,33 @@ const AdminCadernetas = () => {
       setShowItens(false);
       setShowDetalhes(false);
       loadDebitos();
-      // Se estava vendo visitantes, recarrega também
       if (showVisitantes) loadComprasVisitante();
     } else {
       toast.error(result.error || "Erro ao estornar compra");
+    }
+  };
+
+  // Abatimento
+  const salvarAbatimento = async () => {
+    if (!selectedCliente || abatimentoValor <= 0) return;
+    setSalvandoAbatimento(true);
+
+    const { error } = await supabase.from("abatimentos" as any).insert({
+      cliente_id: selectedCliente.cliente_id,
+      valor: abatimentoValor,
+    } as any);
+
+    setSalvandoAbatimento(false);
+    setShowAbatimento(false);
+    setAbatimentoValor(0);
+
+    if (error) {
+      toast.error("Erro ao registrar abatimento");
+    } else {
+      toast.success("Abatimento registrado com sucesso");
+      // Reload detalhes + lista
+      await loadDebitos();
+      abrirDetalhesCliente(selectedCliente);
     }
   };
 
@@ -311,9 +368,20 @@ const AdminCadernetas = () => {
     c.cliente_nome.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
-  const clientesComDebito = clientesFiltrados.filter(
-    (c) => c.total_mes_atual > 0 || c.total_mes_anterior > 0 || c.total_atrasado > 0
-  );
+  const clientesComDebito = clientesFiltrados.filter((c) => {
+    const totalCompras = c.total_mes_atual + c.total_mes_anterior + c.total_atrasado;
+    const totalAbatido = abatimentosPorCliente[c.cliente_id] || 0;
+    return (totalCompras - totalAbatido) > 0;
+  });
+
+  // Calcula total devido no detalhe do cliente
+  const totalDevidoCliente = selectedCliente
+    ? (selectedCliente.total_mes_atual + selectedCliente.total_mes_anterior + selectedCliente.total_atrasado)
+      - (abatimentosPorCliente[selectedCliente.cliente_id] || 0)
+    : 0;
+
+  // Total de abatimentos do cliente selecionado
+  const totalAbatimentosCliente = abatimentosCliente.reduce((s, a) => s + Number(a.valor), 0);
 
   if (loading) {
     return (
@@ -376,7 +444,9 @@ const AdminCadernetas = () => {
               </TableHeader>
               <TableBody>
                 {clientesComDebito.map((cliente) => {
-                  const total = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
+                  const totalCompras = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
+                  const totalAbatido = abatimentosPorCliente[cliente.cliente_id] || 0;
+                  const totalDevido = Math.max(totalCompras - totalAbatido, 0);
                   return (
                     <TableRow key={cliente.cliente_id}>
                       <TableCell className="font-medium">{cliente.cliente_nome}</TableCell>
@@ -390,7 +460,7 @@ const AdminCadernetas = () => {
                         {cliente.total_atrasado > 0 ? `R$ ${Number(cliente.total_atrasado).toFixed(2)}` : "-"}
                       </TableCell>
                       <TableCell className="text-right font-bold">
-                        R$ {total.toFixed(2)}
+                        R$ {totalDevido.toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" onClick={() => abrirDetalhesCliente(cliente)}>
@@ -414,6 +484,29 @@ const AdminCadernetas = () => {
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
+            {/* Total devido */}
+            <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Total devido</p>
+                <p className="text-2xl font-bold">R$ {Math.max(totalDevidoCliente, 0).toFixed(2)}</p>
+                {totalAbatimentosCliente > 0 && (
+                  <p className="text-sm text-green-600">
+                    Abatimentos: -R$ {totalAbatimentosCliente.toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  setAbatimentoValor(0);
+                  setShowAbatimento(true);
+                }}
+              >
+                <MinusCircle className="h-4 w-4 mr-2" />
+                Abater valor
+              </Button>
+            </div>
+
             {/* Ações rápidas */}
             <div className="flex flex-wrap gap-2">
               {selectedCliente && selectedCliente.total_mes_anterior > 0 && (
@@ -438,6 +531,19 @@ const AdminCadernetas = () => {
                 </Button>
               )}
             </div>
+
+            {/* Abatimentos registrados */}
+            {abatimentosCliente.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground">Abatimentos</h3>
+                {abatimentosCliente.map((ab) => (
+                  <div key={ab.id} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                    <span className="text-sm text-green-700">{formatarData(ab.criado_em)}</span>
+                    <span className="font-semibold text-green-700">-R$ {Number(ab.valor).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {comprasCliente.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">Nenhuma compra em aberto.</p>
@@ -471,6 +577,31 @@ const AdminCadernetas = () => {
                 </TableBody>
               </Table>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Abatimento */}
+      <Dialog open={showAbatimento} onOpenChange={setShowAbatimento}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Abater valor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Informe o valor a abater da dívida de <strong>{selectedCliente?.cliente_nome}</strong>.
+            </p>
+            <MoneyInput
+              value={abatimentoValor}
+              onChange={setAbatimentoValor}
+            />
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              disabled={abatimentoValor <= 0 || salvandoAbatimento}
+              onClick={salvarAbatimento}
+            >
+              {salvandoAbatimento ? "Salvando..." : "Confirmar abatimento"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

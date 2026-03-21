@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      abatimentos: {
+        Row: {
+          cliente_id: number
+          criado_em: string
+          id: number
+          valor: number
+        }
+        Insert: {
+          cliente_id: number
+          criado_em?: string
+          id?: number
+          valor: number
+        }
+        Update: {
+          cliente_id?: number
+          criado_em?: string
+          id?: number
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abatimentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abatimentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_kiosk"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           ativo: boolean
