@@ -11,7 +11,6 @@ import {
   ShoppingBag,
   Users,
   LogOut,
-  ArrowLeft,
   Loader2,
   LayoutGrid,
   Settings,
