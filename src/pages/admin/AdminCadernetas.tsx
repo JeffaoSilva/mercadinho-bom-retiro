@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Eye, CheckCircle, RotateCcw, Trash2, Users } from "lucide-react";
+import { Search, Eye, CheckCircle, RotateCcw, Trash2, Users } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { estornarCompraCompleta } from "@/services/estornos";
 import { format } from "date-fns";
