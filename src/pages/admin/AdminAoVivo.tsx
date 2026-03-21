@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Volume2,
   VolumeX,
   Radio,
@@ -28,6 +27,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useConfigNotifStore, ConfigNotif } from "@/stores/configNotifStore";
 import { useSaleNotifications } from "@/hooks/useSaleNotifications";
