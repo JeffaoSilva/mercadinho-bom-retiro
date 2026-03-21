@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { ArrowLeft, User } from "lucide-react";
+import { User } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
 import {
   Dialog,
