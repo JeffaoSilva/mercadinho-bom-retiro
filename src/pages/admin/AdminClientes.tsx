@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Key, History, Search } from "lucide-react";
+import { Plus, Pencil, Key, History, Search } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
 
