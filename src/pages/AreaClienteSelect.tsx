@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCheckout } from "@/hooks/useCheckout";
+import BackButton from "@/components/BackButton";
 
 type ClienteKiosk = {
   id: number;
