@@ -14,7 +14,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, Copy, Check, Trash2 } from "lucide-react";
+import { Camera, Copy, Check, Trash2 } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import {
   CodigoTres,
