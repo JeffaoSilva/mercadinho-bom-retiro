@@ -179,14 +179,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-2xl space-y-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/cart")}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </Button>
+        <BackButton to="/cart" />
 
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold">Finalizar Compra</h1>
