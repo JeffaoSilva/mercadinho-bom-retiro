@@ -28,10 +28,16 @@ type CompraHistorico = {
   itens: ItemHistorico[];
 };
 
+type AbatimentoHistorico = {
+  id: number;
+  valor: number;
+  criado_em: string;
+};
+
 type HistoricoPayload = {
   mes_atual: string;
   mes_anterior: string;
-  data_limite: string | null; // "YYYY-MM-DD" ou null
+  data_limite: string | null;
   compras_mes_atual: CompraHistorico[];
   compras_mes_anterior: CompraHistorico[];
   compras_atrasadas: CompraHistorico[];
@@ -42,7 +48,6 @@ export default function AreaCliente() {
   const params = useParams<{ clienteId: string }>();
   const checkout = useCheckout();
 
-  // Ativa realtime para configs
   useConfigRealtime();
   const { configPagamentos } = useConfigSistemaStore();
 
@@ -53,6 +58,7 @@ export default function AreaCliente() {
 
   const [clienteNome, setClienteNome] = useState<string>(clienteNomeStore || "");
   const [historico, setHistorico] = useState<HistoricoPayload | null>(null);
+  const [abatimentos, setAbatimentos] = useState<AbatimentoHistorico[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [showMesAnterior, setShowMesAnterior] = useState(false);
   const [showAtrasadas, setShowAtrasadas] = useState(false);
@@ -60,18 +66,23 @@ export default function AreaCliente() {
   const fetchHistorico = async () => {
     if (!clienteId) return;
 
-    const { data: historicoData, error: errHistorico } = await supabase.rpc(
-      "cliente_historico",
-      { p_cliente_id: clienteId }
-    );
+    const [historicoRes, abatimentosRes] = await Promise.all([
+      supabase.rpc("cliente_historico", { p_cliente_id: clienteId }),
+      supabase
+        .from("abatimentos" as any)
+        .select("id, valor, criado_em")
+        .eq("cliente_id", clienteId)
+        .order("criado_em", { ascending: false }),
+    ]);
 
-    if (errHistorico) {
-      console.error("Erro buscando histórico", errHistorico);
+    if (historicoRes.error) {
+      console.error("Erro buscando histórico", historicoRes.error);
       setHistorico(null);
     } else {
-      const payload = historicoData as HistoricoPayload;
-      setHistorico(payload);
+      setHistorico(historicoRes.data as HistoricoPayload);
     }
+
+    setAbatimentos((abatimentosRes.data || []) as unknown as AbatimentoHistorico[]);
   };
 
   useEffect(() => {
@@ -86,7 +97,6 @@ export default function AreaCliente() {
       try {
         await fetchHistorico();
 
-        // Se não tiver nome no store, busca no kiosk pra mostrar
         if (!clienteNomeStore) {
           const { data: cdata } = await supabase
             .from("clientes_kiosk")
@@ -106,7 +116,6 @@ export default function AreaCliente() {
     init();
   }, [clienteId, clienteNomeStore, navigate]);
 
-  // Re-calcula quando config_pagamentos muda (realtime)
   const dataLimiteRealtime = useMemo(() => {
     if (!historico) return null;
     const configMesAnterior = configPagamentos.find(
@@ -118,6 +127,11 @@ export default function AreaCliente() {
   const comprasMesAtual = historico?.compras_mes_atual ?? [];
   const comprasMesAnterior = historico?.compras_mes_anterior ?? [];
   const comprasAtrasadas = historico?.compras_atrasadas ?? [];
+
+  const totalAbatimentos = useMemo(() =>
+    abatimentos.reduce((sum, a) => sum + Number(a.valor), 0),
+    [abatimentos]
+  );
 
   const totalMesAnterior = useMemo(() =>
     comprasMesAnterior.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
@@ -132,32 +146,23 @@ export default function AreaCliente() {
   const temMesAnteriorAberto = comprasMesAnterior.length > 0;
   const temAtrasadas = comprasAtrasadas.length > 0;
 
-  // Lógica dos botões de cobrança baseada em data_limite (DATE)
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
   const dataLimiteParsed = dataLimiteRealtime ? new Date(dataLimiteRealtime + "T00:00:00") : null;
 
-  // Botão "Fatura para pagar": aparece se tem mes anterior em aberto E (não tem data_limite OU hoje <= data_limite)
   const mostrarBotaoPagar = temMesAnteriorAberto && (!dataLimiteParsed || hoje <= dataLimiteParsed);
-
-  // Botão "Fatura atrasada": aparece se tem mes anterior em aberto E data_limite existe E hoje > data_limite
   const mostrarBotaoAtrasada = temMesAnteriorAberto && dataLimiteParsed && hoje > dataLimiteParsed;
-
-  // Ou se só tem atrasadas antigas (sem mes anterior)
   const mostrarSoAtrasadasAntigas = !temMesAnteriorAberto && temAtrasadas;
 
-  // Valor do botão de atraso inclui mês anterior se passou da data limite
   const valorBotaoAtrasada = mostrarBotaoAtrasada
     ? totalMesAnterior + totalAtrasado
     : totalAtrasado;
 
-  // Combina compras para exibição quando clica no botão atrasada
   const comprasParaExibirAtrasadas = mostrarBotaoAtrasada
     ? [...comprasMesAnterior, ...comprasAtrasadas]
     : comprasAtrasadas;
 
-  // Formata data limite para exibição (DD/MM)
   const formatarDataLimite = (dataStr: string | null) => {
     if (!dataStr) return null;
     const [ano, mes, dia] = dataStr.split("-");
@@ -214,6 +219,30 @@ export default function AreaCliente() {
       ))}
     </>
   );
+
+  const renderAbatimentos = () => {
+    if (abatimentos.length === 0) return null;
+    return (
+      <>
+        {abatimentos.map((ab) => (
+          <div key={ab.id}>
+            <Card className="rounded-2xl border-green-200 bg-green-50">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-sm text-green-700">Abatimento</div>
+                  <div className="text-xs text-green-600">{formatarDataHora(ab.criado_em)}</div>
+                </div>
+                <div className="font-bold text-green-700">
+                  -R$ {Number(ab.valor).toFixed(2)}
+                </div>
+              </CardContent>
+            </Card>
+            <div className="h-2" />
+          </div>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen p-4 flex flex-col gap-4">
@@ -283,23 +312,23 @@ export default function AreaCliente() {
         </div>
       )}
 
-      {!carregando && comprasMesAtual.length === 0 && (
+      {!carregando && comprasMesAtual.length === 0 && abatimentos.length === 0 && (
         <div className="text-center text-muted-foreground mt-6">
           Nenhuma compra em aberto neste mês.
         </div>
       )}
 
-      {!carregando && comprasMesAtual.length > 0 && (
+      {!carregando && (comprasMesAtual.length > 0 || abatimentos.length > 0) && (
         <div className="flex flex-col gap-6">
-          {/* FATURA DO MÊS */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Fatura do mês</h2>
               <div className="text-sm font-semibold">
-                Total: R$ {totalLote(comprasMesAtual).toFixed(2)}
+                Total: R$ {Math.max(totalLote(comprasMesAtual) - totalAbatimentos, 0).toFixed(2)}
               </div>
             </div>
 
+            {renderAbatimentos()}
             {renderCompras(comprasMesAtual)}
           </section>
         </div>
