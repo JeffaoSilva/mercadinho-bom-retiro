@@ -94,14 +94,7 @@ const Admin = () => {
               {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
               Entrar
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-              className="w-full h-12"
-            >
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Voltar
-            </Button>
+            <BackButton to="/" />
           </div>
         </div>
       </div>

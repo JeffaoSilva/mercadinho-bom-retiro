@@ -305,11 +305,6 @@ export default function AreaCliente() {
         </div>
       )}
 
-      <div className="mt-auto">
-        <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
-          Voltar pra Home
-        </Button>
-      </div>
     </div>
   );
 }

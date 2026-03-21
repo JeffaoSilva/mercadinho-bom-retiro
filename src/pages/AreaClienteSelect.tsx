@@ -104,15 +104,6 @@ export default function AreaClienteSelect() {
         </div>
       )}
 
-      <div className="mt-auto">
-        <Button
-          variant="outline"
-          className="w-full h-12"
-          onClick={() => navigate("/")}
-        >
-          Voltar
-        </Button>
-      </div>
     </div>
   );
 }

@@ -212,7 +212,7 @@ const Checkout = () => {
           </Button>
         </div>
 
-        <Button variant="ghost" className="w-full" onClick={() => navigate("/cart")}>
+        <Button variant="outline" className="w-full" onClick={() => navigate("/cart")}>
           Voltar ao Carrinho
         </Button>
       </div>
