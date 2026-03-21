@@ -8,6 +8,7 @@ import { useCheckout } from "@/hooks/useCheckout";
 import { useConfigRealtime } from "@/hooks/useConfigRealtime";
 import { useConfigSistemaStore } from "@/stores/configSistemaStore";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import BackButton from "@/components/BackButton";
 
 type ItemHistorico = {
   produto_id: number;
