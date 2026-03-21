@@ -579,9 +579,7 @@ const AdminProdutos = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <BackButton to="/admin" />
             <h1 className="text-3xl font-bold">Produtos</h1>
           </div>
           <Button onClick={openNew}>
