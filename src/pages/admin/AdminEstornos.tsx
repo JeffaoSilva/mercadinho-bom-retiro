@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Trash2, X } from "lucide-react";
+import { Search, Trash2, X } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
 
