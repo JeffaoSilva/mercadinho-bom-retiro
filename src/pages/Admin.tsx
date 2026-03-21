@@ -19,6 +19,7 @@ import {
   Radio,
 } from "lucide-react";
 import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
+import BackButton from "@/components/BackButton";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 
 const Admin = () => {
