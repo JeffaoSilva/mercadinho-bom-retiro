@@ -710,6 +710,50 @@ export type Database = {
           },
         ]
       }
+      retiradas: {
+        Row: {
+          criado_em: string
+          descricao: string
+          id: number
+          motivo: string
+          origem: string
+          preco_compra_snapshot: number | null
+          preco_venda_snapshot: number
+          produto_id: number
+          quantidade: number
+        }
+        Insert: {
+          criado_em?: string
+          descricao: string
+          id?: number
+          motivo: string
+          origem: string
+          preco_compra_snapshot?: number | null
+          preco_venda_snapshot: number
+          produto_id: number
+          quantidade: number
+        }
+        Update: {
+          criado_em?: string
+          descricao?: string
+          id?: number
+          motivo?: string
+          origem?: string
+          preco_compra_snapshot?: number | null
+          preco_venda_snapshot?: number
+          produto_id?: number
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retiradas_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tablets: {
         Row: {
           ativo: boolean
