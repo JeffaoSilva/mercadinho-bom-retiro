@@ -531,15 +531,7 @@ const AdminAoVivo = () => {
                             mercadinhoId={venda.mercadinho_id}
                             nomeLoja={venda.mercadinho_nome}
                           />
-                          {venda.forma_pagamento === "pix" ? (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
-                              PIX
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                              CADERNETA
-                            </span>
-                          )}
+                          <PaymentBadge formaPagamento={venda.forma_pagamento} />
                           <span className="font-medium">{venda.cliente_nome}</span>
                         </div>
                         <span className="font-bold text-primary">
