@@ -35,6 +35,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { estornarCompraCompleta } from "@/services/estornos";
 import { format } from "date-fns";
 import { MoneyInput } from "@/components/MoneyInput";
+import { PaymentBadge } from "@/components/PaymentBadge";
 
 interface ClienteDebito {
   cliente_id: number;
@@ -42,6 +43,7 @@ interface ClienteDebito {
   total_mes_atual: number;
   total_mes_anterior: number;
   total_atrasado: number;
+  total_pix: number;
 }
 
 interface DebitosPayload {
@@ -83,37 +85,29 @@ const AdminCadernetas = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   
-  // Abatimentos por cliente (mapa cliente_id -> total)
   const [abatimentosPorCliente, setAbatimentosPorCliente] = useState<Record<number, number>>({});
   
-  // Modal de detalhes do cliente
   const [selectedCliente, setSelectedCliente] = useState<ClienteDebito | null>(null);
   const [comprasCliente, setComprasCliente] = useState<Compra[]>([]);
   const [abatimentosCliente, setAbatimentosCliente] = useState<Abatimento[]>([]);
   const [showDetalhes, setShowDetalhes] = useState(false);
   
-  // Modal de itens da compra
   const [selectedCompra, setSelectedCompra] = useState<Compra | null>(null);
   const [itensCompra, setItensCompra] = useState<ItemCompra[]>([]);
   const [showItens, setShowItens] = useState(false);
   
-  // Modal de abatimento
   const [showAbatimento, setShowAbatimento] = useState(false);
   const [abatimentoValor, setAbatimentoValor] = useState(0);
   const [salvandoAbatimento, setSalvandoAbatimento] = useState(false);
   
-  // Confirmações
   const [confirmPagarMes, setConfirmPagarMes] = useState<string | null>(null);
   const [confirmPagarAtrasadas, setConfirmPagarAtrasadas] = useState(false);
   
-  // Estorno de item
   const [itemParaEstornar, setItemParaEstornar] = useState<ItemCompra | null>(null);
   const [estornoComDevolucao, setEstornoComDevolucao] = useState(true);
 
-  // Estorno de compra completa
   const [confirmEstornoCompra, setConfirmEstornoCompra] = useState(false);
 
-  // Compras de visitante
   const [showVisitantes, setShowVisitantes] = useState(false);
   const [comprasVisitante, setComprasVisitante] = useState<Compra[]>([]);
   const [loadingVisitantes, setLoadingVisitantes] = useState(false);
@@ -142,7 +136,6 @@ const AdminCadernetas = () => {
       setDebitos(debitosRes.data as unknown as DebitosPayload);
     }
 
-    // Agregar abatimentos por cliente
     if (!abatimentosRes.error && abatimentosRes.data) {
       const mapa: Record<number, number> = {};
       for (const ab of abatimentosRes.data as any[]) {
@@ -290,7 +283,6 @@ const AdminCadernetas = () => {
     }
   };
 
-  // Abatimento
   const salvarAbatimento = async () => {
     if (!selectedCliente || abatimentoValor <= 0) return;
     setSalvandoAbatimento(true);
@@ -308,13 +300,11 @@ const AdminCadernetas = () => {
       toast.error("Erro ao registrar abatimento");
     } else {
       toast.success("Abatimento registrado com sucesso");
-      // Reload detalhes + lista
       await loadDebitos();
       abrirDetalhesCliente(selectedCliente);
     }
   };
 
-  // Compras de visitante
   const loadComprasVisitante = async () => {
     setLoadingVisitantes(true);
     
@@ -369,19 +359,23 @@ const AdminCadernetas = () => {
   ) || [];
 
   const clientesComDebito = clientesFiltrados.filter((c) => {
-    const totalCompras = c.total_mes_atual + c.total_mes_anterior + c.total_atrasado;
+    const totalCaderneta = c.total_mes_atual + c.total_mes_anterior + c.total_atrasado;
     const totalAbatido = abatimentosPorCliente[c.cliente_id] || 0;
-    return (totalCompras - totalAbatido) > 0;
+    const totalDevido = totalCaderneta - totalAbatido;
+    return totalDevido > 0 || c.total_pix > 0;
   });
 
-  // Calcula total devido no detalhe do cliente
-  const totalDevidoCliente = selectedCliente
+  // Totais do detalhe do cliente
+  const totalCadernetaCliente = selectedCliente
     ? (selectedCliente.total_mes_atual + selectedCliente.total_mes_anterior + selectedCliente.total_atrasado)
-      - (abatimentosPorCliente[selectedCliente.cliente_id] || 0)
     : 0;
-
-  // Total de abatimentos do cliente selecionado
   const totalAbatimentosCliente = abatimentosCliente.reduce((s, a) => s + Number(a.valor), 0);
+  const totalDevidoCliente = Math.max(totalCadernetaCliente - totalAbatimentosCliente, 0);
+  const totalPixCliente = selectedCliente?.total_pix || 0;
+
+  // Separar compras por tipo no detalhe
+  const comprasCadernetaCliente = comprasCliente.filter(c => c.forma_pagamento !== "pix");
+  const comprasPixCliente = comprasCliente.filter(c => c.forma_pagamento === "pix");
 
   if (loading) {
     return (
@@ -435,32 +429,28 @@ const AdminCadernetas = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
-                  <TableHead className="text-right">Mês Atual</TableHead>
-                  <TableHead className="text-right">Mês Anterior</TableHead>
-                  <TableHead className="text-right">Atrasado</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Total Devido</TableHead>
+                  <TableHead className="text-right">Compras PIX</TableHead>
+                  <TableHead className="text-right">Abatido</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clientesComDebito.map((cliente) => {
-                  const totalCompras = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
+                  const totalCaderneta = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
                   const totalAbatido = abatimentosPorCliente[cliente.cliente_id] || 0;
-                  const totalDevido = Math.max(totalCompras - totalAbatido, 0);
+                  const totalDevido = Math.max(totalCaderneta - totalAbatido, 0);
                   return (
                     <TableRow key={cliente.cliente_id}>
                       <TableCell className="font-medium">{cliente.cliente_nome}</TableCell>
-                      <TableCell className="text-right">
-                        {cliente.total_mes_atual > 0 ? `R$ ${Number(cliente.total_mes_atual).toFixed(2)}` : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {cliente.total_mes_anterior > 0 ? `R$ ${Number(cliente.total_mes_anterior).toFixed(2)}` : "-"}
-                      </TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {cliente.total_atrasado > 0 ? `R$ ${Number(cliente.total_atrasado).toFixed(2)}` : "-"}
-                      </TableCell>
                       <TableCell className="text-right font-bold">
-                        R$ {totalDevido.toFixed(2)}
+                        {totalDevido > 0 ? `R$ ${totalDevido.toFixed(2)}` : "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-emerald-700">
+                        {cliente.total_pix > 0 ? `R$ ${Number(cliente.total_pix).toFixed(2)}` : "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-green-600">
+                        {totalAbatido > 0 ? `-R$ ${totalAbatido.toFixed(2)}` : "-"}
                       </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" onClick={() => abrirDetalhesCliente(cliente)}>
@@ -484,17 +474,24 @@ const AdminCadernetas = () => {
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
-            {/* Total devido */}
-            <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Total devido</p>
-                <p className="text-2xl font-bold">R$ {Math.max(totalDevidoCliente, 0).toFixed(2)}</p>
-                {totalAbatimentosCliente > 0 && (
-                  <p className="text-sm text-green-600">
-                    Abatimentos: -R$ {totalAbatimentosCliente.toFixed(2)}
-                  </p>
-                )}
+            {/* Resumo financeiro */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-xs text-muted-foreground">Total devido</p>
+                <p className="text-xl font-bold">R$ {totalDevidoCliente.toFixed(2)}</p>
               </div>
+              <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-emerald-600">Compras no PIX</p>
+                <p className="text-xl font-bold text-emerald-700">R$ {totalPixCliente.toFixed(2)}</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-green-600">Total abatido</p>
+                <p className="text-xl font-bold text-green-700">-R$ {totalAbatimentosCliente.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div />
               <Button
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
@@ -553,7 +550,7 @@ const AdminCadernetas = () => {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Mês Ref.</TableHead>
-                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -563,7 +560,9 @@ const AdminCadernetas = () => {
                     <TableRow key={compra.id}>
                       <TableCell>{formatarData(compra.criado_em)}</TableCell>
                       <TableCell>{compra.mes_referencia}</TableCell>
-                      <TableCell className="capitalize">{compra.forma_pagamento}</TableCell>
+                      <TableCell>
+                        <PaymentBadge formaPagamento={compra.forma_pagamento} />
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         R$ {Number(compra.valor_total).toFixed(2)}
                       </TableCell>
@@ -625,6 +624,7 @@ const AdminCadernetas = () => {
                     <TableHead>ID</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Mês Ref.</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -635,6 +635,9 @@ const AdminCadernetas = () => {
                       <TableCell>#{compra.id}</TableCell>
                       <TableCell>{formatarData(compra.criado_em)}</TableCell>
                       <TableCell>{compra.mes_referencia}</TableCell>
+                      <TableCell>
+                        <PaymentBadge formaPagamento={compra.forma_pagamento} />
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         R$ {Number(compra.valor_total).toFixed(2)}
                       </TableCell>

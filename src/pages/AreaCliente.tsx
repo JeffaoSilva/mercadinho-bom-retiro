@@ -9,6 +9,7 @@ import { useConfigRealtime } from "@/hooks/useConfigRealtime";
 import { useConfigSistemaStore } from "@/stores/configSistemaStore";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import BackButton from "@/components/BackButton";
+import { PaymentBadge } from "@/components/PaymentBadge";
 
 type ItemHistorico = {
   produto_id: number;
@@ -128,20 +129,36 @@ export default function AreaCliente() {
   const comprasMesAnterior = historico?.compras_mes_anterior ?? [];
   const comprasAtrasadas = historico?.compras_atrasadas ?? [];
 
+  const allComprasMesAtual = comprasMesAtual;
+  const comprasCadernetaMesAtual = comprasMesAtual.filter(c => c.forma_pagamento !== "pix");
+  const comprasPixMesAtual = comprasMesAtual.filter(c => c.forma_pagamento === "pix");
+
   const totalAbatimentos = useMemo(() =>
     abatimentos.reduce((sum, a) => sum + Number(a.valor), 0),
     [abatimentos]
   );
 
+  const totalCadernetaMesAtual = useMemo(() =>
+    comprasCadernetaMesAtual.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
+    [comprasCadernetaMesAtual]
+  );
+
+  const totalPixMesAtual = useMemo(() =>
+    comprasPixMesAtual.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
+    [comprasPixMesAtual]
+  );
+
   const totalMesAnterior = useMemo(() =>
-    comprasMesAnterior.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
+    comprasMesAnterior.filter(c => c.forma_pagamento !== "pix").reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
     [comprasMesAnterior]
   );
 
   const totalAtrasado = useMemo(() =>
-    comprasAtrasadas.reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
+    comprasAtrasadas.filter(c => c.forma_pagamento !== "pix").reduce((sum, c) => sum + Number(c.valor_total || 0), 0),
     [comprasAtrasadas]
   );
+
+  const totalDevido = Math.max(totalCadernetaMesAtual + totalMesAnterior + totalAtrasado - totalAbatimentos, 0);
 
   const temMesAnteriorAberto = comprasMesAnterior.length > 0;
   const temAtrasadas = comprasAtrasadas.length > 0;
@@ -179,9 +196,6 @@ export default function AreaCliente() {
     }
   };
 
-  const totalLote = (lote: CompraHistorico[]) =>
-    lote.reduce((sum, c) => sum + Number(c.valor_total || 0), 0);
-
   const renderCompras = (compras: CompraHistorico[]) => (
     <>
       {compras.map((compra, index) => (
@@ -189,11 +203,11 @@ export default function AreaCliente() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <div className="font-semibold text-sm">
-                  {formatarDataHora(compra.criado_em)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {compra.forma_pagamento}
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold text-sm">
+                    {formatarDataHora(compra.criado_em)}
+                  </div>
+                  <PaymentBadge formaPagamento={compra.forma_pagamento} />
                 </div>
               </div>
 
@@ -266,6 +280,22 @@ export default function AreaCliente() {
           </Button>
         </div>
 
+        {/* Resumo financeiro */}
+        <div className="grid grid-cols-3 gap-2 mt-1">
+          <div className="bg-muted/50 rounded-lg p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Total devido</p>
+            <p className="text-sm font-bold">R$ {totalDevido.toFixed(2)}</p>
+          </div>
+          <div className="bg-emerald-50 rounded-lg p-2 text-center">
+            <p className="text-[10px] text-emerald-600">Compras no PIX</p>
+            <p className="text-sm font-bold text-emerald-700">R$ {totalPixMesAtual.toFixed(2)}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-2 text-center">
+            <p className="text-[10px] text-green-600">Total abatido</p>
+            <p className="text-sm font-bold text-green-700">-R$ {totalAbatimentos.toFixed(2)}</p>
+          </div>
+        </div>
+
         {/* Botão: Fatura para pagar (AZUL SUAVE) */}
         {mostrarBotaoPagar && (
           <Collapsible open={showMesAnterior} onOpenChange={setShowMesAnterior}>
@@ -324,7 +354,7 @@ export default function AreaCliente() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Fatura do mês</h2>
               <div className="text-sm font-semibold">
-                Total: R$ {Math.max(totalLote(comprasMesAtual) - totalAbatimentos, 0).toFixed(2)}
+                Total: R$ {Math.max(totalCadernetaMesAtual - totalAbatimentos, 0).toFixed(2)}
               </div>
             </div>
 
