@@ -999,10 +999,10 @@ const AdminPrateleirasEstoque = () => {
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeRemoveModal} disabled={removendo}>
+            <Button variant="outline" onClick={handleCancelRemoveClick} disabled={removendo}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleRemove} disabled={!removeValido || removendo}>
+            <Button variant="destructive" onClick={handleConfirmRemoveClick} disabled={!removeValido || removendo}>
               {removendo && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Confirmar Retirada
             </Button>
@@ -1010,7 +1010,48 @@ const AdminPrateleirasEstoque = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Detalhe da Retirada */}
+      {/* Confirmação antes de executar remoção */}
+      <Dialog open={showConfirmRemove} onOpenChange={(open) => { if (!open) setShowConfirmRemove(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmar Remoção
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja remover este produto?
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowConfirmRemove(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={() => { setShowConfirmRemove(false); handleRemove(); }}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação ao cancelar remoção */}
+      <Dialog open={showConfirmCancelRemove} onOpenChange={(open) => { if (!open) setShowConfirmCancelRemove(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancelar Remoção</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Deseja cancelar a remoção?
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowConfirmCancelRemove(false)}>
+              Não
+            </Button>
+            <Button onClick={() => { setShowConfirmCancelRemove(false); closeRemoveModal(); }}>
+              Sim
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!retiradaDetalhe} onOpenChange={(open) => { if (!open) setRetiradaDetalhe(null); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
