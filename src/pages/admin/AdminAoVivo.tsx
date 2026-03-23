@@ -32,6 +32,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useConfigNotifStore, ConfigNotif } from "@/stores/configNotifStore";
 import { useSaleNotifications } from "@/hooks/useSaleNotifications";
 import { MercadinhoBadge } from "@/components/admin/MercadinhoBadge";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { format } from "date-fns";
 
 // ⚠️ IMPORTANTE: A tabela `compras` precisa estar com Realtime habilitado no Supabase:
