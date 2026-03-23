@@ -591,54 +591,54 @@ const AdminPrateleirasEstoque = () => {
         )}
 
         {/* Toggle Buttons */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Button
             onClick={() => setShowBR(!showBR)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showBR
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <Store className="mr-3 h-8 w-8" />
-            Bom Retiro
+            <Store className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>Bom Retiro</span>
           </Button>
           <Button
             onClick={() => setShowSF(!showSF)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showSF
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <Store className="mr-3 h-8 w-8" />
-            São Francisco
+            <Store className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>São Francisco</span>
           </Button>
           <Button
             onClick={() => setShowGeral(!showGeral)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showGeral
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <Warehouse className="mr-3 h-8 w-8" />
-            Estoque Central
+            <Warehouse className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>Estoque Central</span>
           </Button>
           <Button
             onClick={() => setShowRetirados(!showRetirados)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showRetirados
                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <AlertTriangle className="mr-3 h-8 w-8" />
-            Retirados
+            <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>Retirados</span>
           </Button>
         </div>
 
