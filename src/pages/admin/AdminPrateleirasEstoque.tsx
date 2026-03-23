@@ -139,6 +139,8 @@ const AdminPrateleirasEstoque = () => {
   const [removeMotivo, setRemoveMotivo] = useState<string>("");
   const [removeDescricao, setRemoveDescricao] = useState<string>("");
   const [removendo, setRemovendo] = useState(false);
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false);
+  const [showConfirmCancelRemove, setShowConfirmCancelRemove] = useState(false);
 
   // Retiradas data
   const [retiradas, setRetiradas] = useState<RetiradaRow[]>([]);
@@ -387,11 +389,25 @@ const AdminPrateleirasEstoque = () => {
     setRemoveMotivo("");
     setRemoveDescricao("");
     setRemovendo(false);
+    setShowConfirmRemove(false);
+    setShowConfirmCancelRemove(false);
   };
 
   const closeRemoveModal = () => {
     if (removendo) return;
     setRemoveInfo(null);
+    setShowConfirmRemove(false);
+    setShowConfirmCancelRemove(false);
+  };
+
+  const handleCancelRemoveClick = () => {
+    if (removendo) return;
+    setShowConfirmCancelRemove(true);
+  };
+
+  const handleConfirmRemoveClick = () => {
+    if (!removeValido || removendo) return;
+    setShowConfirmRemove(true);
   };
 
   const removeQtdNum = parseInt(removeQtd) || 0;
@@ -575,54 +591,54 @@ const AdminPrateleirasEstoque = () => {
         )}
 
         {/* Toggle Buttons */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Button
             onClick={() => setShowBR(!showBR)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showBR
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <Store className="mr-3 h-8 w-8" />
-            Bom Retiro
+            <Store className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>Bom Retiro</span>
           </Button>
           <Button
             onClick={() => setShowSF(!showSF)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showSF
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <Store className="mr-3 h-8 w-8" />
-            São Francisco
+            <Store className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>São Francisco</span>
           </Button>
           <Button
             onClick={() => setShowGeral(!showGeral)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showGeral
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <Warehouse className="mr-3 h-8 w-8" />
-            Estoque Central
+            <Warehouse className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>Estoque Central</span>
           </Button>
           <Button
             onClick={() => setShowRetirados(!showRetirados)}
-            className={`h-24 text-xl font-bold transition-all ${
+            className={`h-20 sm:h-24 text-base sm:text-xl font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 whitespace-normal text-center ${
               showRetirados
                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             variant="ghost"
           >
-            <AlertTriangle className="mr-3 h-8 w-8" />
-            Retirados
+            <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
+            <span>Retirados</span>
           </Button>
         </div>
 
@@ -983,10 +999,10 @@ const AdminPrateleirasEstoque = () => {
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeRemoveModal} disabled={removendo}>
+            <Button variant="outline" onClick={handleCancelRemoveClick} disabled={removendo}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleRemove} disabled={!removeValido || removendo}>
+            <Button variant="destructive" onClick={handleConfirmRemoveClick} disabled={!removeValido || removendo}>
               {removendo && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Confirmar Retirada
             </Button>
@@ -994,7 +1010,48 @@ const AdminPrateleirasEstoque = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Detalhe da Retirada */}
+      {/* Confirmação antes de executar remoção */}
+      <Dialog open={showConfirmRemove} onOpenChange={(open) => { if (!open) setShowConfirmRemove(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmar Remoção
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja remover este produto?
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowConfirmRemove(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={() => { setShowConfirmRemove(false); handleRemove(); }}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação ao cancelar remoção */}
+      <Dialog open={showConfirmCancelRemove} onOpenChange={(open) => { if (!open) setShowConfirmCancelRemove(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancelar Remoção</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Deseja cancelar a remoção?
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowConfirmCancelRemove(false)}>
+              Não
+            </Button>
+            <Button onClick={() => { setShowConfirmCancelRemove(false); closeRemoveModal(); }}>
+              Sim
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!retiradaDetalhe} onOpenChange={(open) => { if (!open) setRetiradaDetalhe(null); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
