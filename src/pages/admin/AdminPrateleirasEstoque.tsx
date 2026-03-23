@@ -389,11 +389,25 @@ const AdminPrateleirasEstoque = () => {
     setRemoveMotivo("");
     setRemoveDescricao("");
     setRemovendo(false);
+    setShowConfirmRemove(false);
+    setShowConfirmCancelRemove(false);
   };
 
   const closeRemoveModal = () => {
     if (removendo) return;
     setRemoveInfo(null);
+    setShowConfirmRemove(false);
+    setShowConfirmCancelRemove(false);
+  };
+
+  const handleCancelRemoveClick = () => {
+    if (removendo) return;
+    setShowConfirmCancelRemove(true);
+  };
+
+  const handleConfirmRemoveClick = () => {
+    if (!removeValido || removendo) return;
+    setShowConfirmRemove(true);
   };
 
   const removeQtdNum = parseInt(removeQtd) || 0;
