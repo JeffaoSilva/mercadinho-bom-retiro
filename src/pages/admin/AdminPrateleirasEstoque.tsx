@@ -139,6 +139,8 @@ const AdminPrateleirasEstoque = () => {
   const [removeMotivo, setRemoveMotivo] = useState<string>("");
   const [removeDescricao, setRemoveDescricao] = useState<string>("");
   const [removendo, setRemovendo] = useState(false);
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false);
+  const [showConfirmCancelRemove, setShowConfirmCancelRemove] = useState(false);
 
   // Retiradas data
   const [retiradas, setRetiradas] = useState<RetiradaRow[]>([]);
