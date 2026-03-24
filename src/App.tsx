@@ -27,6 +27,7 @@ import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
 import { useCheckout } from "./hooks/useCheckout";
+import { useIdleStore } from "./stores/idleStore";
 
 import AreaClienteSelect from "@/pages/AreaClienteSelect";
 import AreaCliente from "@/pages/AreaCliente";
