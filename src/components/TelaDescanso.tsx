@@ -36,7 +36,6 @@ export const TelaDescanso = () => {
           .select('*')
           .eq('ativa', true)
           .eq('tablet_id', tabletId)
-          .order('criado_em', { ascending: false })
           .limit(1)
           .maybeSingle();
         
@@ -52,7 +51,6 @@ export const TelaDescanso = () => {
         .select('*')
         .eq('ativa', true)
         .is('tablet_id', null)
-        .order('criado_em', { ascending: false })
         .limit(1)
         .maybeSingle();
       
