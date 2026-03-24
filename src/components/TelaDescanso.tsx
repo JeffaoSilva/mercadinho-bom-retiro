@@ -24,6 +24,7 @@ export const TelaDescanso = () => {
   const dismissingRef = useRef(false);
 
   const idleSeconds = useIdleStore((state) => state.idleSeconds);
+  const idleEnabled = useIdleStore((state) => state.idleEnabled);
   const tabletId = useTabletStore((state) => state.tabletId);
 
   // Carregar configuração do banco com prioridade: tablet > global
@@ -97,7 +98,7 @@ export const TelaDescanso = () => {
   const { dismissIdle } = useIdleTimer({
     timeoutSeconds: idleSeconds,
     onIdle: handleIdle,
-    enabled: config?.ativa ?? false,
+    enabled: (config?.ativa ?? false) && idleEnabled,
   });
 
   // Handler de captura para fechar - correção hard para mobile

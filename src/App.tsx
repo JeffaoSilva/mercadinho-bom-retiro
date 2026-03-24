@@ -27,6 +27,7 @@ import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
 import { useCheckout } from "./hooks/useCheckout";
+import { useIdleStore } from "./stores/idleStore";
 
 import AreaClienteSelect from "@/pages/AreaClienteSelect";
 import AreaCliente from "@/pages/AreaCliente";
@@ -42,23 +43,32 @@ const AppContent = () => {
 
   const isAdminRoute = location.pathname.startsWith("/admin");
   const tempoIdleGeral = useConfigInatividadeStore(s => s.tempo_idle_home_seg);
+  const setIdleEnabled = useIdleStore(s => s.setIdleEnabled);
 
   const resetCheckout = useCheckout(s => s.reset);
   const getHomePath = useCheckout(s => s.getHomePath);
   const setTabletId = useCheckout(s => s.setTabletId);
   const setMercadinhoAtualId = useCheckout(s => s.setMercadinhoAtualId);
 
-  // ✅ NOVO: toda vez que a URL tiver tablet_id, salva no store
+  // Desabilitar idle no admin
+  useEffect(() => {
+    if (isAdminRoute) {
+      setIdleEnabled(false);
+    } else {
+      setIdleEnabled(true);
+    }
+    return () => {
+      setIdleEnabled(true);
+    };
+  }, [isAdminRoute, setIdleEnabled]);
+
+  // toda vez que a URL tiver tablet_id, salva no store
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
     const t = sp.get("tablet_id");
 
     if (t) {
       setTabletId(t);
-
-      // como hoje teu sistema usa:
-      // tablet_id=1 -> mercadinho BR (id 1)
-      // tablet_id=2 -> mercadinho SF (id 2)
       if (t === "1") setMercadinhoAtualId(1);
       if (t === "2") setMercadinhoAtualId(2);
     }
