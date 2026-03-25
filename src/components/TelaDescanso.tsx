@@ -79,6 +79,13 @@ export const TelaDescanso = () => {
     };
   }, [tabletId]);
 
+  // Aplicar idle_seconds do banco ao carregar config
+  useEffect(() => {
+    if (config?.idle_seconds != null) {
+      setIdleSeconds(config.idle_seconds);
+    }
+  }, [config, setIdleSeconds]);
+
   // Verificar se pode mostrar tela de descanso
   const canShowIdleScreen = () => {
     // Não mostra em rotas de compra ativa (cart, checkout)
