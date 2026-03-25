@@ -792,6 +792,7 @@ export type Database = {
           cor_fundo: string | null
           criado_em: string
           id: number
+          idle_seconds: number | null
           imagem_url: string | null
           subtitulo: string | null
           tablet_id: number | null
@@ -802,6 +803,7 @@ export type Database = {
           cor_fundo?: string | null
           criado_em?: string
           id?: number
+          idle_seconds?: number | null
           imagem_url?: string | null
           subtitulo?: string | null
           tablet_id?: number | null
@@ -812,6 +814,7 @@ export type Database = {
           cor_fundo?: string | null
           criado_em?: string
           id?: number
+          idle_seconds?: number | null
           imagem_url?: string | null
           subtitulo?: string | null
           tablet_id?: number | null
