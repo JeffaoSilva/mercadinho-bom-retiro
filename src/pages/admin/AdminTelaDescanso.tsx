@@ -20,6 +20,7 @@ interface TelaDescansoConfig {
   subtitulo: string | null;
   cor_fundo: string | null;
   tablet_id: number | null;
+  idle_seconds: number | null;
 }
 
 interface Tablet {
@@ -93,6 +94,7 @@ const AdminTelaDescanso = () => {
       
       if (data) {
         setConfig(data as TelaDescansoConfig);
+        setIdleSecondsInput((data.idle_seconds ?? 25).toString());
       } else {
         // Criar novo registro se não existir
         setConfig({
@@ -103,7 +105,9 @@ const AdminTelaDescanso = () => {
           subtitulo: null,
           cor_fundo: '#1a1a2e',
           tablet_id: scope === 'tablet' ? selectedTabletId : null,
+          idle_seconds: 25,
         });
+        setIdleSecondsInput('25');
       }
     } catch (error) {
       console.error('Erro ao carregar configuração:', error);
@@ -172,6 +176,7 @@ const AdminTelaDescanso = () => {
         cor_fundo: config.cor_fundo,
         ativa: config.ativa,
         tablet_id: scope === 'tablet' ? selectedTabletId : null,
+        idle_seconds: parsed,
       };
 
       if (config.id === 0) {

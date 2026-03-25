@@ -13,6 +13,7 @@ interface TelaDescansoConfig {
   subtitulo: string | null;
   cor_fundo: string | null;
   tablet_id: number | null;
+  idle_seconds: number | null;
 }
 
 export const TelaDescanso = () => {
