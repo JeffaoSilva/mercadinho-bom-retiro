@@ -13,6 +13,7 @@ interface TelaDescansoConfig {
   subtitulo: string | null;
   cor_fundo: string | null;
   tablet_id: number | null;
+  idle_seconds: number | null;
 }
 
 export const TelaDescanso = () => {
@@ -24,6 +25,7 @@ export const TelaDescanso = () => {
   const dismissingRef = useRef(false);
 
   const idleSeconds = useIdleStore((state) => state.idleSeconds);
+  const setIdleSeconds = useIdleStore((state) => state.setIdleSeconds);
   const idleEnabled = useIdleStore((state) => state.idleEnabled);
   const tabletId = useTabletStore((state) => state.tabletId);
 
@@ -76,6 +78,13 @@ export const TelaDescanso = () => {
       supabase.removeChannel(channel);
     };
   }, [tabletId]);
+
+  // Aplicar idle_seconds do banco ao carregar config
+  useEffect(() => {
+    if (config?.idle_seconds != null) {
+      setIdleSeconds(config.idle_seconds);
+    }
+  }, [config, setIdleSeconds]);
 
   // Verificar se pode mostrar tela de descanso
   const canShowIdleScreen = () => {

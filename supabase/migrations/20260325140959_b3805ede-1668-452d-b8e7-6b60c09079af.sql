@@ -1,0 +1,1 @@
+ALTER TABLE public.tela_descanso ADD COLUMN idle_seconds integer DEFAULT 25;
