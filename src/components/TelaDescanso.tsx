@@ -25,6 +25,7 @@ export const TelaDescanso = () => {
   const dismissingRef = useRef(false);
 
   const idleSeconds = useIdleStore((state) => state.idleSeconds);
+  const setIdleSeconds = useIdleStore((state) => state.setIdleSeconds);
   const idleEnabled = useIdleStore((state) => state.idleEnabled);
   const tabletId = useTabletStore((state) => state.tabletId);
 
