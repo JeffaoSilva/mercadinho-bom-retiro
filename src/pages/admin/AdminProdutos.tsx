@@ -601,9 +601,11 @@ const AdminProdutos = () => {
         <div className="bg-card p-4 rounded-lg border">
           <Label className="text-sm font-medium mb-2 block">Entrada por Código de Barras</Label>
           <div className="flex gap-2">
-            <Input
+            <ClearableInput
+              ref={codigoEntradaRef}
               value={codigoEntrada}
               onChange={(e) => setCodigoEntrada(e.target.value)}
+              onClear={() => { setCodigoEntrada(""); codigoEntradaRef.current?.focus(); }}
               onKeyDown={(e) => e.key === "Enter" && buscarProdutoPorCodigo(codigoEntrada)}
               placeholder="Escaneie ou digite o código..."
               className="flex-1"
