@@ -424,6 +424,7 @@ const AdminProdutos = () => {
 
     setShowDialog(false);
     loadProdutos();
+    focusCodigoEntrada();
     } finally {
       setSalvando(false);
     }
