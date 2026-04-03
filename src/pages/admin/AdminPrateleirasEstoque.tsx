@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ClearableInput } from "@/components/ui/clearable-input";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown, ArrowRightLeft, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { Loader2, Store, Warehouse, Package, Search, Camera, ArrowUpDown, ArrowRightLeft, Trash2, Eye, AlertTriangle } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -541,23 +542,14 @@ const AdminPrateleirasEstoque = () => {
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+              <ClearableInput
                 value={filtroBarras}
                 onChange={(e) => setFiltroBarras(e.target.value)}
+                onClear={() => setFiltroBarras("")}
                 placeholder="Buscar por nome ou código de barras..."
                 className="pl-10 h-12"
               />
-              {filtroBarras && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  onClick={() => setFiltroBarras("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
             </div>
             <Button
               variant="outline"

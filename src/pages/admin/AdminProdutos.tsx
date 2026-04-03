@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ClearableInput } from "@/components/ui/clearable-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -97,6 +98,12 @@ const AdminProdutos = () => {
   const [showCameraScannerEntrada, setShowCameraScannerEntrada] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  const codigoEntradaRef = useRef<HTMLInputElement>(null);
+
+  const focusCodigoEntrada = useCallback(() => {
+    setTimeout(() => codigoEntradaRef.current?.focus(), 150);
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
@@ -104,7 +111,8 @@ const AdminProdutos = () => {
       return;
     }
     loadProdutos();
-  }, [isAuthenticated, authLoading, navigate]);
+    focusCodigoEntrada();
+  }, [isAuthenticated, authLoading, navigate, focusCodigoEntrada]);
 
   const loadProdutos = async () => {
     // Buscar produtos (incluindo inativos para admin)
@@ -416,6 +424,7 @@ const AdminProdutos = () => {
 
     setShowDialog(false);
     loadProdutos();
+    focusCodigoEntrada();
     } finally {
       setSalvando(false);
     }
@@ -592,9 +601,11 @@ const AdminProdutos = () => {
         <div className="bg-card p-4 rounded-lg border">
           <Label className="text-sm font-medium mb-2 block">Entrada por Código de Barras</Label>
           <div className="flex gap-2">
-            <Input
+            <ClearableInput
+              ref={codigoEntradaRef}
               value={codigoEntrada}
               onChange={(e) => setCodigoEntrada(e.target.value)}
+              onClear={() => { setCodigoEntrada(""); codigoEntradaRef.current?.focus(); }}
               onKeyDown={(e) => e.key === "Enter" && buscarProdutoPorCodigo(codigoEntrada)}
               placeholder="Escaneie ou digite o código..."
               className="flex-1"
@@ -636,11 +647,12 @@ const AdminProdutos = () => {
 
         {/* Busca */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+          <ClearableInput
             placeholder="Buscar por nome ou código de barras..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
             className="pl-10 h-12"
           />
         </div>
@@ -706,7 +718,7 @@ const AdminProdutos = () => {
       </div>
 
       {/* Dialog Novo/Editar Produto */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) focusCodigoEntrada(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -900,7 +912,7 @@ const AdminProdutos = () => {
       </Dialog>
 
       {/* Dialog Entrada para Produto Existente */}
-      <Dialog open={showEntradaDialog} onOpenChange={setShowEntradaDialog}>
+      <Dialog open={showEntradaDialog} onOpenChange={(open) => { setShowEntradaDialog(open); if (!open) focusCodigoEntrada(); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Entrada / Reposição</DialogTitle>
