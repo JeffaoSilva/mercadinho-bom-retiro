@@ -909,7 +909,7 @@ const AdminProdutos = () => {
       </Dialog>
 
       {/* Dialog Entrada para Produto Existente */}
-      <Dialog open={showEntradaDialog} onOpenChange={setShowEntradaDialog}>
+      <Dialog open={showEntradaDialog} onOpenChange={(open) => { setShowEntradaDialog(open); if (!open) focusCodigoEntrada(); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Entrada / Reposição</DialogTitle>
