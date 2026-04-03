@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Store, Warehouse, Package, Search, Camera, X, ArrowUpDown, ArrowRightLeft, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { Loader2, Store, Warehouse, Package, Search, Camera, ArrowUpDown, ArrowRightLeft, Trash2, Eye, AlertTriangle } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
