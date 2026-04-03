@@ -111,7 +111,8 @@ const AdminProdutos = () => {
       return;
     }
     loadProdutos();
-  }, [isAuthenticated, authLoading, navigate]);
+    focusCodigoEntrada();
+  }, [isAuthenticated, authLoading, navigate, focusCodigoEntrada]);
 
   const loadProdutos = async () => {
     // Buscar produtos (incluindo inativos para admin)
