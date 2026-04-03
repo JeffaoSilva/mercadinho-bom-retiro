@@ -715,7 +715,7 @@ const AdminProdutos = () => {
       </div>
 
       {/* Dialog Novo/Editar Produto */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) focusCodigoEntrada(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
