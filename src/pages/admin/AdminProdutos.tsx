@@ -98,6 +98,12 @@ const AdminProdutos = () => {
   const [showCameraScannerEntrada, setShowCameraScannerEntrada] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  const codigoEntradaRef = useRef<HTMLInputElement>(null);
+
+  const focusCodigoEntrada = useCallback(() => {
+    setTimeout(() => codigoEntradaRef.current?.focus(), 150);
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
