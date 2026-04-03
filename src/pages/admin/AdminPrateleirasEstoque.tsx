@@ -541,23 +541,14 @@ const AdminPrateleirasEstoque = () => {
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+              <ClearableInput
                 value={filtroBarras}
                 onChange={(e) => setFiltroBarras(e.target.value)}
+                onClear={() => setFiltroBarras("")}
                 placeholder="Buscar por nome ou código de barras..."
                 className="pl-10 h-12"
               />
-              {filtroBarras && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  onClick={() => setFiltroBarras("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
             </div>
             <Button
               variant="outline"
