@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Users,
   LogOut,
+  Home,
   Loader2,
   LayoutGrid,
   Settings,
@@ -120,10 +121,16 @@ const Admin = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="mr-2 h-5 w-5" />
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/")}>
+              <Home className="mr-2 h-5 w-5" />
+              Home
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="mr-2 h-5 w-5" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         <AlertaEstoqueBaixo />
