@@ -441,7 +441,11 @@ const AdminCadernetas = () => {
                   const totalAbatido = abatimentosPorCliente[cliente.cliente_id] || 0;
                   const totalDevido = Math.max(totalCaderneta - totalAbatido, 0);
                   return (
-                    <TableRow key={cliente.cliente_id}>
+                    <TableRow
+                      key={cliente.cliente_id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/admin/cadernetas/${cliente.cliente_id}`)}
+                    >
                       <TableCell className="font-medium">{cliente.cliente_nome}</TableCell>
                       <TableCell className="text-right font-bold">
                         {totalDevido > 0 ? `R$ ${totalDevido.toFixed(2)}` : "-"}
@@ -453,9 +457,7 @@ const AdminCadernetas = () => {
                         {totalAbatido > 0 ? `-R$ ${totalAbatido.toFixed(2)}` : "-"}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => abrirDetalhesCliente(cliente)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Eye className="h-4 w-4 text-muted-foreground" />
                       </TableCell>
                     </TableRow>
                   );
