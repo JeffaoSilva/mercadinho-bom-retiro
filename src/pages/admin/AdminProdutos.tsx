@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Search, Camera, Loader2, CheckCircle, PackagePlus } from "lucide-react";
+import { Plus, Pencil, Search, Camera, Loader2, CheckCircle, PackagePlus, Keyboard } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import CameraScanner from "@/components/CameraScanner";
@@ -98,10 +98,26 @@ const AdminProdutos = () => {
   const [showCameraScannerEntrada, setShowCameraScannerEntrada] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
   const codigoEntradaRef = useRef<HTMLInputElement>(null);
 
   const focusCodigoEntrada = useCallback(() => {
-    setTimeout(() => codigoEntradaRef.current?.focus(), 150);
+    setTimeout(() => {
+      if (codigoEntradaRef.current && !keyboardOpen) {
+        codigoEntradaRef.current.focus();
+      }
+    }, 150);
+  }, [keyboardOpen]);
+
+  const handleOpenKeyboard = useCallback(() => {
+    setKeyboardOpen(true);
+    setTimeout(() => {
+      if (codigoEntradaRef.current) {
+        codigoEntradaRef.current.focus();
+        codigoEntradaRef.current.click();
+      }
+    }, 50);
   }, []);
 
   useEffect(() => {
@@ -607,6 +623,8 @@ const AdminProdutos = () => {
               onChange={(e) => setCodigoEntrada(e.target.value)}
               onClear={() => { setCodigoEntrada(""); codigoEntradaRef.current?.focus(); }}
               onKeyDown={(e) => e.key === "Enter" && buscarProdutoPorCodigo(codigoEntrada)}
+              onBlur={() => setKeyboardOpen(false)}
+              inputMode={keyboardOpen ? "text" : "none"}
               placeholder="Escaneie ou digite o código..."
               className="flex-1"
             />
@@ -615,6 +633,15 @@ const AdminProdutos = () => {
             </Button>
             <Button variant="outline" onClick={() => setShowCameraScannerEntrada(true)}>
               <Camera className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleOpenKeyboard}
+              title="Digitar manualmente"
+            >
+              <Keyboard className="w-5 h-5" />
             </Button>
           </div>
         </div>
