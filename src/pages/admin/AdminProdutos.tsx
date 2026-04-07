@@ -623,6 +623,8 @@ const AdminProdutos = () => {
               onChange={(e) => setCodigoEntrada(e.target.value)}
               onClear={() => { setCodigoEntrada(""); codigoEntradaRef.current?.focus(); }}
               onKeyDown={(e) => e.key === "Enter" && buscarProdutoPorCodigo(codigoEntrada)}
+              onBlur={() => setKeyboardOpen(false)}
+              inputMode={keyboardOpen ? "text" : "none"}
               placeholder="Escaneie ou digite o código..."
               className="flex-1"
             />
@@ -631,6 +633,15 @@ const AdminProdutos = () => {
             </Button>
             <Button variant="outline" onClick={() => setShowCameraScannerEntrada(true)}>
               <Camera className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleOpenKeyboard}
+              title="Digitar manualmente"
+            >
+              <Keyboard className="w-5 h-5" />
             </Button>
           </div>
         </div>
