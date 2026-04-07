@@ -98,10 +98,26 @@ const AdminProdutos = () => {
   const [showCameraScannerEntrada, setShowCameraScannerEntrada] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
   const codigoEntradaRef = useRef<HTMLInputElement>(null);
 
   const focusCodigoEntrada = useCallback(() => {
-    setTimeout(() => codigoEntradaRef.current?.focus(), 150);
+    setTimeout(() => {
+      if (codigoEntradaRef.current && !keyboardOpen) {
+        codigoEntradaRef.current.focus();
+      }
+    }, 150);
+  }, [keyboardOpen]);
+
+  const handleOpenKeyboard = useCallback(() => {
+    setKeyboardOpen(true);
+    setTimeout(() => {
+      if (codigoEntradaRef.current) {
+        codigoEntradaRef.current.focus();
+        codigoEntradaRef.current.click();
+      }
+    }, 50);
   }, []);
 
   useEffect(() => {
