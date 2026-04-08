@@ -565,6 +565,8 @@ const AdminProdutos = () => {
         setShowEntradaDialog(false);
         setProdutoEntrada(null);
         loadProdutos();
+        setKeyboardOpen(false);
+        focusCodigoEntrada();
       }, 1500);
     } catch (err) {
       console.error("Erro ao salvar entrada:", err);
