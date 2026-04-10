@@ -41,6 +41,7 @@ import { format } from "date-fns";
 interface VendaFeed {
   id: number;
   hora: string;
+  data: string; // YYYY-MM-DD
   mercadinho_id: number;
   mercadinho_nome: string;
   cliente_nome: string;
@@ -155,6 +156,7 @@ const AdminAoVivo = () => {
           const novaVenda: VendaFeed = {
             id: newSale.id,
             hora: format(new Date(), "HH:mm"),
+            data: format(new Date(), "yyyy-MM-dd"),
             mercadinho_id: newSale.mercadinho_id,
             mercadinho_nome: mercadinhoNome,
             cliente_nome: clienteNome,
@@ -229,6 +231,7 @@ const AdminAoVivo = () => {
       vendasComItens.push({
         id: compra.id,
         hora: format(new Date(compra.criado_em), "HH:mm"),
+        data: format(new Date(compra.criado_em), "yyyy-MM-dd"),
         mercadinho_id: compra.mercadinho_id,
         mercadinho_nome:
           compra.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco",
@@ -520,31 +523,50 @@ const AdminAoVivo = () => {
                 </p>
               ) : (
                 <div className="divide-y">
-                  {vendasFiltradas.map((venda) => (
-                    <div key={venda.id} className="p-3 hover:bg-accent/30">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-muted-foreground">
-                            {venda.hora}
-                          </span>
-                          <MercadinhoBadge
-                            mercadinhoId={venda.mercadinho_id}
-                            nomeLoja={venda.mercadinho_nome}
-                          />
-                          <PaymentBadge formaPagamento={venda.forma_pagamento} />
-                          <span className="font-medium">{venda.cliente_nome}</span>
+                  {vendasFiltradas.map((venda, index) => {
+                    const hoje = format(new Date(), "yyyy-MM-dd");
+                    const vendaAnterior = index > 0 ? vendasFiltradas[index - 1] : null;
+                    const mostrarSeparador =
+                      venda.data !== hoje &&
+                      (!vendaAnterior || vendaAnterior.data !== venda.data);
+
+                    return (
+                      <div key={venda.id}>
+                        {mostrarSeparador && (
+                          <div className="flex items-center gap-3 px-3 py-2">
+                            <div className="flex-1 h-px bg-border" />
+                            <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                              {venda.data.split("-").reverse().join("/")}
+                            </span>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
+                        )}
+                        <div className="p-3 hover:bg-accent/30">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono text-foreground">
+                                {venda.hora}
+                              </span>
+                              <MercadinhoBadge
+                                mercadinhoId={venda.mercadinho_id}
+                                nomeLoja={venda.mercadinho_nome}
+                              />
+                              <PaymentBadge formaPagamento={venda.forma_pagamento} />
+                              <span className="font-medium">{venda.cliente_nome}</span>
+                            </div>
+                            <span className="font-bold text-primary">
+                              R$ {venda.valor_total.toFixed(2)}
+                            </span>
+                          </div>
+                          {venda.itens_resumo && (
+                            <p className="text-xs text-foreground mt-1 ml-14">
+                              {venda.itens_resumo}
+                            </p>
+                          )}
                         </div>
-                        <span className="font-bold text-primary">
-                          R$ {venda.valor_total.toFixed(2)}
-                        </span>
                       </div>
-                      {venda.itens_resumo && (
-                        <p className="text-xs text-muted-foreground mt-1 ml-14">
-                          {venda.itens_resumo}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
