@@ -18,6 +18,7 @@ import {
   BookOpen,
   Key,
   Radio,
+  ShoppingCart,
 } from "lucide-react";
 import AlertaEstoqueBaixo from "@/components/admin/AlertaEstoqueBaixo";
 import BackButton from "@/components/BackButton";
@@ -103,6 +104,7 @@ const Admin = () => {
   }
 
   const menuItems = [
+    { title: "Lançar Compra", icon: ShoppingCart, route: "/admin/lancar-compra" },
     { title: "Ao Vivo", icon: Radio, route: "/admin/ao-vivo" },
     { title: "Produtos", icon: Package, route: "/admin/produtos" },
     { title: "Prateleiras / Estoque", icon: LayoutGrid, route: "/admin/prateleiras-estoque" },

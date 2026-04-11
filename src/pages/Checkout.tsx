@@ -3,15 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
+import { Book, Smartphone, CheckCircle, QrCode, AlertTriangle } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Checkout = () => {
   const navigate = useNavigate();
   const {
     clienteId,
+    clienteNome,
     isVisitante,
+    isAdminPurchase,
     cart,
     getTotal,
     reset,
@@ -25,6 +37,7 @@ const Checkout = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [pixChave, setPixChave] = useState("");
   const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
+  const [confirmPayment, setConfirmPayment] = useState<"caderneta" | "pix" | null>(null);
 
   const total = getTotal();
 
@@ -44,7 +57,20 @@ const Checkout = () => {
     loadPixConfig();
   }, []);
 
+  const mercadinhoNome = mercadinhoAtualId === 1 ? "Bom Retiro" : mercadinhoAtualId === 2 ? "São Francisco" : "Desconhecido";
+
+  const handleRequestPayment = (forma: "caderneta" | "pix") => {
+    if (isAdminPurchase) {
+      setConfirmPayment(forma);
+    } else if (forma === "pix") {
+      handlePixClick();
+    } else {
+      handleFinalizarCompra(forma);
+    }
+  };
+
   const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
+    setConfirmPayment(null);
     setLoading(true);
 
     try {
@@ -79,7 +105,11 @@ const Checkout = () => {
 
       setTimeout(() => {
         reset();
-        navigate(getHomePath());
+        if (isAdminPurchase) {
+          navigate("/admin");
+        } else {
+          navigate(getHomePath());
+        }
       }, 2000);
     } catch (error) {
       console.error("Erro ao finalizar compra:", error);
@@ -192,7 +222,7 @@ const Checkout = () => {
               size="lg"
               variant="outline"
               className="w-full h-24 text-2xl"
-              onClick={() => handleFinalizarCompra("caderneta")}
+              onClick={() => handleRequestPayment("caderneta")}
               disabled={loading}
             >
               <Book className="w-8 h-8 mr-4" />
@@ -204,7 +234,7 @@ const Checkout = () => {
             size="lg"
             variant="outline"
             className="w-full h-24 text-2xl"
-            onClick={handlePixClick}
+            onClick={() => handleRequestPayment("pix")}
             disabled={loading}
           >
             <Smartphone className="w-8 h-8 mr-4" />
@@ -216,6 +246,42 @@ const Checkout = () => {
           Voltar ao Carrinho
         </Button>
       </div>
+
+      {/* Confirmação admin */}
+      <AlertDialog open={!!confirmPayment} onOpenChange={(open) => !open && setConfirmPayment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-xl">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Confirmar Lançamento
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-base">
+                <p><strong>Cliente:</strong> {clienteNome}</p>
+                <p><strong>Mercadinho:</strong> {mercadinhoNome}</p>
+                <p><strong>Pagamento:</strong> {confirmPayment === "caderneta" ? "Caderneta" : "PIX"}</p>
+                <p><strong>Total:</strong> R$ {total.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground pt-2">
+                  Confirme que os dados estão corretos antes de lançar.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (confirmPayment === "pix") {
+                setConfirmPayment(null);
+                handlePixClick();
+              } else {
+                handleFinalizarCompra(confirmPayment!);
+              }
+            }}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -38,6 +38,7 @@ const Cart = () => {
   const {
     clienteNome,
     mercadinhoAtualId,
+    isAdminPurchase,
     cart,
     addToCartWithPrice,
     updateQuantity,
@@ -65,18 +66,20 @@ const Cart = () => {
   // Cache de exposições por produto
   const [exposicoesCache, setExposicoesCache] = useState<Map<number, Exposicao[]>>(new Map());
 
+  const adminBackPath = isAdminPurchase ? "/admin/lancar-compra" : "/";
+
   const handleBackClick = () => {
     if (cart.length > 0) {
       setShowCancelModal(true);
     } else {
-      navigate("/");
+      navigate(adminBackPath);
     }
   };
 
   const handleCancelPurchase = () => {
     reset();
     setShowCancelModal(false);
-    navigate("/");
+    navigate(adminBackPath);
   };
 
   // Foco sem abrir teclado ao montar/atualizar carrinho

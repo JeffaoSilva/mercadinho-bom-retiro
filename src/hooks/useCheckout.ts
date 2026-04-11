@@ -17,12 +17,14 @@ interface CheckoutState {
   clienteId: number | null;
   clienteNome: string | null;
   isVisitante: boolean;
+  isAdminPurchase: boolean;
   cart: CartItem[];
 
   setTabletId: (tabletId: string) => void;
   setMercadinhoAtualId: (mercadinhoId: number) => void;
   setCliente: (clienteId: number, nome: string) => void;
   setVisitante: () => void;
+  setAdminPurchase: (value: boolean) => void;
 
   addToCart: (item: Omit<CartItem, "quantidade">) => void;
   addToCartWithPrice: (item: Omit<CartItem, "quantidade">) => void;
@@ -47,6 +49,7 @@ export const useCheckout = create<CheckoutState>()(
       clienteId: null,
       clienteNome: null,
       isVisitante: false,
+      isAdminPurchase: false,
       cart: [],
 
       setTabletId: (tabletId) => set({ tabletId }),
@@ -56,6 +59,7 @@ export const useCheckout = create<CheckoutState>()(
         set({ clienteId, clienteNome: nome, isVisitante: false }),
       setVisitante: () =>
         set({ isVisitante: true, clienteId: null, clienteNome: "VISITANTE" }),
+      setAdminPurchase: (value) => set({ isAdminPurchase: value }),
 
       getCartKey: (produto_id: number, preco: number) =>
         `${produto_id}_${preco.toFixed(2)}`,
@@ -152,6 +156,7 @@ export const useCheckout = create<CheckoutState>()(
           clienteId: null,
           clienteNome: null,
           isVisitante: false,
+          isAdminPurchase: false,
           cart: [],
         }),
     }),
