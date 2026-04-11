@@ -3,15 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { Book, Smartphone, CheckCircle, QrCode } from "lucide-react";
+import { Book, Smartphone, CheckCircle, QrCode, AlertTriangle } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Checkout = () => {
   const navigate = useNavigate();
   const {
     clienteId,
+    clienteNome,
     isVisitante,
+    isAdminPurchase,
     cart,
     getTotal,
     reset,
@@ -25,6 +37,7 @@ const Checkout = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [pixChave, setPixChave] = useState("");
   const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
+  const [confirmPayment, setConfirmPayment] = useState<"caderneta" | "pix" | null>(null);
 
   const total = getTotal();
 
