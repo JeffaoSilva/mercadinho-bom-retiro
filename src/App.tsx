@@ -24,6 +24,7 @@ import AdminCadernetas from "./pages/admin/AdminCadernetas";
 import AdminCadernetaDetalhe from "./pages/admin/AdminCadernetaDetalhe";
 import AdminCodigosTres from "./pages/admin/AdminCodigosTres";
 import AdminAoVivo from "./pages/admin/AdminAoVivo";
+import AdminLancarCompra from "./pages/admin/AdminLancarCompra";
 import { TelaDescanso } from "./components/TelaDescanso";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useConfigInatividadeStore } from "./stores/configInatividadeStore";
@@ -112,6 +113,7 @@ const AppContent = () => {
         <Route path="/admin/cadernetas/:clienteId" element={<AdminCadernetaDetalhe />} />
         <Route path="/admin/codigos-tres" element={<AdminCodigosTres />} />
         <Route path="/admin/ao-vivo" element={<AdminAoVivo />} />
+        <Route path="/admin/lancar-compra" element={<AdminLancarCompra />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
