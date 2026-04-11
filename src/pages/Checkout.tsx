@@ -57,7 +57,20 @@ const Checkout = () => {
     loadPixConfig();
   }, []);
 
+  const mercadinhoNome = mercadinhoAtualId === 1 ? "Bom Retiro" : mercadinhoAtualId === 2 ? "São Francisco" : "Desconhecido";
+
+  const handleRequestPayment = (forma: "caderneta" | "pix") => {
+    if (isAdminPurchase) {
+      setConfirmPayment(forma);
+    } else if (forma === "pix") {
+      handlePixClick();
+    } else {
+      handleFinalizarCompra(forma);
+    }
+  };
+
   const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
+    setConfirmPayment(null);
     setLoading(true);
 
     try {
