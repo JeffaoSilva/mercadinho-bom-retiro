@@ -105,7 +105,11 @@ const Checkout = () => {
 
       setTimeout(() => {
         reset();
-        navigate(getHomePath());
+        if (isAdminPurchase) {
+          navigate("/admin");
+        } else {
+          navigate(getHomePath());
+        }
       }, 2000);
     } catch (error) {
       console.error("Erro ao finalizar compra:", error);
