@@ -38,6 +38,12 @@ import { format } from "date-fns";
 // ⚠️ IMPORTANTE: A tabela `compras` precisa estar com Realtime habilitado no Supabase:
 // Dashboard > Database > Replication > Supabase Realtime > habilitar `compras`
 
+interface VendaItem {
+  quantidade: number;
+  nome: string;
+  valor_unitario: number;
+}
+
 interface VendaFeed {
   id: number;
   hora: string;
@@ -46,7 +52,7 @@ interface VendaFeed {
   mercadinho_nome: string;
   cliente_nome: string;
   valor_total: number;
-  itens_resumo: string;
+  itens: VendaItem[];
   forma_pagamento: string;
 }
 
@@ -135,17 +141,19 @@ const AdminAoVivo = () => {
             newSale.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco";
 
           // Buscar itens com retry (podem ainda não estar commitados)
-          let itensResumo = "(carregando...)";
+          let itens: VendaItem[] = [];
           for (let attempt = 0; attempt < 3; attempt++) {
-            const { data: itens } = await supabase
+            const { data: itensData } = await supabase
               .from("itens_compra")
-              .select("quantidade, produtos(nome)")
+              .select("quantidade, valor_unitario, produtos(nome)")
               .eq("compra_id", newSale.id);
 
-            if (itens && itens.length > 0) {
-              itensResumo = itens
-                .map((item: any) => `${item.produtos?.nome || "?"} ${item.quantidade}x`)
-                .join(", ");
+            if (itensData && itensData.length > 0) {
+              itens = itensData.map((item: any) => ({
+                quantidade: item.quantidade,
+                nome: item.produtos?.nome || "?",
+                valor_unitario: item.valor_unitario || 0,
+              }));
               break;
             }
             await new Promise((r) =>
@@ -161,7 +169,7 @@ const AdminAoVivo = () => {
             mercadinho_nome: mercadinhoNome,
             cliente_nome: clienteNome,
             valor_total: newSale.valor_total,
-            itens_resumo: itensResumo,
+            itens,
             forma_pagamento: (newSale as any).forma_pagamento || "caderneta",
           };
 
@@ -217,16 +225,18 @@ const AdminAoVivo = () => {
 
     const vendasComItens: VendaFeed[] = [];
     for (const compra of data) {
-      const { data: itens } = await supabase
+      const { data: itensData } = await supabase
         .from("itens_compra")
-        .select("quantidade, produtos(nome)")
+        .select("quantidade, valor_unitario, produtos(nome)")
         .eq("compra_id", compra.id);
 
-      const itensResumo = itens
-        ? itens
-            .map((item: any) => `${item.produtos?.nome || "?"} ${item.quantidade}x`)
-            .join(", ")
-        : "";
+      const itens: VendaItem[] = itensData
+        ? itensData.map((item: any) => ({
+            quantidade: item.quantidade,
+            nome: item.produtos?.nome || "?",
+            valor_unitario: item.valor_unitario || 0,
+          }))
+        : [];
 
       vendasComItens.push({
         id: compra.id,
@@ -239,7 +249,7 @@ const AdminAoVivo = () => {
           ? "Visitante"
           : (compra.clientes as any)?.nome || "Visitante",
         valor_total: compra.valor_total,
-        itens_resumo: itensResumo,
+        itens,
         forma_pagamento: compra.forma_pagamento || "caderneta",
       });
     }
@@ -522,26 +532,24 @@ const AdminAoVivo = () => {
                   Nenhuma venda recente
                 </p>
               ) : (
-                <div className="divide-y">
+                <div>
                   {vendasFiltradas.map((venda, index) => {
                     const hoje = format(new Date(), "yyyy-MM-dd");
                     const vendaAnterior = index > 0 ? vendasFiltradas[index - 1] : null;
-                    const mostrarSeparador =
+                    const mostrarCabecalhoData =
                       venda.data !== hoje &&
                       (!vendaAnterior || vendaAnterior.data !== venda.data);
 
                     return (
                       <div key={venda.id}>
-                        {mostrarSeparador && (
-                          <div className="flex items-center gap-3 px-3 py-2">
-                            <div className="flex-1 h-px bg-border" />
-                            <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                        {mostrarCabecalhoData && (
+                          <div className="px-3 pt-5 pb-2 mt-2">
+                            <h3 className="text-sm font-semibold text-foreground">
                               {venda.data.split("-").reverse().join("/")}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
+                            </h3>
                           </div>
                         )}
-                        <div className="p-3 hover:bg-accent/30">
+                        <div className="p-3 hover:bg-accent/30 border-t">
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-3">
                               <span className="font-mono text-foreground">
@@ -558,10 +566,17 @@ const AdminAoVivo = () => {
                               R$ {venda.valor_total.toFixed(2)}
                             </span>
                           </div>
-                          {venda.itens_resumo && (
-                            <p className="text-xs text-foreground mt-1 ml-14">
-                              {venda.itens_resumo}
-                            </p>
+                          {venda.itens.length > 0 && (
+                            <ul className="text-xs text-foreground mt-2 ml-14 space-y-0.5">
+                              {venda.itens.map((item, i) => (
+                                <li key={i}>
+                                  • {item.quantidade} {item.nome} = R${" "}
+                                  {(item.quantidade * item.valor_unitario)
+                                    .toFixed(2)
+                                    .replace(".", ",")}
+                                </li>
+                              ))}
+                            </ul>
                           )}
                         </div>
                       </div>
