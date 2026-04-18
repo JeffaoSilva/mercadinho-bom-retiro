@@ -38,6 +38,12 @@ import { format } from "date-fns";
 // ⚠️ IMPORTANTE: A tabela `compras` precisa estar com Realtime habilitado no Supabase:
 // Dashboard > Database > Replication > Supabase Realtime > habilitar `compras`
 
+interface VendaItem {
+  quantidade: number;
+  nome: string;
+  valor_unitario: number;
+}
+
 interface VendaFeed {
   id: number;
   hora: string;
@@ -46,7 +52,7 @@ interface VendaFeed {
   mercadinho_nome: string;
   cliente_nome: string;
   valor_total: number;
-  itens_resumo: string;
+  itens: VendaItem[];
   forma_pagamento: string;
 }
 
