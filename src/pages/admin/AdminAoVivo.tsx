@@ -141,17 +141,19 @@ const AdminAoVivo = () => {
             newSale.mercadinho_id === 1 ? "Bom Retiro" : "São Francisco";
 
           // Buscar itens com retry (podem ainda não estar commitados)
-          let itensResumo = "(carregando...)";
+          let itens: VendaItem[] = [];
           for (let attempt = 0; attempt < 3; attempt++) {
-            const { data: itens } = await supabase
+            const { data: itensData } = await supabase
               .from("itens_compra")
-              .select("quantidade, produtos(nome)")
+              .select("quantidade, valor_unitario, produtos(nome)")
               .eq("compra_id", newSale.id);
 
-            if (itens && itens.length > 0) {
-              itensResumo = itens
-                .map((item: any) => `${item.produtos?.nome || "?"} ${item.quantidade}x`)
-                .join(", ");
+            if (itensData && itensData.length > 0) {
+              itens = itensData.map((item: any) => ({
+                quantidade: item.quantidade,
+                nome: item.produtos?.nome || "?",
+                valor_unitario: item.valor_unitario || 0,
+              }));
               break;
             }
             await new Promise((r) =>
@@ -167,7 +169,7 @@ const AdminAoVivo = () => {
             mercadinho_nome: mercadinhoNome,
             cliente_nome: clienteNome,
             valor_total: newSale.valor_total,
-            itens_resumo: itensResumo,
+            itens,
             forma_pagamento: (newSale as any).forma_pagamento || "caderneta",
           };
 
