@@ -225,16 +225,18 @@ const AdminAoVivo = () => {
 
     const vendasComItens: VendaFeed[] = [];
     for (const compra of data) {
-      const { data: itens } = await supabase
+      const { data: itensData } = await supabase
         .from("itens_compra")
-        .select("quantidade, produtos(nome)")
+        .select("quantidade, valor_unitario, produtos(nome)")
         .eq("compra_id", compra.id);
 
-      const itensResumo = itens
-        ? itens
-            .map((item: any) => `${item.produtos?.nome || "?"} ${item.quantidade}x`)
-            .join(", ")
-        : "";
+      const itens: VendaItem[] = itensData
+        ? itensData.map((item: any) => ({
+            quantidade: item.quantidade,
+            nome: item.produtos?.nome || "?",
+            valor_unitario: item.valor_unitario || 0,
+          }))
+        : [];
 
       vendasComItens.push({
         id: compra.id,
@@ -247,7 +249,7 @@ const AdminAoVivo = () => {
           ? "Visitante"
           : (compra.clientes as any)?.nome || "Visitante",
         valor_total: compra.valor_total,
-        itens_resumo: itensResumo,
+        itens,
         forma_pagamento: compra.forma_pagamento || "caderneta",
       });
     }
