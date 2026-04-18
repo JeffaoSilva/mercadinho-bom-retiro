@@ -208,9 +208,9 @@ const AdminAoVivo = () => {
     };
   }, [isAuthenticated]);
 
-  // ─── Carregar vendas recentes ───────────────────────────────────────────────
-  const loadVendasRecentes = async () => {
-    const { data } = await supabase
+  // ─── Carregar vendas (paginado) ────────────────────────────────────────────
+  const fetchVendasPage = async (beforeIso: string | null): Promise<VendaFeed[]> => {
+    let q = supabase
       .from("compras")
       .select(`
         id,
@@ -223,9 +223,12 @@ const AdminAoVivo = () => {
         clientes(nome)
       `)
       .order("criado_em", { ascending: false })
-      .limit(50);
+      .limit(PAGE_SIZE);
 
-    if (!data) return;
+    if (beforeIso) q = q.lt("criado_em", beforeIso);
+
+    const { data } = await q;
+    if (!data) return [];
 
     const vendasComItens: VendaFeed[] = [];
     for (const compra of data) {
@@ -257,7 +260,38 @@ const AdminAoVivo = () => {
         forma_pagamento: compra.forma_pagamento || "caderneta",
       });
     }
-    setVendas(vendasComItens);
+    return vendasComItens;
+  };
+
+  const loadVendasRecentes = async () => {
+    const novas = await fetchVendasPage(null);
+    setVendas(novas);
+    setHasMore(novas.length === PAGE_SIZE);
+  };
+
+  const handleVerMais = async () => {
+    if (loadingMore || !hasMore || vendas.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const ultima = vendas[vendas.length - 1];
+      const { data: ultimaCompra } = await supabase
+        .from("compras")
+        .select("criado_em")
+        .eq("id", ultima.id)
+        .maybeSingle();
+
+      const cursor = ultimaCompra?.criado_em || null;
+      const novas = await fetchVendasPage(cursor);
+
+      setVendas((prev) => {
+        const ids = new Set(prev.map((v) => v.id));
+        const filtradas = novas.filter((v) => !ids.has(v.id));
+        return [...prev, ...filtradas];
+      });
+      setHasMore(novas.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   // ─── Contadores ────────────────────────────────────────────────────────────
