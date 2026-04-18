@@ -177,7 +177,10 @@ const AdminAoVivo = () => {
             forma_pagamento: (newSale as any).forma_pagamento || "caderneta",
           };
 
-          setVendas((prev) => [novaVenda, ...prev].slice(0, 50));
+          setVendas((prev) => {
+            if (prev.some((v) => v.id === novaVenda.id)) return prev;
+            return [novaVenda, ...prev];
+          });
           // Atualizar contadores após nova venda
           loadContadores();
         }
