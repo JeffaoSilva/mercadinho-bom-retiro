@@ -74,6 +74,10 @@ const AdminAoVivo = () => {
   const [tempMetrica, setTempMetrica] = useState("qtd");
   const [tempPeriodo, setTempPeriodo] = useState("dia");
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const PAGE_SIZE = 50;
 
   // Guard para não criar subscription duplicada
   const feedChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
