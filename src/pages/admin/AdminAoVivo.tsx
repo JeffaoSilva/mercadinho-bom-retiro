@@ -532,26 +532,24 @@ const AdminAoVivo = () => {
                   Nenhuma venda recente
                 </p>
               ) : (
-                <div className="divide-y">
+                <div>
                   {vendasFiltradas.map((venda, index) => {
                     const hoje = format(new Date(), "yyyy-MM-dd");
                     const vendaAnterior = index > 0 ? vendasFiltradas[index - 1] : null;
-                    const mostrarSeparador =
+                    const mostrarCabecalhoData =
                       venda.data !== hoje &&
                       (!vendaAnterior || vendaAnterior.data !== venda.data);
 
                     return (
                       <div key={venda.id}>
-                        {mostrarSeparador && (
-                          <div className="flex items-center gap-3 px-3 py-2">
-                            <div className="flex-1 h-px bg-border" />
-                            <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                        {mostrarCabecalhoData && (
+                          <div className="px-3 pt-5 pb-2 mt-2">
+                            <h3 className="text-sm font-semibold text-foreground">
                               {venda.data.split("-").reverse().join("/")}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
+                            </h3>
                           </div>
                         )}
-                        <div className="p-3 hover:bg-accent/30">
+                        <div className="p-3 hover:bg-accent/30 border-t">
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-3">
                               <span className="font-mono text-foreground">
@@ -568,10 +566,17 @@ const AdminAoVivo = () => {
                               R$ {venda.valor_total.toFixed(2)}
                             </span>
                           </div>
-                          {venda.itens_resumo && (
-                            <p className="text-xs text-foreground mt-1 ml-14">
-                              {venda.itens_resumo}
-                            </p>
+                          {venda.itens.length > 0 && (
+                            <ul className="text-xs text-foreground mt-2 ml-14 space-y-0.5">
+                              {venda.itens.map((item, i) => (
+                                <li key={i}>
+                                  • {item.quantidade} {item.nome} = R${" "}
+                                  {(item.quantidade * item.valor_unitario)
+                                    .toFixed(2)
+                                    .replace(".", ",")}
+                                </li>
+                              ))}
+                            </ul>
                           )}
                         </div>
                       </div>
