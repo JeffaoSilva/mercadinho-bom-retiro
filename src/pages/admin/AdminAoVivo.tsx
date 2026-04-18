@@ -623,6 +623,24 @@ const AdminAoVivo = () => {
                       </div>
                     );
                   })}
+                  {feedFilter === "todos" && (
+                    <div className="p-4 border-t flex justify-center">
+                      {hasMore ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleVerMais}
+                          disabled={loadingMore}
+                        >
+                          {loadingMore ? "Carregando..." : "Ver mais"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Não há mais vendas para carregar
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
