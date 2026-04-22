@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ interface Promocao {
 
 const Cart = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     clienteNome,
     mercadinhoAtualId,
@@ -51,6 +52,9 @@ const Cart = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  // Produto com erro de estoque (vindo do Checkout via navigate state)
+  const estoqueErroProdutoId = (location.state as { estoqueErroProdutoId?: number } | null)?.estoqueErroProdutoId ?? null;
 
   // Autocomplete state
   interface Sugestao {
