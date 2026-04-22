@@ -33,6 +33,7 @@ const Checkout = () => {
   } = useCheckout();
 
   const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [showPixQR, setShowPixQR] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [pixChave, setPixChave] = useState("");
@@ -70,6 +71,9 @@ const Checkout = () => {
   };
 
   const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
+    // Bloqueio de múltiplos cliques / chamadas concorrentes
+    if (isProcessing) return;
+    setIsProcessing(true);
     setConfirmPayment(null);
     setLoading(true);
 
@@ -96,9 +100,33 @@ const Checkout = () => {
 
       if (error) throw error;
 
-      const result = data as { ok: boolean; compra_id: number } | null;
+      const result = data as {
+        ok: boolean;
+        compra_id?: number;
+        erro?: string;
+        produto_id?: number;
+        produto_nome?: string;
+      } | null;
+
       if (!result?.ok) {
-        throw new Error("Falha ao criar compra");
+        // Erro de estoque vindo do backend: redireciona ao carrinho com destaque
+        if (result?.erro === "Estoque insuficiente" && result?.produto_id) {
+          const nome = result.produto_nome || "Produto";
+          toast.error(`O produto ${nome} está sem estoque. Remova para continuar.`, {
+            duration: 6000,
+          });
+          setShowPixQR(false);
+          setLoading(false);
+          setIsProcessing(false);
+          navigate("/cart", {
+            state: {
+              estoqueErroProdutoId: result.produto_id,
+              estoqueErroProdutoNome: nome,
+            },
+          });
+          return;
+        }
+        throw new Error(result?.erro || "Falha ao criar compra");
       }
 
       setShowSuccess(true);
@@ -114,6 +142,7 @@ const Checkout = () => {
     } catch (error) {
       console.error("Erro ao finalizar compra:", error);
       toast.error("Erro ao finalizar compra");
+      setIsProcessing(false);
     } finally {
       setLoading(false);
     }
@@ -187,16 +216,16 @@ const Checkout = () => {
               size="lg"
               className="w-full h-16 text-xl"
               onClick={handleConfirmarPix}
-              disabled={loading}
+              disabled={loading || isProcessing}
             >
-              {loading ? "Processando..." : "Confirmar Pagamento"}
+              {loading || isProcessing ? "Processando..." : "Confirmar Pagamento"}
             </Button>
 
             <Button
               variant="ghost"
               className="w-full"
               onClick={() => setShowPixQR(false)}
-              disabled={loading}
+              disabled={loading || isProcessing}
             >
               Voltar
             </Button>
@@ -223,7 +252,7 @@ const Checkout = () => {
               variant="outline"
               className="w-full h-24 text-2xl"
               onClick={() => handleRequestPayment("caderneta")}
-              disabled={loading}
+              disabled={loading || isProcessing}
             >
               <Book className="w-8 h-8 mr-4" />
               Anotar na Caderneta
@@ -235,7 +264,7 @@ const Checkout = () => {
             variant="outline"
             className="w-full h-24 text-2xl"
             onClick={() => handleRequestPayment("pix")}
-            disabled={loading}
+            disabled={loading || isProcessing}
           >
             <Smartphone className="w-8 h-8 mr-4" />
             Registrar compra e pagar no Pix
