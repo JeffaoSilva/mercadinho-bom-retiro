@@ -578,11 +578,15 @@ const Cart = () => {
               Carrinho vazio. Escaneie um produto para começar.
             </div>
           ) : (
-            cart.map((item, index) => (
+            cart.map((item, index) => {
+              const temErroEstoque = estoqueErroProdutoId === item.produto_id;
+              return (
               <div
                 key={`${item.produto_id}_${item.preco}_${index}`}
                 className={`p-4 rounded-lg border flex items-center gap-4 ${
-                  isLinhaMaisCara(item)
+                  temErroEstoque
+                    ? "bg-red-100 border-red-500 border-2 dark:bg-red-950/40"
+                    : isLinhaMaisCara(item)
                     ? "bg-destructive/10 border-destructive/30"
                     : "bg-card"
                 }`}
@@ -609,6 +613,11 @@ const Cart = () => {
                     )}
                     R$ {item.preco.toFixed(2)} x {item.quantidade}
                   </p>
+                  {temErroEstoque && (
+                    <p className="mt-1 text-sm font-semibold text-red-600 dark:text-red-400">
+                      Sem estoque
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
