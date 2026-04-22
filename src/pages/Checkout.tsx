@@ -216,16 +216,16 @@ const Checkout = () => {
               size="lg"
               className="w-full h-16 text-xl"
               onClick={handleConfirmarPix}
-              disabled={loading}
+              disabled={loading || isProcessing}
             >
-              {loading ? "Processando..." : "Confirmar Pagamento"}
+              {loading || isProcessing ? "Processando..." : "Confirmar Pagamento"}
             </Button>
 
             <Button
               variant="ghost"
               className="w-full"
               onClick={() => setShowPixQR(false)}
-              disabled={loading}
+              disabled={loading || isProcessing}
             >
               Voltar
             </Button>
@@ -252,7 +252,7 @@ const Checkout = () => {
               variant="outline"
               className="w-full h-24 text-2xl"
               onClick={() => handleRequestPayment("caderneta")}
-              disabled={loading}
+              disabled={loading || isProcessing}
             >
               <Book className="w-8 h-8 mr-4" />
               Anotar na Caderneta
@@ -264,7 +264,7 @@ const Checkout = () => {
             variant="outline"
             className="w-full h-24 text-2xl"
             onClick={() => handleRequestPayment("pix")}
-            disabled={loading}
+            disabled={loading || isProcessing}
           >
             <Smartphone className="w-8 h-8 mr-4" />
             Registrar compra e pagar no Pix
