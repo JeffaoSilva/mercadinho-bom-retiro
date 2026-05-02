@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { correspondeBusca } from "@/utils/buscaTexto";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,7 +124,7 @@ const AdminEstoque = () => {
   };
 
   const filteredProdutos = produtos.filter((p) =>
-    p.nome.toLowerCase().includes(search.toLowerCase())
+    correspondeBusca(p.nome, search)
   );
 
   const openEntrada = (produto: Produto) => {

@@ -9,6 +9,7 @@ import BackButton from "@/components/BackButton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
+import { correspondeBusca, normalizarTextoBusca } from "@/utils/buscaTexto";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -125,6 +126,8 @@ const Cart = () => {
         return;
       }
       const mercadinhoId = mercadinhoAtualId || 1;
+      // Busca ampla por mercadinho/prateleira ativa com estoque, e filtra no frontend
+      // com normalização (acentos, plural, espaços).
       const { data, error } = await supabase
         .from("prateleiras_produtos")
         .select("produto_id, quantidade_prateleira, produtos!inner(id, nome, codigo_barras, ativo)")
@@ -132,19 +135,19 @@ const Cart = () => {
         .eq("ativo", true)
         .gt("quantidade_prateleira", 0)
         .eq("produtos.ativo", true)
-        .ilike("produtos.nome", `%${termo}%`)
-        .limit(10);
+        .limit(500);
       if (error) throw error;
-      const termoLower = termo.toLowerCase();
       const mapped = (data || []).map((row: any) => ({
         id: row.produtos.id as number,
         nome: row.produtos.nome as string,
         codigo_barras: row.produtos.codigo_barras as string | null,
       }));
       const unique = Array.from(new Map(mapped.map((p: Sugestao) => [p.id, p])).values());
-      const sorted = unique.sort((a: Sugestao, b: Sugestao) => {
-        const aStarts = a.nome.toLowerCase().startsWith(termoLower) ? 0 : 1;
-        const bStarts = b.nome.toLowerCase().startsWith(termoLower) ? 0 : 1;
+      const filtrados = unique.filter((p: Sugestao) => correspondeBusca(p.nome, termo));
+      const termoNorm = normalizarTextoBusca(termo);
+      const sorted = filtrados.sort((a: Sugestao, b: Sugestao) => {
+        const aStarts = normalizarTextoBusca(a.nome).startsWith(termoNorm) ? 0 : 1;
+        const bStarts = normalizarTextoBusca(b.nome).startsWith(termoNorm) ? 0 : 1;
         if (aStarts !== bStarts) return aStarts - bStarts;
         return a.nome.localeCompare(b.nome);
       }).slice(0, 5);
@@ -283,18 +286,27 @@ const Cart = () => {
         produto = data;
       }
 
-      // Se não encontrou por código, buscar por nome (case-insensitive)
+      // Se não encontrou por código, buscar por nome com matching flexível
+      // (acentos, plural, espaços extras, ordem parcial). Restringe a produtos
+      // disponíveis na prateleira ativa do mercadinho atual.
       if (!produto) {
         const { data, error } = await supabase
-          .from("produtos")
-          .select("*")
-          .ilike("nome", `%${termo}%`)
+          .from("prateleiras_produtos")
+          .select("produtos!inner(*)")
+          .eq("mercadinho_id", mercadinhoId)
           .eq("ativo", true)
-          .limit(1)
-          .maybeSingle();
+          .gt("quantidade_prateleira", 0)
+          .eq("produtos.ativo", true)
+          .limit(500);
 
         if (error) throw error;
-        produto = data;
+        const candidatos = Array.from(
+          new Map(
+            (data || []).map((row: any) => [row.produtos.id, row.produtos])
+          ).values()
+        );
+        produto =
+          candidatos.find((p: any) => correspondeBusca(p.nome, termo)) || null;
       }
 
       if (!produto) {
