@@ -165,12 +165,10 @@ const AdminProdutos = () => {
     setLoading(false);
   };
 
-  // Filtrar por busca (nome ou código de barras, case-insensitive) e por disponibilidade
+  // Filtrar por busca (nome ou código de barras) com matching flexível
+  // (acentos, plural simples, espaços extras, ordem parcial)
   const filteredProdutos = produtos.filter((p) => {
-    const termo = search.toLowerCase();
-    const matchSearch = 
-      p.nome.toLowerCase().includes(termo) ||
-      (p.codigo_barras && p.codigo_barras.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = correspondeNomeOuCodigo(p.nome, p.codigo_barras, search);
     
     // Se nenhum filtro ativo, não mostrar nada
     if (!showDisponiveis && !showEsgotados) return false;
