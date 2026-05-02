@@ -26,6 +26,7 @@ import BackButton from "@/components/BackButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
+import { correspondeNomeOuCodigo } from "@/utils/buscaTexto";
 import { MoneyInput } from "@/components/MoneyInput";
 
 interface Produto {

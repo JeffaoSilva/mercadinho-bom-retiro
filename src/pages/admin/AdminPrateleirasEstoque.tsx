@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { correspondeNomeOuCodigo } from "@/utils/buscaTexto";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ClearableInput } from "@/components/ui/clearable-input";
@@ -213,18 +214,16 @@ const AdminPrateleirasEstoque = () => {
 
   const filtrarPorBarrasOuNome = (item: PrateleiraItem) => {
     if (!filtroBarras.trim()) return true;
-    const termo = filtroBarras.trim().toLowerCase();
-    const matchNome = item.produtos?.nome?.toLowerCase().includes(termo) || false;
-    const matchBarras = item.produtos?.codigo_barras?.includes(filtroBarras.trim()) || false;
-    return matchNome || matchBarras;
+    return correspondeNomeOuCodigo(
+      item.produtos?.nome,
+      item.produtos?.codigo_barras,
+      filtroBarras
+    );
   };
 
   const filtrarProdutoPorBarrasOuNome = (produto: ProdutoGeral) => {
     if (!filtroBarras.trim()) return true;
-    const termo = filtroBarras.trim().toLowerCase();
-    const matchNome = produto.nome?.toLowerCase().includes(termo) || false;
-    const matchBarras = produto.codigo_barras?.includes(filtroBarras.trim()) || false;
-    return matchNome || matchBarras;
+    return correspondeNomeOuCodigo(produto.nome, produto.codigo_barras, filtroBarras);
   };
 
   const sortPrateleiraItems = (items: PrateleiraItem[]): PrateleiraItem[] => {
