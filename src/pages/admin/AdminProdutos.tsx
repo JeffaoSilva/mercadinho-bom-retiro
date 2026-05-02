@@ -28,6 +28,7 @@ import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
 import { correspondeNomeOuCodigo } from "@/utils/buscaTexto";
 import { MoneyInput } from "@/components/MoneyInput";
+import { useLongPressCopy } from "@/hooks/useLongPressCopy";
 
 interface Produto {
   id: number;
@@ -102,6 +103,7 @@ const AdminProdutos = () => {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   const codigoEntradaRef = useRef<HTMLInputElement>(null);
+  const { getHandlers: getCopyHandlers } = useLongPressCopy(500);
 
   const focusCodigoEntrada = useCallback(() => {
     setTimeout(() => {
@@ -714,14 +716,28 @@ const AdminProdutos = () => {
                 ) : (
                   filteredProdutos.map((produto) => (
                     <TableRow key={produto.id}>
-                      <TableCell className="font-medium">{produto.nome}</TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell
+                        className="font-medium"
+                        {...getCopyHandlers(produto.nome, "Nome")}
+                      >
+                        {produto.nome}
+                      </TableCell>
+                      <TableCell
+                        className="text-muted-foreground"
+                        {...getCopyHandlers(produto.codigo_barras || "", "Código")}
+                      >
                         {produto.codigo_barras || "-"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        {...getCopyHandlers((produto.preco_compra ?? 0).toFixed(2), "Preço de compra")}
+                      >
                         R$ {(produto.preco_compra ?? 0).toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        {...getCopyHandlers(produto.preco_venda.toFixed(2), "Preço de venda")}
+                      >
                         R$ {produto.preco_venda.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">{produto.quantidade_total}</TableCell>
