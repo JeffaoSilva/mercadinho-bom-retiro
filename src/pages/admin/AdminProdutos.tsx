@@ -361,6 +361,21 @@ const AdminProdutos = () => {
         toast.error("Erro ao atualizar produto");
         return;
       }
+
+      // Refletir novo preço de venda nas prateleiras ativas (sem criar novos registros)
+      if (form.preco_venda !== null && form.preco_venda !== undefined) {
+        const { error: errPrat } = await supabase
+          .from("prateleiras_produtos")
+          .update({ preco_venda_prateleira: form.preco_venda, atualizado_em: new Date().toISOString() })
+          .eq("produto_id", editingProduto.id)
+          .eq("ativo", true);
+
+        if (errPrat) {
+          console.error("Erro ao atualizar preço nas prateleiras:", errPrat);
+          toast.error("Produto salvo, mas houve erro ao atualizar preço nas prateleiras");
+        }
+      }
+
       toast.success("Produto atualizado");
     } else {
       // Criar novo produto com entrada inicial
