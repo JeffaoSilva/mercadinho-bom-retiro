@@ -260,9 +260,82 @@ const Cart = () => {
 
   // Função que realmente adiciona o produto ao carrinho
   // Suporta busca por código de barras OU nome do produto
+  // Lógica compartilhada: a partir de um produto já resolvido, valida estoque
+  // e adiciona ao carrinho. Garante que o item adicionado é exatamente o passado.
+  const adicionarProdutoResolvido = async (produto: any) => {
+    const mercadinhoId = mercadinhoAtualId || 1;
+
+    const exposicoes = await buscarExposicoesProduto(mercadinhoId, produto.id);
+    const totalDisponivel = await totalDisponivelProduto(mercadinhoId, produto.id);
+
+    if (totalDisponivel === 0 || exposicoes.length === 0) {
+      toast.error("Produto esgotado nesta loja.");
+      setBarcode("");
+      return;
+    }
+
+    setExposicoesCache((prev) => new Map(prev).set(produto.id, exposicoes));
+
+    const reservado = getQuantidadeReservadaPorPrateleira(produto.id);
+    const totalNoCarrinho = cart
+      .filter((i) => i.produto_id === produto.id)
+      .reduce((sum, i) => sum + i.quantidade, 0);
+
+    if (totalNoCarrinho >= totalDisponivel) {
+      toast.error("Quantidade máxima disponível já no carrinho");
+      setBarcode("");
+      return;
+    }
+
+    const prateleiraDisponivel = encontrarProximaPrateleiraDisponivel(exposicoes, reservado);
+    if (!prateleiraDisponivel) {
+      toast.error("Produto não disponível na prateleira");
+      setBarcode("");
+      return;
+    }
+
+    const { precoFinal, temDesconto } = getPrecoComDesconto(
+      prateleiraDisponivel.preco_venda_prateleira,
+      produto.id
+    );
+
+    addToCartWithPrice({
+      produto_id: produto.id,
+      nome: produto.nome,
+      preco: precoFinal,
+      preco_original: temDesconto ? prateleiraDisponivel.preco_venda_prateleira : undefined,
+      codigo_barras: produto.codigo_barras || "",
+      prateleira_id: prateleiraDisponivel.id,
+    });
+
+    playBeep();
+    toast.success(`${produto.nome} adicionado`);
+    setBarcode("");
+  };
+
+  // Adiciona produto pelo ID exato (usado pelo clique nas sugestões).
+  const addProductById = async (produtoId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from("produtos")
+        .select("*")
+        .eq("id", produtoId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        toast.error("Produto não encontrado.");
+        return;
+      }
+      await adicionarProdutoResolvido(data);
+    } catch (e) {
+      console.error("Erro ao adicionar produto:", e);
+      toast.error("Erro ao adicionar produto");
+    }
+  };
+
   const addProductByBarcodeOrName = async (code: string) => {
     const termo = code.trim();
-    
+
     if (!termo) {
       toast.error("Digite um código ou nome de produto");
       return;
@@ -273,24 +346,18 @@ const Cart = () => {
 
     try {
       let produto = null;
-
-      // Se for somente dígitos, buscar por código de barras exato
       const somenteDigitos = /^\d+$/.test(termo);
-      
+
       if (somenteDigitos) {
         const { data, error } = await supabase
           .from("produtos")
           .select("*")
           .eq("codigo_barras", termo)
           .maybeSingle();
-
         if (error) throw error;
         produto = data;
       }
 
-      // Se não encontrou por código, buscar por nome com matching flexível
-      // (acentos, plural, espaços extras, ordem parcial). Restringe a produtos
-      // disponíveis na prateleira ativa do mercadinho atual.
       if (!produto) {
         const { data, error } = await supabase
           .from("prateleiras_produtos")
@@ -300,7 +367,6 @@ const Cart = () => {
           .gt("quantidade_prateleira", 0)
           .eq("produtos.ativo", true)
           .limit(500);
-
         if (error) throw error;
         const candidatos = Array.from(
           new Map(
@@ -317,66 +383,11 @@ const Cart = () => {
         return;
       }
 
-      // Buscar exposições desse produto na prateleira
-      const exposicoes = await buscarExposicoesProduto(mercadinhoId, produto.id);
-
-      // Verificar total disponível
-      const totalDisponivel = await totalDisponivelProduto(mercadinhoId, produto.id);
-
-      if (totalDisponivel === 0 || exposicoes.length === 0) {
-        toast.error("Produto esgotado nesta loja.");
-        setBarcode("");
-        return;
-      }
-
-      // Atualizar cache
-      setExposicoesCache((prev) => new Map(prev).set(produto.id, exposicoes));
-
-      // Verificar quanto já está no carrinho desse produto
-      const reservado = getQuantidadeReservadaPorPrateleira(produto.id);
-      const totalNoCarrinho = cart
-        .filter((i) => i.produto_id === produto.id)
-        .reduce((sum, i) => sum + i.quantidade, 0);
-
-      if (totalNoCarrinho >= totalDisponivel) {
-        toast.error("Quantidade máxima disponível já no carrinho");
-        setBarcode("");
-        return;
-      }
-
-      // Encontrar próxima prateleira disponível
-      const prateleiraDisponivel = encontrarProximaPrateleiraDisponivel(exposicoes, reservado);
-
-      if (!prateleiraDisponivel) {
-        toast.error("Produto não disponível na prateleira");
-        setBarcode("");
-        return;
-      }
-
-      // Aplicar desconto promocional se houver
-      const { precoFinal, temDesconto } = getPrecoComDesconto(
-        prateleiraDisponivel.preco_venda_prateleira,
-        produto.id
-      );
-
-      addToCartWithPrice({
-        produto_id: produto.id,
-        nome: produto.nome,
-        preco: precoFinal,
-        preco_original: temDesconto ? prateleiraDisponivel.preco_venda_prateleira : undefined,
-        codigo_barras: produto.codigo_barras || "",
-        prateleira_id: prateleiraDisponivel.id,
-      });
-
-      // Toca beep de sucesso
-      playBeep();
-      toast.success(`${produto.nome} adicionado`);
+      await adicionarProdutoResolvido(produto);
     } catch (error) {
       console.error("Erro ao buscar produto:", error);
       toast.error("Erro ao buscar produto");
     }
-
-    setBarcode("");
   };
 
   // Handler para formulário (Enter ou submit manual)
