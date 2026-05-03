@@ -171,7 +171,9 @@ const Cart = () => {
     setShowSugestoes(false);
     setSugestoes([]);
     setBarcode("");
-    await addProductByBarcodeOrName(produto.nome);
+    // Adiciona pelo ID exato do produto clicado, evitando re-busca por nome
+    // que poderia retornar outro item correspondente.
+    await addProductById(produto.id);
     setTimeout(() => {
       if (inputRef.current) inputRef.current.focus();
     }, 50);
