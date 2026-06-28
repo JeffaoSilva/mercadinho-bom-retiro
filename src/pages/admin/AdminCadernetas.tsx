@@ -447,7 +447,7 @@ const AdminCadernetas = () => {
                     <TableRow
                       key={cliente.cliente_id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/admin/cadernetas/${cliente.cliente_id}`)}
+                      onClick={() => navigate(`${basePath}/${cliente.cliente_id}`)}
                     >
                       <TableCell className="font-medium">{cliente.cliente_nome}</TableCell>
                       <TableCell className="text-right font-bold">
