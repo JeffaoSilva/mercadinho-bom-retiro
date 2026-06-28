@@ -6,7 +6,28 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import BackButton from "@/components/BackButton";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+type ItemCompraV2 = {
+  item_compra_id: number;
+  produto_id: number;
+  nome_produto: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+};
+
+type CompraV2 = {
+  compra_id: number;
+  data_compra: string;
+  data_compra_brasil: string;
+  hora_compra_brasil: string;
+  valor_total: number;
+  forma_pagamento: string;
+  paga: boolean;
+  itens: ItemCompraV2[];
+};
 
 type MesData = {
   mes: string;
@@ -18,6 +39,7 @@ type MesData = {
   percentual_caderneta_grafico: number;
   percentual_pix_grafico: number;
   status_mes: string;
+  compras: CompraV2[];
 };
 
 type CadernetaPayload = {
@@ -72,6 +94,7 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_caderneta_grafico: 0,
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
+  compras: [],
 });
 
 const STATUS_MAP: Record<string, { label: string; icon: string }> = {
@@ -323,6 +346,56 @@ export default function AreaClienteV2() {
               <span>{status.label}</span>
             </CardContent>
           </Card>
+        )}
+
+        {/* Histórico de compras do mês selecionado */}
+        {!loading && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xl font-bold">Compras do mês</h2>
+            {mesData.compras.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-4">
+                Nenhuma compra neste mês.
+              </div>
+            ) : (
+              mesData.compras.map((compra, index) => (
+                <div key={compra.compra_id}>
+                  <Card className="rounded-2xl">
+                    <CardContent className="p-4 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-sm">
+                            {compra.data_compra_brasil} {compra.hora_compra_brasil}
+                          </div>
+                          <PaymentBadge formaPagamento={compra.forma_pagamento} />
+                        </div>
+                        <div className="font-semibold text-sm">
+                          {formatBRL(Number(compra.valor_total))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1 mt-1">
+                        {compra.itens.map((it) => (
+                          <div
+                            key={it.item_compra_id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <div className="flex-1">{it.nome_produto}</div>
+                            <div className="text-muted-foreground text-xs mx-2">
+                              {it.quantidade}x {formatBRL(Number(it.valor_unitario))}
+                            </div>
+                            <div className="font-medium">
+                              {formatBRL(Number(it.valor_total))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  {index < mesData.compras.length - 1 && <div className="h-2" />}
+                </div>
+              ))
+            )}
+          </section>
         )}
       </div>
     </div>
