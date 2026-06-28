@@ -46,6 +46,22 @@ type CompraV2 = {
   itens: ItemCompraV2[];
 };
 
+type DistribuicaoAbat = {
+  mes: string;
+  mes_formatado: string;
+  valor_aplicado: number;
+};
+
+type AbatimentoDetalhado = {
+  abatimento_id: number;
+  data_lancamento: string;
+  data_lancamento_brasil: string;
+  hora_lancamento_brasil: string;
+  valor_lancado: number;
+  valor_aplicado_no_mes_visualizado: number;
+  distribuicao: DistribuicaoAbat[];
+};
+
 type MesData = {
   mes: string;
   total_caderneta: number;
@@ -57,7 +73,9 @@ type MesData = {
   percentual_pix_grafico: number;
   status_mes: string;
   compras: CompraV2[];
+  abatimentos_detalhados: AbatimentoDetalhado[];
 };
+
 
 type CadernetaPayload = {
   cliente_id: number;
