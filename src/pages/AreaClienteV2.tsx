@@ -131,7 +131,8 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
   compras: [],
-  abatimentos_detalhados: [],
+  abatimentos_aplicados_no_mes: [],
+  abatimentos_lancados_no_mes: [],
 });
 
 
