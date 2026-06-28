@@ -438,13 +438,20 @@ function CardValor({
   titulo,
   valor,
   legenda,
+  onClick,
 }: {
   titulo: string;
   valor: string;
   legenda: string;
+  onClick?: () => void;
 }) {
   return (
-    <Card className="h-full">
+    <Card
+      className={`h-full ${onClick ? "cursor-pointer hover:bg-accent transition-colors" : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       <CardContent className="p-4 flex flex-col items-center justify-center text-center h-full">
         <div className="text-sm text-muted-foreground">{titulo}</div>
         <div className="text-xl font-bold mt-1">{valor}</div>
@@ -452,4 +459,5 @@ function CardValor({
       </CardContent>
     </Card>
   );
+
 }
