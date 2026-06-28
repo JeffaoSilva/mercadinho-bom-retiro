@@ -5,9 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import BackButton from "@/components/BackButton";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
 
 type ItemCompraV2 = {
   item_compra_id: number;
