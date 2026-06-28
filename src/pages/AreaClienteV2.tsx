@@ -141,6 +141,8 @@ export default function AreaClienteV2() {
   const [erro, setErro] = useState<string | null>(null);
   const [data, setData] = useState<CadernetaPayload | null>(null);
   const [mesSelecionado, setMesSelecionado] = useState<string>(currentMonthKey());
+  const [showAbatModal, setShowAbatModal] = useState(false);
+
 
   useEffect(() => {
     let cancelado = false;
