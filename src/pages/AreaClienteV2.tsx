@@ -6,7 +6,28 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import BackButton from "@/components/BackButton";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+type ItemCompraV2 = {
+  item_compra_id: number;
+  produto_id: number;
+  nome_produto: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+};
+
+type CompraV2 = {
+  compra_id: number;
+  data_compra: string;
+  data_compra_brasil: string;
+  hora_compra_brasil: string;
+  valor_total: number;
+  forma_pagamento: string;
+  paga: boolean;
+  itens: ItemCompraV2[];
+};
 
 type MesData = {
   mes: string;
@@ -18,6 +39,7 @@ type MesData = {
   percentual_caderneta_grafico: number;
   percentual_pix_grafico: number;
   status_mes: string;
+  compras: CompraV2[];
 };
 
 type CadernetaPayload = {
