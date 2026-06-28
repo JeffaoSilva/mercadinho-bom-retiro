@@ -114,6 +114,7 @@ const AppContent = () => {
         <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
         <Route path="/admin/cadernetas" element={<AdminCadernetas />} />
         <Route path="/admin/cadernetas/:clienteId" element={<AdminCadernetaDetalhe />} />
+        <Route path="/admin/cadernetas-v2/:clienteId" element={<AdminCadernetaV2 />} />
         <Route path="/admin/codigos-tres" element={<AdminCodigosTres />} />
         <Route path="/admin/ao-vivo" element={<AdminAoVivo />} />
         <Route path="/admin/lancar-compra" element={<AdminLancarCompra />} />
