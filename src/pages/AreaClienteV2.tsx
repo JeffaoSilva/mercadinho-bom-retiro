@@ -94,6 +94,7 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_caderneta_grafico: 0,
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
+  compras: [],
 });
 
 const STATUS_MAP: Record<string, { label: string; icon: string }> = {
