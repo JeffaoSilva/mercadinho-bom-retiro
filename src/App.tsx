@@ -33,6 +33,7 @@ import { useIdleStore } from "./stores/idleStore";
 
 import AreaClienteSelect from "@/pages/AreaClienteSelect";
 import AreaCliente from "@/pages/AreaCliente";
+import AreaClienteV2 from "@/pages/AreaClienteV2";
 import { useConfigRealtime } from "@/hooks/useConfigRealtime";
 
 const queryClient = new QueryClient();
@@ -99,6 +100,7 @@ const AppContent = () => {
 
         <Route path="/area-cliente" element={<AreaClienteSelect />} />
         <Route path="/area-cliente/:clienteId" element={<AreaCliente />} />
+        <Route path="/area-cliente-v2/:clienteId" element={<AreaClienteV2 />} />
 
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/produtos" element={<AdminProdutos />} />
