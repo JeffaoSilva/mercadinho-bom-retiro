@@ -43,13 +43,22 @@ type DistribuicaoAbat = {
   valor_aplicado: number;
 };
 
-type AbatimentoDetalhado = {
+type AbatimentoAplicado = {
   abatimento_id: number;
   data_lancamento: string;
   data_lancamento_brasil: string;
   hora_lancamento_brasil: string;
   valor_lancado: number;
   valor_aplicado_no_mes_visualizado: number;
+  distribuicao: DistribuicaoAbat[];
+};
+
+type AbatimentoLancado = {
+  abatimento_id: number;
+  data_lancamento: string;
+  data_lancamento_brasil: string;
+  hora_lancamento_brasil: string;
+  valor_lancado: number;
   distribuicao: DistribuicaoAbat[];
 };
 
@@ -64,7 +73,8 @@ type MesData = {
   percentual_pix_grafico: number;
   status_mes: string;
   compras: CompraV2[];
-  abatimentos_detalhados: AbatimentoDetalhado[];
+  abatimentos_aplicados_no_mes: AbatimentoAplicado[];
+  abatimentos_lancados_no_mes: AbatimentoLancado[];
 };
 
 
@@ -121,7 +131,8 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
   compras: [],
-  abatimentos_detalhados: [],
+  abatimentos_aplicados_no_mes: [],
+  abatimentos_lancados_no_mes: [],
 });
 
 
@@ -435,8 +446,30 @@ export default function AreaClienteV2() {
         open={showAbatModal}
         onOpenChange={setShowAbatModal}
         mesLabel={formatMesLabel(mesSelecionado)}
-        abatimentos={mesData.abatimentos_detalhados}
+        aplicados={mesData.abatimentos_aplicados_no_mes}
+        lancados={mesData.abatimentos_lancados_no_mes}
       />
+    </div>
+  );
+}
+
+function formatBRLLocal(v: number) {
+  return (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function Distribuicao({ distribuicao }: { distribuicao: DistribuicaoAbat[] }) {
+  if (!distribuicao || distribuicao.length === 0) return null;
+  return (
+    <div className="mt-1 border-t pt-2">
+      <div className="text-xs font-medium mb-1">Distribuição:</div>
+      <div className="flex flex-col gap-1">
+        {distribuicao.map((d) => (
+          <div key={d.mes} className="flex items-center justify-between text-xs">
+            <span>{d.mes_formatado}</span>
+            <span className="font-medium">{formatBRLLocal(Number(d.valor_aplicado))}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -445,12 +478,14 @@ function AbatimentosModal({
   open,
   onOpenChange,
   mesLabel,
-  abatimentos,
+  aplicados,
+  lancados,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   mesLabel: string;
-  abatimentos: AbatimentoDetalhado[];
+  aplicados: AbatimentoAplicado[];
+  lancados: AbatimentoLancado[];
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -458,65 +493,69 @@ function AbatimentosModal({
         <DialogHeader>
           <DialogTitle>Abatimentos — {mesLabel}</DialogTitle>
           <DialogDescription>
-            Pagamentos que reduziram a dívida deste mês e como foram distribuídos.
+            Abatimentos aplicados e lançados neste mês, com sua distribuição.
           </DialogDescription>
         </DialogHeader>
 
-        {abatimentos.length === 0 ? (
-          <div className="text-center text-muted-foreground text-sm py-4">
-            Nenhum abatimento encontrado para este mês.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {abatimentos.map((a) => (
-              <Card key={a.abatimento_id} className="rounded-xl">
-                <CardContent className="p-3 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">
-                      {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
-                    </div>
-                    <div className="text-sm font-semibold">
-                      {(a.valor_lancado ?? 0).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Aplicado neste mês:{" "}
-                    <span className="font-semibold text-foreground">
-                      {(a.valor_aplicado_no_mes_visualizado ?? 0).toLocaleString(
-                        "pt-BR",
-                        { style: "currency", currency: "BRL" }
-                      )}
-                    </span>
-                  </div>
-                  {a.distribuicao && a.distribuicao.length > 0 && (
-                    <div className="mt-1 border-t pt-2">
-                      <div className="text-xs font-medium mb-1">Distribuição:</div>
-                      <div className="flex flex-col gap-1">
-                        {a.distribuicao.map((d) => (
-                          <div
-                            key={d.mes}
-                            className="flex items-center justify-between text-xs"
-                          >
-                            <span>{d.mes_formatado}</span>
-                            <span className="font-medium">
-                              {(d.valor_aplicado ?? 0).toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              })}
-                            </span>
-                          </div>
-                        ))}
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-bold">Abatimentos aplicados neste mês</h3>
+          {aplicados.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-2">
+              Nenhum abatimento nesta seção.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {aplicados.map((a) => (
+                <Card key={`ap-${a.abatimento_id}`} className="rounded-xl">
+                  <CardContent className="p-3 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold">
+                        {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {formatBRLLocal(Number(a.valor_lancado))}
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    <div className="text-xs text-muted-foreground">
+                      Aplicado neste mês:{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatBRLLocal(Number(a.valor_aplicado_no_mes_visualizado))}
+                      </span>
+                    </div>
+                    <Distribuicao distribuicao={a.distribuicao} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-2 mt-2">
+          <h3 className="text-sm font-bold">Abatimentos lançados neste mês</h3>
+          {lancados.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-2">
+              Nenhum abatimento nesta seção.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {lancados.map((a) => (
+                <Card key={`la-${a.abatimento_id}`} className="rounded-xl">
+                  <CardContent className="p-3 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold">
+                        {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {formatBRLLocal(Number(a.valor_lancado))}
+                      </div>
+                    </div>
+                    <Distribuicao distribuicao={a.distribuicao} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
       </DialogContent>
     </Dialog>
   );
