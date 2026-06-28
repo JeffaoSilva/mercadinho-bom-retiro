@@ -22,6 +22,7 @@ import AdminPrateleirasEstoque from "./pages/admin/AdminPrateleirasEstoque";
 import AdminConfiguracoes from "./pages/admin/AdminConfiguracoes";
 import AdminCadernetas from "./pages/admin/AdminCadernetas";
 import AdminCadernetaDetalhe from "./pages/admin/AdminCadernetaDetalhe";
+import AdminCadernetaV2 from "./pages/admin/AdminCadernetaV2";
 import AdminCodigosTres from "./pages/admin/AdminCodigosTres";
 import AdminAoVivo from "./pages/admin/AdminAoVivo";
 import AdminLancarCompra from "./pages/admin/AdminLancarCompra";
