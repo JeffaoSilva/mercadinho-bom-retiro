@@ -430,9 +430,98 @@ export default function AreaClienteV2() {
           </section>
         )}
       </div>
+
+      <AbatimentosModal
+        open={showAbatModal}
+        onOpenChange={setShowAbatModal}
+        mesLabel={formatMesLabel(mesSelecionado)}
+        abatimentos={mesData.abatimentos_detalhados}
+      />
     </div>
   );
 }
+
+function AbatimentosModal({
+  open,
+  onOpenChange,
+  mesLabel,
+  abatimentos,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  mesLabel: string;
+  abatimentos: AbatimentoDetalhado[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Abatimentos — {mesLabel}</DialogTitle>
+          <DialogDescription>
+            Pagamentos que reduziram a dívida deste mês e como foram distribuídos.
+          </DialogDescription>
+        </DialogHeader>
+
+        {abatimentos.length === 0 ? (
+          <div className="text-center text-muted-foreground text-sm py-4">
+            Nenhum abatimento encontrado para este mês.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {abatimentos.map((a) => (
+              <Card key={a.abatimento_id} className="rounded-xl">
+                <CardContent className="p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {(a.valor_lancado ?? 0).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Aplicado neste mês:{" "}
+                    <span className="font-semibold text-foreground">
+                      {(a.valor_aplicado_no_mes_visualizado ?? 0).toLocaleString(
+                        "pt-BR",
+                        { style: "currency", currency: "BRL" }
+                      )}
+                    </span>
+                  </div>
+                  {a.distribuicao && a.distribuicao.length > 0 && (
+                    <div className="mt-1 border-t pt-2">
+                      <div className="text-xs font-medium mb-1">Distribuição:</div>
+                      <div className="flex flex-col gap-1">
+                        {a.distribuicao.map((d) => (
+                          <div
+                            key={d.mes}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span>{d.mes_formatado}</span>
+                            <span className="font-medium">
+                              {(d.valor_aplicado ?? 0).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function CardValor({
   titulo,
