@@ -22,6 +22,7 @@ import AdminPrateleirasEstoque from "./pages/admin/AdminPrateleirasEstoque";
 import AdminConfiguracoes from "./pages/admin/AdminConfiguracoes";
 import AdminCadernetas from "./pages/admin/AdminCadernetas";
 import AdminCadernetaDetalhe from "./pages/admin/AdminCadernetaDetalhe";
+import AdminCadernetaV2 from "./pages/admin/AdminCadernetaV2";
 import AdminCodigosTres from "./pages/admin/AdminCodigosTres";
 import AdminAoVivo from "./pages/admin/AdminAoVivo";
 import AdminLancarCompra from "./pages/admin/AdminLancarCompra";
@@ -113,6 +114,7 @@ const AppContent = () => {
         <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
         <Route path="/admin/cadernetas" element={<AdminCadernetas />} />
         <Route path="/admin/cadernetas/:clienteId" element={<AdminCadernetaDetalhe />} />
+        <Route path="/admin/cadernetas-v2/:clienteId" element={<AdminCadernetaV2 />} />
         <Route path="/admin/codigos-tres" element={<AdminCodigosTres />} />
         <Route path="/admin/ao-vivo" element={<AdminAoVivo />} />
         <Route path="/admin/lancar-compra" element={<AdminLancarCompra />} />

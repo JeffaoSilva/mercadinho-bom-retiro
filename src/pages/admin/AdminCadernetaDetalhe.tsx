@@ -289,9 +289,16 @@ const AdminCadernetaDetalhe = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <BackButton to="/admin/cadernetas" />
           <h1 className="text-3xl font-bold">{cliente?.nome}</h1>
+          <Button
+            variant="outline"
+            className="ml-auto"
+            onClick={() => navigate(`/admin/cadernetas-v2/${cId}`)}
+          >
+            Ver Caderneta V2
+          </Button>
         </div>
 
         {/* Financial Summary */}
