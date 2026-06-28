@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +79,9 @@ interface Abatimento {
 
 const AdminCadernetas = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const destV2 = searchParams.get("dest") === "v2";
+  const basePath = destV2 ? "/admin/cadernetas-v2" : "/admin/cadernetas";
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   
   const [debitos, setDebitos] = useState<DebitosPayload | null>(null);
@@ -391,7 +394,7 @@ const AdminCadernetas = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <BackButton to="/admin" />
-            <h1 className="text-3xl font-bold">Cadernetas</h1>
+            <h1 className="text-3xl font-bold">Cadernetas{destV2 ? " V2 (Beta)" : ""}</h1>
           </div>
           <Button variant="outline" onClick={abrirVisitantes}>
             <Users className="h-4 w-4 mr-2" />
@@ -444,7 +447,7 @@ const AdminCadernetas = () => {
                     <TableRow
                       key={cliente.cliente_id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/admin/cadernetas/${cliente.cliente_id}`)}
+                      onClick={() => navigate(`${basePath}/${cliente.cliente_id}`)}
                     >
                       <TableCell className="font-medium">{cliente.cliente_nome}</TableCell>
                       <TableCell className="text-right font-bold">

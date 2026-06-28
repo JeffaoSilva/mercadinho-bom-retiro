@@ -111,6 +111,7 @@ const Admin = () => {
     { title: "Lotes", icon: Boxes, route: "/admin/estoque" },
     { title: "Promoções", icon: Tag, route: "/admin/promocoes" },
     { title: "Cadernetas", icon: BookOpen, route: "/admin/cadernetas" },
+    { title: "Caderneta V2 (Beta)", icon: BookOpen, route: "/admin/cadernetas?dest=v2" },
     { title: "Compras", icon: ShoppingBag, route: "/admin/compras" },
     { title: "Clientes", icon: Users, route: "/admin/clientes" },
     { title: "Códigos Três", icon: Key, route: "/admin/codigos-tres" },
