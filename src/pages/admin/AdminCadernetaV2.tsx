@@ -130,7 +130,9 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
   compras: [],
+  abatimentos_detalhados: [],
 });
+
 
 const STATUS_MAP: Record<string, { label: string; icon: string }> = {
   quitado: { label: "Quitado", icon: "✅" },
