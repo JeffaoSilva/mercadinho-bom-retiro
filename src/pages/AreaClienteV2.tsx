@@ -43,13 +43,22 @@ type DistribuicaoAbat = {
   valor_aplicado: number;
 };
 
-type AbatimentoDetalhado = {
+type AbatimentoAplicado = {
   abatimento_id: number;
   data_lancamento: string;
   data_lancamento_brasil: string;
   hora_lancamento_brasil: string;
   valor_lancado: number;
   valor_aplicado_no_mes_visualizado: number;
+  distribuicao: DistribuicaoAbat[];
+};
+
+type AbatimentoLancado = {
+  abatimento_id: number;
+  data_lancamento: string;
+  data_lancamento_brasil: string;
+  hora_lancamento_brasil: string;
+  valor_lancado: number;
   distribuicao: DistribuicaoAbat[];
 };
 
@@ -64,7 +73,8 @@ type MesData = {
   percentual_pix_grafico: number;
   status_mes: string;
   compras: CompraV2[];
-  abatimentos_detalhados: AbatimentoDetalhado[];
+  abatimentos_aplicados_no_mes: AbatimentoAplicado[];
+  abatimentos_lancados_no_mes: AbatimentoLancado[];
 };
 
 
