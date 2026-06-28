@@ -46,6 +46,22 @@ type CompraV2 = {
   itens: ItemCompraV2[];
 };
 
+type DistribuicaoAbat = {
+  mes: string;
+  mes_formatado: string;
+  valor_aplicado: number;
+};
+
+type AbatimentoDetalhado = {
+  abatimento_id: number;
+  data_lancamento: string;
+  data_lancamento_brasil: string;
+  hora_lancamento_brasil: string;
+  valor_lancado: number;
+  valor_aplicado_no_mes_visualizado: number;
+  distribuicao: DistribuicaoAbat[];
+};
+
 type MesData = {
   mes: string;
   total_caderneta: number;
@@ -57,7 +73,9 @@ type MesData = {
   percentual_pix_grafico: number;
   status_mes: string;
   compras: CompraV2[];
+  abatimentos_detalhados: AbatimentoDetalhado[];
 };
+
 
 type CadernetaPayload = {
   cliente_id: number;
@@ -112,7 +130,9 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
   compras: [],
+  abatimentos_detalhados: [],
 });
+
 
 const STATUS_MAP: Record<string, { label: string; icon: string }> = {
   quitado: { label: "Quitado", icon: "✅" },
@@ -136,6 +156,8 @@ export default function AdminCadernetaV2() {
   const [showAbatimento, setShowAbatimento] = useState(false);
   const [abatimentoValor, setAbatimentoValor] = useState(0);
   const [salvandoAbatimento, setSalvandoAbatimento] = useState(false);
+  const [showAbatDetalheModal, setShowAbatDetalheModal] = useState(false);
+
 
   // Exportar modal
   const [showExport, setShowExport] = useState(false);
@@ -353,7 +375,7 @@ export default function AdminCadernetaV2() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <CardValor titulo="Caderneta" valor={formatBRL(mesData.total_caderneta)} legenda="No mês" />
-            <CardValor titulo="Abatimentos" valor={formatBRL(mesData.abatimento_aplicado_mes)} legenda="No mês" />
+            <CardValor titulo="Abatimentos" valor={formatBRL(mesData.abatimento_aplicado_mes)} legenda="No mês" onClick={() => setShowAbatDetalheModal(true)} />
             <CardValor titulo="PIX" valor={formatBRL(mesData.total_pix)} legenda="No mês" />
             <CardValor titulo="Total devido" valor={formatBRL(data?.total_devido_atual ?? 0)} legenda="Saldo geral" />
           </div>
@@ -593,13 +615,87 @@ export default function AdminCadernetaV2() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de detalhe de Abatimentos */}
+      <Dialog open={showAbatDetalheModal} onOpenChange={setShowAbatDetalheModal}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Abatimentos — {formatMesLabel(mesSelecionado)}</DialogTitle>
+            <DialogDescription>
+              Pagamentos que reduziram a dívida deste mês e como foram distribuídos.
+            </DialogDescription>
+          </DialogHeader>
+
+          {mesData.abatimentos_detalhados.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">
+              Nenhum abatimento encontrado para este mês.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {mesData.abatimentos_detalhados.map((a) => (
+                <Card key={a.abatimento_id} className="rounded-xl">
+                  <CardContent className="p-3 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold">
+                        {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {formatBRL(Number(a.valor_lancado))}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Aplicado neste mês:{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatBRL(Number(a.valor_aplicado_no_mes_visualizado))}
+                      </span>
+                    </div>
+                    {a.distribuicao && a.distribuicao.length > 0 && (
+                      <div className="mt-1 border-t pt-2">
+                        <div className="text-xs font-medium mb-1">Distribuição:</div>
+                        <div className="flex flex-col gap-1">
+                          {a.distribuicao.map((d) => (
+                            <div
+                              key={d.mes}
+                              className="flex items-center justify-between text-xs"
+                            >
+                              <span>{d.mes_formatado}</span>
+                              <span className="font-medium">
+                                {formatBRL(Number(d.valor_aplicado))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function CardValor({ titulo, valor, legenda }: { titulo: string; valor: string; legenda: string }) {
+function CardValor({
+  titulo,
+  valor,
+  legenda,
+  onClick,
+}: {
+  titulo: string;
+  valor: string;
+  legenda: string;
+  onClick?: () => void;
+}) {
   return (
-    <Card className="h-full">
+    <Card
+      className={`h-full ${onClick ? "cursor-pointer hover:bg-accent transition-colors" : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       <CardContent className="p-4 flex flex-col items-center justify-center text-center h-full">
         <div className="text-sm text-muted-foreground">{titulo}</div>
         <div className="text-xl font-bold mt-1">{valor}</div>
@@ -608,3 +704,4 @@ function CardValor({ titulo, valor, legenda }: { titulo: string; valor: string; 
     </Card>
   );
 }
+

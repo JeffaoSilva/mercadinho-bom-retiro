@@ -5,9 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import BackButton from "@/components/BackButton";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
 
 type ItemCompraV2 = {
   item_compra_id: number;
@@ -29,6 +37,22 @@ type CompraV2 = {
   itens: ItemCompraV2[];
 };
 
+type DistribuicaoAbat = {
+  mes: string;
+  mes_formatado: string;
+  valor_aplicado: number;
+};
+
+type AbatimentoDetalhado = {
+  abatimento_id: number;
+  data_lancamento: string;
+  data_lancamento_brasil: string;
+  hora_lancamento_brasil: string;
+  valor_lancado: number;
+  valor_aplicado_no_mes_visualizado: number;
+  distribuicao: DistribuicaoAbat[];
+};
+
 type MesData = {
   mes: string;
   total_caderneta: number;
@@ -40,7 +64,9 @@ type MesData = {
   percentual_pix_grafico: number;
   status_mes: string;
   compras: CompraV2[];
+  abatimentos_detalhados: AbatimentoDetalhado[];
 };
+
 
 type CadernetaPayload = {
   cliente_id: number;
@@ -95,7 +121,9 @@ const EMPTY_MES = (mes: string): MesData => ({
   percentual_pix_grafico: 0,
   status_mes: "sem_movimentacao",
   compras: [],
+  abatimentos_detalhados: [],
 });
+
 
 const STATUS_MAP: Record<string, { label: string; icon: string }> = {
   quitado: { label: "Quitado", icon: "✅" },
@@ -113,6 +141,8 @@ export default function AreaClienteV2() {
   const [erro, setErro] = useState<string | null>(null);
   const [data, setData] = useState<CadernetaPayload | null>(null);
   const [mesSelecionado, setMesSelecionado] = useState<string>(currentMonthKey());
+  const [showAbatModal, setShowAbatModal] = useState(false);
+
 
   useEffect(() => {
     let cancelado = false;
@@ -230,6 +260,8 @@ export default function AreaClienteV2() {
               titulo="Abatimentos"
               valor={formatBRL(mesData.abatimento_aplicado_mes)}
               legenda="No mês selecionado"
+              onClick={() => setShowAbatModal(true)}
+
             />
             <CardValor
               titulo="PIX"
@@ -398,21 +430,117 @@ export default function AreaClienteV2() {
           </section>
         )}
       </div>
+
+      <AbatimentosModal
+        open={showAbatModal}
+        onOpenChange={setShowAbatModal}
+        mesLabel={formatMesLabel(mesSelecionado)}
+        abatimentos={mesData.abatimentos_detalhados}
+      />
     </div>
   );
 }
+
+function AbatimentosModal({
+  open,
+  onOpenChange,
+  mesLabel,
+  abatimentos,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  mesLabel: string;
+  abatimentos: AbatimentoDetalhado[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Abatimentos — {mesLabel}</DialogTitle>
+          <DialogDescription>
+            Pagamentos que reduziram a dívida deste mês e como foram distribuídos.
+          </DialogDescription>
+        </DialogHeader>
+
+        {abatimentos.length === 0 ? (
+          <div className="text-center text-muted-foreground text-sm py-4">
+            Nenhum abatimento encontrado para este mês.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {abatimentos.map((a) => (
+              <Card key={a.abatimento_id} className="rounded-xl">
+                <CardContent className="p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {(a.valor_lancado ?? 0).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Aplicado neste mês:{" "}
+                    <span className="font-semibold text-foreground">
+                      {(a.valor_aplicado_no_mes_visualizado ?? 0).toLocaleString(
+                        "pt-BR",
+                        { style: "currency", currency: "BRL" }
+                      )}
+                    </span>
+                  </div>
+                  {a.distribuicao && a.distribuicao.length > 0 && (
+                    <div className="mt-1 border-t pt-2">
+                      <div className="text-xs font-medium mb-1">Distribuição:</div>
+                      <div className="flex flex-col gap-1">
+                        {a.distribuicao.map((d) => (
+                          <div
+                            key={d.mes}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span>{d.mes_formatado}</span>
+                            <span className="font-medium">
+                              {(d.valor_aplicado ?? 0).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function CardValor({
   titulo,
   valor,
   legenda,
+  onClick,
 }: {
   titulo: string;
   valor: string;
   legenda: string;
+  onClick?: () => void;
 }) {
   return (
-    <Card className="h-full">
+    <Card
+      className={`h-full ${onClick ? "cursor-pointer hover:bg-accent transition-colors" : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       <CardContent className="p-4 flex flex-col items-center justify-center text-center h-full">
         <div className="text-sm text-muted-foreground">{titulo}</div>
         <div className="text-xl font-bold mt-1">{valor}</div>
@@ -420,4 +548,5 @@ function CardValor({
       </CardContent>
     </Card>
   );
+
 }
