@@ -394,7 +394,7 @@ const AdminCadernetas = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <BackButton to="/admin" />
-            <h1 className="text-3xl font-bold">Cadernetas</h1>
+            <h1 className="text-3xl font-bold">Cadernetas{destV2 ? " V2 (Beta)" : ""}</h1>
           </div>
           <Button variant="outline" onClick={abrirVisitantes}>
             <Users className="h-4 w-4 mr-2" />
