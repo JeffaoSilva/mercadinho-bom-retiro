@@ -260,6 +260,8 @@ export default function AreaClienteV2() {
               titulo="Abatimentos"
               valor={formatBRL(mesData.abatimento_aplicado_mes)}
               legenda="No mês selecionado"
+              onClick={() => setShowAbatModal(true)}
+
             />
             <CardValor
               titulo="PIX"
