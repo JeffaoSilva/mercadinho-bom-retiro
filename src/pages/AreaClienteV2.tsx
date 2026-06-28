@@ -347,6 +347,56 @@ export default function AreaClienteV2() {
             </CardContent>
           </Card>
         )}
+
+        {/* Histórico de compras do mês selecionado */}
+        {!loading && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xl font-bold">Compras do mês</h2>
+            {mesData.compras.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-4">
+                Nenhuma compra neste mês.
+              </div>
+            ) : (
+              mesData.compras.map((compra, index) => (
+                <div key={compra.compra_id}>
+                  <Card className="rounded-2xl">
+                    <CardContent className="p-4 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-sm">
+                            {compra.data_compra_brasil} {compra.hora_compra_brasil}
+                          </div>
+                          <PaymentBadge formaPagamento={compra.forma_pagamento} />
+                        </div>
+                        <div className="font-semibold text-sm">
+                          {formatBRL(Number(compra.valor_total))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1 mt-1">
+                        {compra.itens.map((it) => (
+                          <div
+                            key={it.item_compra_id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <div className="flex-1">{it.nome_produto}</div>
+                            <div className="text-muted-foreground text-xs mx-2">
+                              {it.quantidade}x {formatBRL(Number(it.valor_unitario))}
+                            </div>
+                            <div className="font-medium">
+                              {formatBRL(Number(it.valor_total))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  {index < mesData.compras.length - 1 && <div className="h-2" />}
+                </div>
+              ))
+            )}
+          </section>
+        )}
       </div>
     </div>
   );
