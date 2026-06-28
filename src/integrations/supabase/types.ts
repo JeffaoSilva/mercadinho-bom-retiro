@@ -889,6 +889,15 @@ export type Database = {
         Args: { p_cliente_id: number; p_mes_referencia: string }
         Returns: Json
       }
+      cliente_caderneta_v2: { Args: { p_cliente_id: number }; Returns: Json }
+      cliente_extrato_periodo: {
+        Args: {
+          p_cliente_id: number
+          p_data_fim: string
+          p_data_inicio: string
+        }
+        Returns: Json
+      }
       cliente_historico: { Args: { p_cliente_id: number }; Returns: Json }
       criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }
