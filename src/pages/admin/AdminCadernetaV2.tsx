@@ -156,6 +156,8 @@ export default function AdminCadernetaV2() {
   const [showAbatimento, setShowAbatimento] = useState(false);
   const [abatimentoValor, setAbatimentoValor] = useState(0);
   const [salvandoAbatimento, setSalvandoAbatimento] = useState(false);
+  const [showAbatDetalheModal, setShowAbatDetalheModal] = useState(false);
+
 
   // Exportar modal
   const [showExport, setShowExport] = useState(false);
