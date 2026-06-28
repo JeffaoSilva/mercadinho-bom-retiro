@@ -33,6 +33,10 @@ const MESES_PT = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+const COR_CADERNETA = "hsl(270 70% 50%)";
+const COR_PIX = "hsl(142 71% 45%)";
+const COR_VAZIO = "hsl(var(--muted))";
+
 function formatMesLabel(mes: string): string {
   const [ano, m] = mes.split("-");
   const idx = Number(m) - 1;
@@ -131,6 +135,11 @@ export default function AreaClienteV2() {
     return found ?? EMPTY_MES(mesSelecionado);
   }, [data, mesSelecionado]);
 
+  const primeiroMes = useMemo(() => {
+    if (!data?.meses?.length) return null;
+    return data.meses.map((m) => m.mes).sort()[0];
+  }, [data]);
+
   const proximoNoFuturo = useMemo(() => {
     return addMonth(mesSelecionado, 1) > mesAtualKey;
   }, [mesSelecionado, mesAtualKey]);
@@ -139,14 +148,14 @@ export default function AreaClienteV2() {
     { name: "Caderneta", value: mesData.total_caderneta },
     { name: "PIX", value: mesData.total_pix },
   ];
-  const chartColors = ["hsl(var(--primary))", "hsl(142 71% 45%)"];
+  const chartColors = [COR_CADERNETA, COR_PIX];
   const movimentacaoTotal = mesData.movimentacao_mes;
   const status = STATUS_MAP[mesData.status_mes] ?? STATUS_MAP.sem_movimentacao;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <BackButton />
-      <div className="max-w-5xl mx-auto pt-14 space-y-6">
+      <div className="max-w-5xl mx-auto pt-6 space-y-6">
         <h1 className="text-3xl font-bold text-center">Caderneta V2</h1>
 
         {/* Navegação entre meses */}
@@ -154,7 +163,7 @@ export default function AreaClienteV2() {
           <Button
             variant="outline"
             onClick={() => setMesSelecionado((m) => addMonth(m, -1))}
-            disabled={loading}
+            disabled={loading || mesSelecionado === primeiroMes}
           >
             <ChevronLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Mês anterior</span>
@@ -182,13 +191,13 @@ export default function AreaClienteV2() {
 
         {/* Cards */}
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <CardValor
               titulo="Caderneta"
               valor={formatBRL(mesData.total_caderneta)}
@@ -218,8 +227,8 @@ export default function AreaClienteV2() {
             {loading ? (
               <Skeleton className="h-64 w-full" />
             ) : (
-              <>
-                <div className="relative h-64">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -241,39 +250,65 @@ export default function AreaClienteV2() {
                             fill={
                               movimentacaoTotal > 0
                                 ? chartColors[i]
-                                : "hsl(var(--muted))"
+                                : COR_VAZIO
                             }
                           />
                         ))}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-sm text-muted-foreground">
+                </div>
+
+                <div className="flex flex-col justify-center h-full gap-6">
+                  <div>
+                    <div className="text-sm text-muted-foreground">
                       Movimentação do mês
-                    </span>
-                    <span className="text-2xl font-bold">
+                    </div>
+                    <div className="text-2xl font-bold">
                       {formatBRL(movimentacaoTotal)}
-                    </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block w-3 h-3 rounded-sm"
+                          style={{ background: COR_CADERNETA }}
+                        />
+                        <span>Caderneta</span>
+                      </div>
+                      <span className="font-semibold">
+                        {formatBRL(mesData.total_caderneta)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block w-3 h-3 rounded-sm"
+                          style={{ background: COR_PIX }}
+                        />
+                        <span>PIX</span>
+                      </div>
+                      <span className="font-semibold">
+                        {formatBRL(mesData.total_pix)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    Caderneta {mesData.percentual_caderneta_grafico}% · PIX{" "}
+                    {mesData.percentual_pix_grafico}%
                   </div>
                 </div>
-                <div className="flex items-center justify-center gap-6 mt-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-block w-3 h-3 rounded-sm"
-                      style={{ background: chartColors[0] }}
-                    />
-                    Caderneta
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-block w-3 h-3 rounded-sm"
-                      style={{ background: chartColors[1] }}
-                    />
-                    PIX
-                  </div>
-                </div>
-              </>
+              </div>
+            )}
+
+            {!loading && (
+              <p className="text-xs text-muted-foreground text-center mt-6">
+                As compras no PIX não entram no cálculo da dívida, mas são
+                exibidas para seu controle.
+              </p>
             )}
           </CardContent>
         </Card>
