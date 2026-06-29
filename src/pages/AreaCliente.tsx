@@ -384,55 +384,39 @@ function HistoricoCompleto({
     async (pageIndex: number) => {
       if (!clienteId) return;
       setLoading(true);
-      const from = pageIndex * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const offset = pageIndex * PAGE_SIZE;
 
-      const { data: comprasData, error } = await supabase
-        .from("compras")
-        .select("id, criado_em, mercadinho_id, forma_pagamento, valor_total, mes_referencia")
-        .eq("cliente_id", clienteId)
-        .order("criado_em", { ascending: false })
-        .range(from, to);
+      const { data, error } = await supabase.rpc("cliente_historico_completo" as any, {
+        p_cliente_id: clienteId,
+        p_limit: PAGE_SIZE,
+        p_offset: offset,
+      });
 
-      if (error || !comprasData) {
+      if (error || !data) {
         setLoading(false);
         setHasMore(false);
         return;
       }
 
-      let novas: CompraLista[] = [];
-      if (comprasData.length > 0) {
-        const ids = comprasData.map((c: any) => c.id);
-        const { data: itensData } = await supabase
-          .from("itens_compra")
-          .select("id, compra_id, produto_id, quantidade, valor_unitario, valor_total, produto:produtos(nome)")
-          .in("compra_id", ids);
-
-        const itensPorCompra: Record<number, ItemHistorico[]> = {};
-        for (const it of (itensData || []) as any[]) {
-          if (!itensPorCompra[it.compra_id]) itensPorCompra[it.compra_id] = [];
-          itensPorCompra[it.compra_id].push({
-            produto_id: it.produto_id,
-            nome: it.produto?.nome ?? "Produto",
-            quantidade: Number(it.quantidade) || 0,
-            valor_unitario: Number(it.valor_unitario) || 0,
-            valor_total: Number(it.valor_total) || 0,
-          });
-        }
-
-        novas = comprasData.map((c: any) => ({
-          compra_id: c.id,
-          criado_em: c.criado_em,
-          mercadinho_id: c.mercadinho_id,
-          forma_pagamento: c.forma_pagamento,
-          valor_total: Number(c.valor_total) || 0,
-          mes_referencia: c.mes_referencia,
-          itens: itensPorCompra[c.id] || [],
-        }));
-      }
+      const rows = (data as any[]) || [];
+      const novas: CompraLista[] = rows.map((c: any) => ({
+        compra_id: c.compra_id,
+        criado_em: c.data_compra ?? c.criado_em,
+        mercadinho_id: c.mercadinho_id,
+        forma_pagamento: c.forma_pagamento,
+        valor_total: Number(c.valor_total) || 0,
+        mes_referencia: c.mes_referencia,
+        itens: (c.itens || []).map((it: any) => ({
+          produto_id: it.produto_id,
+          nome: it.nome ?? "Produto",
+          quantidade: Number(it.quantidade) || 0,
+          valor_unitario: Number(it.valor_unitario) || 0,
+          valor_total: Number(it.valor_total) || 0,
+        })),
+      }));
 
       setCompras((prev) => (pageIndex === 0 ? novas : [...prev, ...novas]));
-      setHasMore(comprasData.length === PAGE_SIZE);
+      setHasMore(rows.length === PAGE_SIZE);
       setLoading(false);
       setInitialized(true);
     },
