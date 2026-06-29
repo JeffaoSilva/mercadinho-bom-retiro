@@ -336,33 +336,8 @@ export default function AreaCliente() {
         )}
       </header>
 
-      {carregando && (
-        <div className="text-center text-muted-foreground mt-6">
-          Carregando histórico...
-        </div>
-      )}
+      <HistoricoCompleto clienteId={clienteId} renderCompras={renderCompras} carregandoTopo={carregando} />
 
-      {!carregando && comprasMesAtual.length === 0 && abatimentos.length === 0 && (
-        <div className="text-center text-muted-foreground mt-6">
-          Nenhuma compra em aberto neste mês.
-        </div>
-      )}
-
-      {!carregando && (comprasMesAtual.length > 0 || abatimentos.length > 0) && (
-        <div className="flex flex-col gap-6">
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Fatura do mês</h2>
-              <div className="text-sm font-semibold">
-                Total: R$ {Math.max(totalCadernetaMesAtual - totalAbatimentos, 0).toFixed(2)}
-              </div>
-            </div>
-
-            {renderAbatimentos()}
-            {renderCompras(comprasMesAtual)}
-          </section>
-        </div>
-      )}
 
     </div>
   );
