@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -336,34 +336,191 @@ export default function AreaCliente() {
         )}
       </header>
 
-      {carregando && (
-        <div className="text-center text-muted-foreground mt-6">
-          Carregando histórico...
-        </div>
-      )}
+      <HistoricoCompleto clienteId={clienteId} renderCompras={renderCompras} carregandoTopo={carregando} />
 
-      {!carregando && comprasMesAtual.length === 0 && abatimentos.length === 0 && (
-        <div className="text-center text-muted-foreground mt-6">
-          Nenhuma compra em aberto neste mês.
-        </div>
-      )}
-
-      {!carregando && (comprasMesAtual.length > 0 || abatimentos.length > 0) && (
-        <div className="flex flex-col gap-6">
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Fatura do mês</h2>
-              <div className="text-sm font-semibold">
-                Total: R$ {Math.max(totalCadernetaMesAtual - totalAbatimentos, 0).toFixed(2)}
-              </div>
-            </div>
-
-            {renderAbatimentos()}
-            {renderCompras(comprasMesAtual)}
-          </section>
-        </div>
-      )}
 
     </div>
   );
 }
+
+// ============================================================
+// Histórico completo com infinite scroll, agrupado por mês
+// ============================================================
+
+const PAGE_SIZE = 20;
+
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+type CompraLista = {
+  compra_id: number;
+  criado_em: string;
+  mercadinho_id: number;
+  forma_pagamento: string;
+  valor_total: number;
+  mes_referencia?: string;
+  itens: ItemHistorico[];
+};
+
+function HistoricoCompleto({
+  clienteId,
+  renderCompras,
+  carregandoTopo,
+}: {
+  clienteId: number | null;
+  renderCompras: (compras: CompraLista[]) => JSX.Element;
+  carregandoTopo: boolean;
+}) {
+  const [compras, setCompras] = useState<CompraLista[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadPage = useCallback(
+    async (pageIndex: number) => {
+      if (!clienteId) return;
+      setLoading(true);
+      const from = pageIndex * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data: comprasData, error } = await supabase
+        .from("compras")
+        .select("id, criado_em, mercadinho_id, forma_pagamento, valor_total, mes_referencia")
+        .eq("cliente_id", clienteId)
+        .order("criado_em", { ascending: false })
+        .range(from, to);
+
+      if (error || !comprasData) {
+        setLoading(false);
+        setHasMore(false);
+        return;
+      }
+
+      let novas: CompraLista[] = [];
+      if (comprasData.length > 0) {
+        const ids = comprasData.map((c: any) => c.id);
+        const { data: itensData } = await supabase
+          .from("itens_compra")
+          .select("id, compra_id, produto_id, quantidade, valor_unitario, valor_total, produto:produtos(nome)")
+          .in("compra_id", ids);
+
+        const itensPorCompra: Record<number, ItemHistorico[]> = {};
+        for (const it of (itensData || []) as any[]) {
+          if (!itensPorCompra[it.compra_id]) itensPorCompra[it.compra_id] = [];
+          itensPorCompra[it.compra_id].push({
+            produto_id: it.produto_id,
+            nome: it.produto?.nome ?? "Produto",
+            quantidade: Number(it.quantidade) || 0,
+            valor_unitario: Number(it.valor_unitario) || 0,
+            valor_total: Number(it.valor_total) || 0,
+          });
+        }
+
+        novas = comprasData.map((c: any) => ({
+          compra_id: c.id,
+          criado_em: c.criado_em,
+          mercadinho_id: c.mercadinho_id,
+          forma_pagamento: c.forma_pagamento,
+          valor_total: Number(c.valor_total) || 0,
+          mes_referencia: c.mes_referencia,
+          itens: itensPorCompra[c.id] || [],
+        }));
+      }
+
+      setCompras((prev) => (pageIndex === 0 ? novas : [...prev, ...novas]));
+      setHasMore(comprasData.length === PAGE_SIZE);
+      setLoading(false);
+      setInitialized(true);
+    },
+    [clienteId]
+  );
+
+  useEffect(() => {
+    setCompras([]);
+    setPage(0);
+    setHasMore(true);
+    setInitialized(false);
+    if (clienteId) loadPage(0);
+  }, [clienteId, loadPage]);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          setPage((p) => {
+            const next = p + 1;
+            loadPage(next);
+            return next;
+          });
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadPage]);
+
+  const grupos = useMemo(() => {
+    const map = new Map<string, { label: string; compras: CompraLista[] }>();
+    for (const c of compras) {
+      const d = new Date(c.criado_em);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = `${MESES_PT[d.getMonth()]} de ${d.getFullYear()}`;
+      if (!map.has(key)) map.set(key, { label, compras: [] });
+      map.get(key)!.compras.push(c);
+    }
+    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
+  }, [compras]);
+
+  if (carregandoTopo && !initialized) {
+    return (
+      <div className="text-center text-muted-foreground mt-6">
+        Carregando histórico...
+      </div>
+    );
+  }
+
+  if (initialized && compras.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground mt-6">
+        Nenhuma compra encontrada.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 mt-2">
+      <h2 className="text-xl font-bold">Histórico de compras</h2>
+
+      {grupos.map((g) => (
+        <section key={g.key} className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 my-1">
+            <div className="h-px flex-1 bg-border" />
+            <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              {g.label}
+            </div>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          {renderCompras(g.compras)}
+        </section>
+      ))}
+
+      <div ref={sentinelRef} className="h-8 flex items-center justify-center text-xs text-muted-foreground">
+        {loading
+          ? "Carregando mais..."
+          : hasMore
+            ? "Role para carregar mais"
+            : compras.length > 0
+              ? "Fim do histórico"
+              : ""}
+      </div>
+    </div>
+  );
+}
+
