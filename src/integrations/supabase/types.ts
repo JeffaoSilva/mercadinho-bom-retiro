@@ -899,6 +899,10 @@ export type Database = {
         Returns: Json
       }
       cliente_historico: { Args: { p_cliente_id: number }; Returns: Json }
+      cliente_historico_completo: {
+        Args: { p_cliente_id: number; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }
       pin_create: {
