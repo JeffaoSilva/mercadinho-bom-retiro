@@ -55,18 +55,17 @@ export default function AreaClienteSelect() {
   }, [clientes, busca]);
 
   const escolherCliente = (c: ClienteKiosk) => {
-    // ✅ SETA o cliente no store (pra Área do Cliente e Carrinho saberem quem é)
     setCliente(c.id, c.nome);
 
-    // Navega para o PIN, mas dizendo que o destino é a Área do Cliente
     navigate("/pin", {
       state: {
         clienteId: c.id,
         clienteNome: c.nome,
-        destino: "areaCliente",
+        destino: isV2 ? "areaClienteV2" : "areaCliente",
       },
     });
   };
+
 
   return (
     <div className="min-h-screen p-4 flex flex-col gap-4">
