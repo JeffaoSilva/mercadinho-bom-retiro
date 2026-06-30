@@ -14,7 +14,10 @@ type ClienteKiosk = {
 
 export default function AreaClienteSelect() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isV2 = searchParams.get("v2") === "1";
   const { mercadinhoAtualId, setCliente } = useCheckout();
+
 
   const [clientes, setClientes] = useState<ClienteKiosk[]>([]);
   const [busca, setBusca] = useState("");
