@@ -144,6 +144,25 @@ export default function AreaClienteV2() {
   const [data, setData] = useState<CadernetaPayload | null>(null);
   const [mesSelecionado, setMesSelecionado] = useState<string>(currentMonthKey());
   const [showAbatModal, setShowAbatModal] = useState(false);
+  const [clienteNome, setClienteNome] = useState<string>("");
+
+  useEffect(() => {
+    let cancelado = false;
+    async function carregarNome() {
+      if (!clienteId) return;
+      const { data: cli } = await supabase
+        .from("clientes_kiosk")
+        .select("nome")
+        .eq("id", clienteId)
+        .maybeSingle();
+      if (!cancelado && cli?.nome) setClienteNome(cli.nome);
+    }
+    carregarNome();
+    return () => {
+      cancelado = true;
+    };
+  }, [clienteId]);
+
 
 
   useEffect(() => {
