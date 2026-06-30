@@ -18,6 +18,7 @@ import BackButton from "@/components/BackButton";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
+import { PagamentosModal } from "@/components/PagamentosModal";
 import {
   ChevronLeft,
   ChevronRight,
@@ -386,7 +387,7 @@ export default function AdminCadernetaV2() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <CardValor titulo="Caderneta" valor={formatBRL(mesData.total_caderneta)} legenda="No mês" />
-            <CardValor titulo="Abatimentos" valor={formatBRL(mesData.abatimento_aplicado_mes)} legenda="No mês" onClick={() => setShowAbatDetalheModal(true)} />
+            <CardValor titulo="Pagamentos" valor={formatBRL(mesData.abatimento_aplicado_mes)} legenda="Aplicado para reduzir sua dívida" footer="Toque para ver detalhes" onClick={() => setShowAbatDetalheModal(true)} />
             <CardValor titulo="PIX" valor={formatBRL(mesData.total_pix)} legenda="No mês" />
             <CardValor titulo="Total devido" valor={formatBRL(data?.total_devido_atual ?? 0)} legenda="Saldo geral" />
           </div>
@@ -627,101 +628,17 @@ export default function AdminCadernetaV2() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de detalhe de Abatimentos */}
-      <Dialog open={showAbatDetalheModal} onOpenChange={setShowAbatDetalheModal}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Abatimentos — {formatMesLabel(mesSelecionado)}</DialogTitle>
-            <DialogDescription>
-              Abatimentos aplicados e lançados neste mês, com sua distribuição.
-            </DialogDescription>
-          </DialogHeader>
+      {/* Modal de Pagamentos */}
+      <PagamentosModal
+        open={showAbatDetalheModal}
+        onOpenChange={setShowAbatDetalheModal}
+        mesLabel={formatMesLabel(mesSelecionado)}
+        totalCaderneta={mesData.total_caderneta}
+        abatimentoAplicadoMes={mesData.abatimento_aplicado_mes}
+        aplicados={mesData.abatimentos_aplicados_no_mes}
+        lancados={mesData.abatimentos_lancados_no_mes}
+      />
 
-          <section className="flex flex-col gap-2">
-            <h3 className="text-sm font-bold">Abatimentos aplicados neste mês</h3>
-            {mesData.abatimentos_aplicados_no_mes.length === 0 ? (
-              <div className="text-center text-muted-foreground text-sm py-2">
-                Nenhum abatimento nesta seção.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {mesData.abatimentos_aplicados_no_mes.map((a) => (
-                  <Card key={`ap-${a.abatimento_id}`} className="rounded-xl">
-                    <CardContent className="p-3 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold">
-                          {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
-                        </div>
-                        <div className="text-sm font-semibold">
-                          {formatBRL(Number(a.valor_lancado))}
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Aplicado neste mês:{" "}
-                        <span className="font-semibold text-foreground">
-                          {formatBRL(Number(a.valor_aplicado_no_mes_visualizado))}
-                        </span>
-                      </div>
-                      {a.distribuicao && a.distribuicao.length > 0 && (
-                        <div className="mt-1 border-t pt-2">
-                          <div className="text-xs font-medium mb-1">Distribuição:</div>
-                          <div className="flex flex-col gap-1">
-                            {a.distribuicao.map((d) => (
-                              <div key={d.mes} className="flex items-center justify-between text-xs">
-                                <span>{d.mes_formatado}</span>
-                                <span className="font-medium">{formatBRL(Number(d.valor_aplicado))}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="flex flex-col gap-2 mt-2">
-            <h3 className="text-sm font-bold">Abatimentos lançados neste mês</h3>
-            {mesData.abatimentos_lancados_no_mes.length === 0 ? (
-              <div className="text-center text-muted-foreground text-sm py-2">
-                Nenhum abatimento nesta seção.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {mesData.abatimentos_lancados_no_mes.map((a) => (
-                  <Card key={`la-${a.abatimento_id}`} className="rounded-xl">
-                    <CardContent className="p-3 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold">
-                          {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
-                        </div>
-                        <div className="text-sm font-semibold">
-                          {formatBRL(Number(a.valor_lancado))}
-                        </div>
-                      </div>
-                      {a.distribuicao && a.distribuicao.length > 0 && (
-                        <div className="mt-1 border-t pt-2">
-                          <div className="text-xs font-medium mb-1">Distribuição:</div>
-                          <div className="flex flex-col gap-1">
-                            {a.distribuicao.map((d) => (
-                              <div key={d.mes} className="flex items-center justify-between text-xs">
-                                <span>{d.mes_formatado}</span>
-                                <span className="font-medium">{formatBRL(Number(d.valor_aplicado))}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -730,11 +647,13 @@ function CardValor({
   titulo,
   valor,
   legenda,
+  footer,
   onClick,
 }: {
   titulo: string;
   valor: string;
   legenda: string;
+  footer?: string;
   onClick?: () => void;
 }) {
   return (
@@ -748,6 +667,9 @@ function CardValor({
         <div className="text-sm text-muted-foreground">{titulo}</div>
         <div className="text-xl font-bold mt-1">{valor}</div>
         <div className="text-xs text-muted-foreground mt-1">{legenda}</div>
+        {footer && (
+          <div className="text-[11px] text-primary mt-2 font-medium">{footer}</div>
+        )}
       </CardContent>
     </Card>
   );
