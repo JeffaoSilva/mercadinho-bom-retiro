@@ -15,6 +15,7 @@ import {
 import BackButton from "@/components/BackButton";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { PagamentosModal } from "@/components/PagamentosModal";
 
 
 type ItemCompraV2 = {
