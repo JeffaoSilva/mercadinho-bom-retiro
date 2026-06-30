@@ -238,15 +238,14 @@ export default function AreaClienteV2() {
           </Card>
         )}
 
-        {/* Cards */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <CardValor
               titulo="Caderneta"
               valor={formatBRL(mesData.total_caderneta)}
@@ -258,13 +257,11 @@ export default function AreaClienteV2() {
               legenda="Aplicado para reduzir sua dívida"
               footer="Toque para ver detalhes"
               onClick={() => setShowAbatModal(true)}
-
             />
-
             <CardValor
-              titulo="PIX"
-              valor={formatBRL(mesData.total_pix)}
-              legenda="No mês selecionado"
+              titulo="Restante a pagar"
+              valor={formatBRL(mesData.saldo_mes)}
+              legenda="Saldo restante a ser pago"
             />
             <CardValor
               titulo="Total devido"
