@@ -269,12 +269,14 @@ export default function AreaClienteV2() {
               legenda="No mês selecionado"
             />
             <CardValor
-              titulo="Abatimentos"
+              titulo="Pagamentos"
               valor={formatBRL(mesData.abatimento_aplicado_mes)}
-              legenda="No mês selecionado"
+              legenda="Aplicado para reduzir sua dívida"
+              footer="Toque para ver detalhes"
               onClick={() => setShowAbatModal(true)}
 
             />
+
             <CardValor
               titulo="PIX"
               valor={formatBRL(mesData.total_pix)}
