@@ -85,9 +85,6 @@ const MESES_PT = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-const COR_CADERNETA = "hsl(270 70% 50%)";
-const COR_PIX = "hsl(142 71% 45%)";
-const COR_VAZIO = "hsl(var(--muted))";
 
 function formatMesLabel(mes: string): string {
   const [ano, m] = mes.split("-");
