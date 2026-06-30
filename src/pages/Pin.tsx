@@ -61,12 +61,15 @@ const Pin = () => {
       setCliente(clienteId, clienteNome);
     }
 
-    if (destino === "areaCliente") {
+    if (destino === "areaClienteV2") {
+      navigate(`/area-cliente-v2/${clienteId}`);
+    } else if (destino === "areaCliente") {
       navigate(`/area-cliente/${clienteId}`);
     } else {
       navigate("/cart");
     }
   };
+
 
   const processarPin = async (pinAtual: string) => {
     if (!clienteId) {
