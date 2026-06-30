@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,9 +85,6 @@ const MESES_PT = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-const COR_CADERNETA = "hsl(270 70% 50%)";
-const COR_PIX = "hsl(142 71% 45%)";
-const COR_VAZIO = "hsl(var(--muted))";
 
 function formatMesLabel(mes: string): string {
   const [ano, m] = mes.split("-");
@@ -202,12 +199,6 @@ export default function AreaClienteV2() {
     return addMonth(mesSelecionado, 1) > mesAtualKey;
   }, [mesSelecionado, mesAtualKey]);
 
-  const chartData = [
-    { name: "Caderneta", value: mesData.total_caderneta },
-    { name: "PIX", value: mesData.total_pix },
-  ];
-  const chartColors = [COR_CADERNETA, COR_PIX];
-  const movimentacaoTotal = mesData.movimentacao_mes;
   const status = STATUS_MAP[mesData.status_mes] ?? STATUS_MAP.sem_movimentacao;
 
   return (
@@ -247,15 +238,14 @@ export default function AreaClienteV2() {
           </Card>
         )}
 
-        {/* Cards */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <CardValor
               titulo="Caderneta"
               valor={formatBRL(mesData.total_caderneta)}
@@ -267,13 +257,11 @@ export default function AreaClienteV2() {
               legenda="Aplicado para reduzir sua dívida"
               footer="Toque para ver detalhes"
               onClick={() => setShowAbatModal(true)}
-
             />
-
             <CardValor
-              titulo="PIX"
-              valor={formatBRL(mesData.total_pix)}
-              legenda="No mês selecionado"
+              titulo="Restante a pagar"
+              valor={formatBRL(mesData.saldo_mes)}
+              legenda="Saldo restante a ser pago"
             />
             <CardValor
               titulo="Total devido"
@@ -283,97 +271,6 @@ export default function AreaClienteV2() {
           </div>
         )}
 
-        {/* Gráfico Donut */}
-        <Card>
-          <CardContent className="p-6">
-            {loading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={
-                          movimentacaoTotal > 0
-                            ? chartData
-                            : [{ name: "Vazio", value: 1 }]
-                        }
-                        dataKey="value"
-                        innerRadius={70}
-                        outerRadius={100}
-                        startAngle={90}
-                        endAngle={-270}
-                        stroke="none"
-                      >
-                        {(movimentacaoTotal > 0 ? chartData : [{ name: "Vazio", value: 1 }]).map((_, i) => (
-                          <Cell
-                            key={i}
-                            fill={
-                              movimentacaoTotal > 0
-                                ? chartColors[i]
-                                : COR_VAZIO
-                            }
-                          />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="flex flex-col justify-center h-full gap-6">
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Movimentação do mês
-                    </div>
-                    <div className="text-2xl font-bold">
-                      {formatBRL(movimentacaoTotal)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-block w-3 h-3 rounded-sm"
-                          style={{ background: COR_CADERNETA }}
-                        />
-                        <span>Caderneta</span>
-                      </div>
-                      <span className="font-semibold">
-                        {formatBRL(mesData.total_caderneta)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-block w-3 h-3 rounded-sm"
-                          style={{ background: COR_PIX }}
-                        />
-                        <span>PIX</span>
-                      </div>
-                      <span className="font-semibold">
-                        {formatBRL(mesData.total_pix)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Caderneta {mesData.percentual_caderneta_grafico}% · PIX{" "}
-                    {mesData.percentual_pix_grafico}%
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!loading && (
-              <p className="text-xs text-muted-foreground text-center mt-6">
-                As compras no PIX não entram no cálculo da dívida, mas são
-                exibidas para seu controle.
-              </p>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Status */}
         {loading ? (
