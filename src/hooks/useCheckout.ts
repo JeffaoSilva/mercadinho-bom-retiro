@@ -37,6 +37,8 @@ interface CheckoutState {
   getHomePath: () => string;
   getSelectClientPath: () => string;
   getAreaClientePath: () => string;
+  getAreaClienteV2Path: () => string;
+
 
   getCartKey: (produto_id: number, preco: number) => string;
 }
