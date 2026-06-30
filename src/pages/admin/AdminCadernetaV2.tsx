@@ -647,11 +647,13 @@ function CardValor({
   titulo,
   valor,
   legenda,
+  footer,
   onClick,
 }: {
   titulo: string;
   valor: string;
   legenda: string;
+  footer?: string;
   onClick?: () => void;
 }) {
   return (
@@ -665,6 +667,9 @@ function CardValor({
         <div className="text-sm text-muted-foreground">{titulo}</div>
         <div className="text-xl font-bold mt-1">{valor}</div>
         <div className="text-xs text-muted-foreground mt-1">{legenda}</div>
+        {footer && (
+          <div className="text-[11px] text-primary mt-2 font-medium">{footer}</div>
+        )}
       </CardContent>
     </Card>
   );
