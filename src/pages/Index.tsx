@@ -20,7 +20,9 @@ const Index = () => {
     setMercadinhoAtualId,
     getSelectClientPath,
     getAreaClientePath,
+    getAreaClienteV2Path,
   } = useCheckout();
+
 
   const setTabletStoreId = useTabletStore((s) => s.setTabletId);
   const setIdleSeconds = useIdleStore((s) => s.setIdleSeconds);
