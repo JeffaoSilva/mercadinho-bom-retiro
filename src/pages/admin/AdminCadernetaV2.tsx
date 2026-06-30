@@ -387,7 +387,7 @@ export default function AdminCadernetaV2() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <CardValor titulo="Caderneta" valor={formatBRL(mesData.total_caderneta)} legenda="No mês" />
-            <CardValor titulo="Abatimentos" valor={formatBRL(mesData.abatimento_aplicado_mes)} legenda="No mês" onClick={() => setShowAbatDetalheModal(true)} />
+            <CardValor titulo="Pagamentos" valor={formatBRL(mesData.abatimento_aplicado_mes)} legenda="Aplicado para reduzir sua dívida" footer="Toque para ver detalhes" onClick={() => setShowAbatDetalheModal(true)} />
             <CardValor titulo="PIX" valor={formatBRL(mesData.total_pix)} legenda="No mês" />
             <CardValor titulo="Total devido" valor={formatBRL(data?.total_devido_atual ?? 0)} legenda="Saldo geral" />
           </div>
