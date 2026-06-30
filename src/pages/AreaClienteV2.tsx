@@ -459,124 +459,17 @@ export default function AreaClienteV2() {
 }
 
 
-function formatBRLLocal(v: number) {
-  return (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function Distribuicao({ distribuicao }: { distribuicao: DistribuicaoAbat[] }) {
-  if (!distribuicao || distribuicao.length === 0) return null;
-  return (
-    <div className="mt-1 border-t pt-2">
-      <div className="text-xs font-medium mb-1">Distribuição:</div>
-      <div className="flex flex-col gap-1">
-        {distribuicao.map((d) => (
-          <div key={d.mes} className="flex items-center justify-between text-xs">
-            <span>{d.mes_formatado}</span>
-            <span className="font-medium">{formatBRLLocal(Number(d.valor_aplicado))}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AbatimentosModal({
-  open,
-  onOpenChange,
-  mesLabel,
-  aplicados,
-  lancados,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  mesLabel: string;
-  aplicados: AbatimentoAplicado[];
-  lancados: AbatimentoLancado[];
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Abatimentos — {mesLabel}</DialogTitle>
-          <DialogDescription>
-            Abatimentos aplicados e lançados neste mês, com sua distribuição.
-          </DialogDescription>
-        </DialogHeader>
-
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-bold">Abatimentos aplicados neste mês</h3>
-          {aplicados.length === 0 ? (
-            <div className="text-center text-muted-foreground text-sm py-2">
-              Nenhum abatimento nesta seção.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {aplicados.map((a) => (
-                <Card key={`ap-${a.abatimento_id}`} className="rounded-xl">
-                  <CardContent className="p-3 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold">
-                        {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
-                      </div>
-                      <div className="text-sm font-semibold">
-                        {formatBRLLocal(Number(a.valor_lancado))}
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Aplicado neste mês:{" "}
-                      <span className="font-semibold text-foreground">
-                        {formatBRLLocal(Number(a.valor_aplicado_no_mes_visualizado))}
-                      </span>
-                    </div>
-                    <Distribuicao distribuicao={a.distribuicao} />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="flex flex-col gap-2 mt-2">
-          <h3 className="text-sm font-bold">Abatimentos lançados neste mês</h3>
-          {lancados.length === 0 ? (
-            <div className="text-center text-muted-foreground text-sm py-2">
-              Nenhum abatimento nesta seção.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {lancados.map((a) => (
-                <Card key={`la-${a.abatimento_id}`} className="rounded-xl">
-                  <CardContent className="p-3 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold">
-                        {a.data_lancamento_brasil} {a.hora_lancamento_brasil}
-                      </div>
-                      <div className="text-sm font-semibold">
-                        {formatBRLLocal(Number(a.valor_lancado))}
-                      </div>
-                    </div>
-                    <Distribuicao distribuicao={a.distribuicao} />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </section>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
 function CardValor({
   titulo,
   valor,
   legenda,
+  footer,
   onClick,
 }: {
   titulo: string;
   valor: string;
   legenda: string;
+  footer?: string;
   onClick?: () => void;
 }) {
   return (
@@ -590,8 +483,12 @@ function CardValor({
         <div className="text-sm text-muted-foreground">{titulo}</div>
         <div className="text-xl font-bold mt-1">{valor}</div>
         <div className="text-xs text-muted-foreground mt-1">{legenda}</div>
+        {footer && (
+          <div className="text-[11px] text-primary mt-2 font-medium">{footer}</div>
+        )}
       </CardContent>
     </Card>
   );
+
 
 }
