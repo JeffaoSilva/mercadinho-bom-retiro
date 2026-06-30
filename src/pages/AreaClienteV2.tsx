@@ -199,12 +199,6 @@ export default function AreaClienteV2() {
     return addMonth(mesSelecionado, 1) > mesAtualKey;
   }, [mesSelecionado, mesAtualKey]);
 
-  const chartData = [
-    { name: "Caderneta", value: mesData.total_caderneta },
-    { name: "PIX", value: mesData.total_pix },
-  ];
-  const chartColors = [COR_CADERNETA, COR_PIX];
-  const movimentacaoTotal = mesData.movimentacao_mes;
   const status = STATUS_MAP[mesData.status_mes] ?? STATUS_MAP.sem_movimentacao;
 
   return (
