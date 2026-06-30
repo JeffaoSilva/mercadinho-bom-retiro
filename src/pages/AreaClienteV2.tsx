@@ -445,16 +445,19 @@ export default function AreaClienteV2() {
         )}
       </div>
 
-      <AbatimentosModal
+      <PagamentosModal
         open={showAbatModal}
         onOpenChange={setShowAbatModal}
         mesLabel={formatMesLabel(mesSelecionado)}
+        totalCaderneta={mesData.total_caderneta}
+        abatimentoAplicadoMes={mesData.abatimento_aplicado_mes}
         aplicados={mesData.abatimentos_aplicados_no_mes}
         lancados={mesData.abatimentos_lancados_no_mes}
       />
     </div>
   );
 }
+
 
 function formatBRLLocal(v: number) {
   return (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
