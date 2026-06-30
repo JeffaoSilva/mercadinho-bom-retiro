@@ -224,7 +224,10 @@ export default function AreaClienteV2() {
     <div className="min-h-screen bg-background p-4 md:p-6">
       <BackButton />
       <div className="max-w-5xl mx-auto pt-6 space-y-6">
-        <h1 className="text-3xl font-bold text-center">Caderneta V2</h1>
+        <h1 className="text-3xl font-bold text-center">
+          {clienteNome ? `Caderneta V2 - ${clienteNome}` : "Caderneta V2"}
+        </h1>
+
 
         {/* Navegação entre meses */}
         <div className="flex items-center justify-between gap-2">
