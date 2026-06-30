@@ -18,6 +18,7 @@ import BackButton from "@/components/BackButton";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
+import { PagamentosModal } from "@/components/PagamentosModal";
 import {
   ChevronLeft,
   ChevronRight,
