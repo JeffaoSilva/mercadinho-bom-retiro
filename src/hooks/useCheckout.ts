@@ -85,6 +85,14 @@ export const useCheckout = create<CheckoutState>()(
           : `/area-cliente`;
       },
 
+      getAreaClienteV2Path: () => {
+        const { tabletId } = get();
+        return tabletId
+          ? `/area-cliente?tablet_id=${tabletId}&v2=1`
+          : `/area-cliente?v2=1`;
+      },
+
+
       addToCart: (item) =>
         set((state) => {
           const existing = state.cart.find(
