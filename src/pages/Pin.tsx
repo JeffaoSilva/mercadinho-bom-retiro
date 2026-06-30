@@ -172,12 +172,15 @@ const Pin = () => {
   const currentPin = step === "confirm" ? confirmPin : pin;
 
   const voltar = () => {
-    if (destino === "areaCliente") {
+    if (destino === "areaClienteV2") {
+      navigate("/area-cliente?v2=1");
+    } else if (destino === "areaCliente") {
       navigate("/area-cliente");
     } else {
       navigate("/select-client");
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
