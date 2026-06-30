@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,10 @@ type ClienteKiosk = {
 
 export default function AreaClienteSelect() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isV2 = searchParams.get("v2") === "1";
   const { mercadinhoAtualId, setCliente } = useCheckout();
+
 
   const [clientes, setClientes] = useState<ClienteKiosk[]>([]);
   const [busca, setBusca] = useState("");
@@ -52,18 +55,17 @@ export default function AreaClienteSelect() {
   }, [clientes, busca]);
 
   const escolherCliente = (c: ClienteKiosk) => {
-    // ✅ SETA o cliente no store (pra Área do Cliente e Carrinho saberem quem é)
     setCliente(c.id, c.nome);
 
-    // Navega para o PIN, mas dizendo que o destino é a Área do Cliente
     navigate("/pin", {
       state: {
         clienteId: c.id,
         clienteNome: c.nome,
-        destino: "areaCliente",
+        destino: isV2 ? "areaClienteV2" : "areaCliente",
       },
     });
   };
+
 
   return (
     <div className="min-h-screen p-4 flex flex-col gap-4">

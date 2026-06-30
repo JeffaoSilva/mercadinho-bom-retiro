@@ -144,6 +144,25 @@ export default function AreaClienteV2() {
   const [data, setData] = useState<CadernetaPayload | null>(null);
   const [mesSelecionado, setMesSelecionado] = useState<string>(currentMonthKey());
   const [showAbatModal, setShowAbatModal] = useState(false);
+  const [clienteNome, setClienteNome] = useState<string>("");
+
+  useEffect(() => {
+    let cancelado = false;
+    async function carregarNome() {
+      if (!clienteId) return;
+      const { data: cli } = await supabase
+        .from("clientes_kiosk")
+        .select("nome")
+        .eq("id", clienteId)
+        .maybeSingle();
+      if (!cancelado && cli?.nome) setClienteNome(cli.nome);
+    }
+    carregarNome();
+    return () => {
+      cancelado = true;
+    };
+  }, [clienteId]);
+
 
 
   useEffect(() => {
@@ -205,7 +224,10 @@ export default function AreaClienteV2() {
     <div className="min-h-screen bg-background p-4 md:p-6">
       <BackButton />
       <div className="max-w-5xl mx-auto pt-6 space-y-6">
-        <h1 className="text-3xl font-bold text-center">Caderneta V2</h1>
+        <h1 className="text-3xl font-bold text-center">
+          {clienteNome ? `Caderneta V2 - ${clienteNome}` : "Caderneta V2"}
+        </h1>
+
 
         {/* Navegação entre meses */}
         <div className="flex items-center justify-between gap-2">

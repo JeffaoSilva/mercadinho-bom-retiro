@@ -37,6 +37,8 @@ interface CheckoutState {
   getHomePath: () => string;
   getSelectClientPath: () => string;
   getAreaClientePath: () => string;
+  getAreaClienteV2Path: () => string;
+
 
   getCartKey: (produto_id: number, preco: number) => string;
 }
@@ -82,6 +84,14 @@ export const useCheckout = create<CheckoutState>()(
           ? `/area-cliente?tablet_id=${tabletId}`
           : `/area-cliente`;
       },
+
+      getAreaClienteV2Path: () => {
+        const { tabletId } = get();
+        return tabletId
+          ? `/area-cliente?tablet_id=${tabletId}&v2=1`
+          : `/area-cliente?v2=1`;
+      },
+
 
       addToCart: (item) =>
         set((state) => {
