@@ -169,6 +169,22 @@ const AdminProdutos = () => {
     setLoading(false);
   };
 
+  // Abrir edição via query param ?editar=<id>
+  const editarParam = searchParams.get("editar");
+  useEffect(() => {
+    if (loading || !editarParam) return;
+    const id = parseInt(editarParam);
+    const produto = produtos.find((p) => p.id === id);
+    if (produto) {
+      openEdit(produto);
+      const next = new URLSearchParams(searchParams);
+      next.delete("editar");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, editarParam, produtos]);
+
+
   // Filtrar por busca (nome ou código de barras) com matching flexível
   // (acentos, plural simples, espaços extras, ordem parcial)
   const filteredProdutos = produtos.filter((p) => {
