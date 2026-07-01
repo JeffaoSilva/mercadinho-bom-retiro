@@ -37,6 +37,7 @@ import { ptBR } from "date-fns/locale";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
 import { toast } from "sonner";
+import ConferenciaEstoque, { ProdutoConferencia } from "@/components/admin/ConferenciaEstoque";
 
 interface PrateleiraItem {
   id: number;
@@ -266,6 +267,35 @@ const AdminPrateleirasEstoque = () => {
     sortProdutosGeral(produtosGeral.filter(filtrarProdutoPorBarrasOuNome)),
     [produtosGeral, filtroBarras, sortOption]
   );
+
+  const produtosConferenciaBR: ProdutoConferencia[] = useMemo(
+    () =>
+      prateleiraBR
+        .filter((i) => i.produtos)
+        .map((i) => ({
+          produto_id: i.produto_id,
+          nome: i.produtos!.nome,
+          quantidade: i.quantidade_prateleira,
+        })),
+    [prateleiraBR]
+  );
+
+  const produtosConferenciaSF: ProdutoConferencia[] = useMemo(
+    () =>
+      prateleiraSF
+        .filter((i) => i.produtos)
+        .map((i) => ({
+          produto_id: i.produto_id,
+          nome: i.produtos!.nome,
+          quantidade: i.quantidade_prateleira,
+        })),
+    [prateleiraSF]
+  );
+
+  const filtrarConferencia = (p: ProdutoConferencia) => {
+    if (!filtroBarras.trim()) return true;
+    return correspondeNomeOuCodigo(p.nome, null, filtroBarras);
+  };
 
   const handleCameraDetected = (code: string) => {
     setShowCameraScanner(false);
@@ -640,6 +670,17 @@ const AdminPrateleirasEstoque = () => {
           </div>
         )}
 
+        {/* Conferência Bom Retiro */}
+        {showBR && (
+          <ConferenciaEstoque
+            mercadinhoId={1}
+            mercadinhoNome="Bom Retiro"
+            produtos={produtosConferenciaBR}
+            filtro={filtroBarras}
+            filtrar={filtrarConferencia}
+          />
+        )}
+
         {/* Seção Bom Retiro */}
         {showBR && (
           <Card>
@@ -673,6 +714,17 @@ const AdminPrateleirasEstoque = () => {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Conferência São Francisco */}
+        {showSF && (
+          <ConferenciaEstoque
+            mercadinhoId={2}
+            mercadinhoNome="São Francisco"
+            produtos={produtosConferenciaSF}
+            filtro={filtroBarras}
+            filtrar={filtrarConferencia}
+          />
         )}
 
         {/* Seção São Francisco */}
