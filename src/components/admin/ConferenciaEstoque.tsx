@@ -193,6 +193,22 @@ const ConferenciaEstoque = ({
     await iniciarConferencia();
   };
 
+  const cancelarConferencia = async () => {
+    if (!conf) return;
+    const { error } = await (supabase as any)
+      .from("conferencias_estoque")
+      .delete()
+      .eq("id", conf.id);
+    if (error) {
+      toast.error("Erro ao cancelar");
+      return;
+    }
+    toast.success("Conferência cancelada");
+    setConfirmCancelar(false);
+    setConf(null);
+    setItensConferidos(new Set());
+  };
+
   const produtosFiltrados = useMemo(
     () => produtos.filter(filtrar),
     [produtos, filtrar, filtro]
