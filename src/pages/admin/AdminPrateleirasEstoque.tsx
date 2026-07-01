@@ -670,6 +670,17 @@ const AdminPrateleirasEstoque = () => {
           </div>
         )}
 
+        {/* Conferência Bom Retiro */}
+        {showBR && (
+          <ConferenciaEstoque
+            mercadinhoId={1}
+            mercadinhoNome="Bom Retiro"
+            produtos={produtosConferenciaBR}
+            filtro={filtroBarras}
+            filtrar={filtrarConferencia}
+          />
+        )}
+
         {/* Seção Bom Retiro */}
         {showBR && (
           <Card>
