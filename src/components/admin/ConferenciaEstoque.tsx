@@ -70,6 +70,7 @@ const ConferenciaEstoque = ({
   const [criando, setCriando] = useState(false);
   const [confirmLimpar, setConfirmLimpar] = useState(false);
   const [confirmFinalizar, setConfirmFinalizar] = useState(false);
+  const [confirmCancelar, setConfirmCancelar] = useState(false);
 
   useEffect(() => {
     void carregarConf();
