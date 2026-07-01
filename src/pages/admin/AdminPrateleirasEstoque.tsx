@@ -268,6 +268,35 @@ const AdminPrateleirasEstoque = () => {
     [produtosGeral, filtroBarras, sortOption]
   );
 
+  const produtosConferenciaBR: ProdutoConferencia[] = useMemo(
+    () =>
+      prateleiraBR
+        .filter((i) => i.produtos)
+        .map((i) => ({
+          produto_id: i.produto_id,
+          nome: i.produtos!.nome,
+          quantidade: i.quantidade_prateleira,
+        })),
+    [prateleiraBR]
+  );
+
+  const produtosConferenciaSF: ProdutoConferencia[] = useMemo(
+    () =>
+      prateleiraSF
+        .filter((i) => i.produtos)
+        .map((i) => ({
+          produto_id: i.produto_id,
+          nome: i.produtos!.nome,
+          quantidade: i.quantidade_prateleira,
+        })),
+    [prateleiraSF]
+  );
+
+  const filtrarConferencia = (p: ProdutoConferencia) => {
+    if (!filtroBarras.trim()) return true;
+    return correspondeNomeOuCodigo(p.nome, null, filtroBarras);
+  };
+
   const handleCameraDetected = (code: string) => {
     setShowCameraScanner(false);
     setFiltroBarras(code);
