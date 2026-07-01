@@ -27,6 +27,8 @@ import {
   Trash2,
   Flag,
   Store,
+  XCircle,
+  Pencil,
 } from "lucide-react";
 
 export interface ProdutoConferencia {
