@@ -37,6 +37,7 @@ import { ptBR } from "date-fns/locale";
 import CameraScanner from "@/components/CameraScanner";
 import { playBeep } from "@/utils/beep";
 import { toast } from "sonner";
+import ConferenciaEstoque, { ProdutoConferencia } from "@/components/admin/ConferenciaEstoque";
 
 interface PrateleiraItem {
   id: number;
