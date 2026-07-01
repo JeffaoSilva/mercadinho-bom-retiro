@@ -716,6 +716,17 @@ const AdminPrateleirasEstoque = () => {
           </Card>
         )}
 
+        {/* Conferência São Francisco */}
+        {showSF && (
+          <ConferenciaEstoque
+            mercadinhoId={2}
+            mercadinhoNome="São Francisco"
+            produtos={produtosConferenciaSF}
+            filtro={filtroBarras}
+            filtrar={filtrarConferencia}
+          />
+        )}
+
         {/* Seção São Francisco */}
         {showSF && (
           <Card>
