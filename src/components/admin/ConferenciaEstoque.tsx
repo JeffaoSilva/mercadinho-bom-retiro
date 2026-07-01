@@ -464,6 +464,27 @@ const ConferenciaEstoque = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm cancelar */}
+      <Dialog open={confirmCancelar} onOpenChange={setConfirmCancelar}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar conferência</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Deseja cancelar esta conferência? Todo o progresso desta conferência
+            será perdido.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCancelar(false)}>
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={cancelarConferencia}>
+              Cancelar Conferência
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
