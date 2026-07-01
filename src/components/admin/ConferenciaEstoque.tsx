@@ -27,6 +27,8 @@ import {
   Trash2,
   Flag,
   Store,
+  XCircle,
+  Pencil,
 } from "lucide-react";
 
 export interface ProdutoConferencia {
@@ -70,6 +72,7 @@ const ConferenciaEstoque = ({
   const [criando, setCriando] = useState(false);
   const [confirmLimpar, setConfirmLimpar] = useState(false);
   const [confirmFinalizar, setConfirmFinalizar] = useState(false);
+  const [confirmCancelar, setConfirmCancelar] = useState(false);
 
   useEffect(() => {
     void carregarConf();
@@ -192,6 +195,22 @@ const ConferenciaEstoque = ({
     await iniciarConferencia();
   };
 
+  const cancelarConferencia = async () => {
+    if (!conf) return;
+    const { error } = await (supabase as any)
+      .from("conferencias_estoque")
+      .delete()
+      .eq("id", conf.id);
+    if (error) {
+      toast.error("Erro ao cancelar");
+      return;
+    }
+    toast.success("Conferência cancelada");
+    setConfirmCancelar(false);
+    setConf(null);
+    setItensConferidos(new Set());
+  };
+
   const produtosFiltrados = useMemo(
     () => produtos.filter(filtrar),
     [produtos, filtrar, filtro]
@@ -261,7 +280,7 @@ const ConferenciaEstoque = ({
             <ClipboardCheck className="h-6 w-6 text-primary" />
             {mercadinhoNome} — Conferência em andamento
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -270,6 +289,15 @@ const ConferenciaEstoque = ({
             >
               <Trash2 className="h-4 w-4" />
               Limpar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmCancelar(true)}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <XCircle className="h-4 w-4" />
+              Cancelar
             </Button>
             <Button
               size="sm"
@@ -433,6 +461,27 @@ const ConferenciaEstoque = ({
               Cancelar
             </Button>
             <Button onClick={finalizarConferencia}>Finalizar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm cancelar */}
+      <Dialog open={confirmCancelar} onOpenChange={setConfirmCancelar}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar conferência</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Deseja cancelar esta conferência? Todo o progresso desta conferência
+            será perdido.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCancelar(false)}>
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={cancelarConferencia}>
+              Cancelar Conferência
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

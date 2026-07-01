@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ClearableInput } from "@/components/ui/clearable-input";
@@ -45,6 +45,7 @@ interface Produto {
 
 const AdminProdutos = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,6 +168,22 @@ const AdminProdutos = () => {
     setProdutos(produtosComTotal);
     setLoading(false);
   };
+
+  // Abrir edição via query param ?editar=<id>
+  const editarParam = searchParams.get("editar");
+  useEffect(() => {
+    if (loading || !editarParam) return;
+    const id = parseInt(editarParam);
+    const produto = produtos.find((p) => p.id === id);
+    if (produto) {
+      openEdit(produto);
+      const next = new URLSearchParams(searchParams);
+      next.delete("editar");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, editarParam, produtos]);
+
 
   // Filtrar por busca (nome ou código de barras) com matching flexível
   // (acentos, plural simples, espaços extras, ordem parcial)
@@ -777,7 +794,19 @@ const AdminProdutos = () => {
       </div>
 
       {/* Dialog Novo/Editar Produto */}
-      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) focusCodigoEntrada(); }}>
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        setShowDialog(open);
+        if (!open) {
+          focusCodigoEntrada();
+          const voltar = searchParams.get("voltar");
+          if (voltar) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("voltar");
+            setSearchParams(next, { replace: true });
+            navigate(voltar);
+          }
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>

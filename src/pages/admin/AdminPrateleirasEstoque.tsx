@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Store, Warehouse, Package, Search, Camera, ArrowUpDown, ArrowRightLeft, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { Loader2, Store, Warehouse, Package, Search, Camera, ArrowUpDown, ArrowRightLeft, Trash2, Eye, AlertTriangle, Pencil } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -678,6 +678,21 @@ const AdminPrateleirasEstoque = () => {
             produtos={produtosConferenciaBR}
             filtro={filtroBarras}
             filtrar={filtrarConferencia}
+            actionSlot={(produtoId) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                title="Editar produto"
+                onClick={() =>
+                  navigate(
+                    `/admin/produtos?editar=${produtoId}&voltar=/admin/prateleiras-estoque`
+                  )
+                }
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           />
         )}
 
@@ -724,6 +739,21 @@ const AdminPrateleirasEstoque = () => {
             produtos={produtosConferenciaSF}
             filtro={filtroBarras}
             filtrar={filtrarConferencia}
+            actionSlot={(produtoId) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                title="Editar produto"
+                onClick={() =>
+                  navigate(
+                    `/admin/produtos?editar=${produtoId}&voltar=/admin/prateleiras-estoque`
+                  )
+                }
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           />
         )}
 
