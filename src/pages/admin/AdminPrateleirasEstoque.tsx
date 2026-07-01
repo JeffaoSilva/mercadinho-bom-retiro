@@ -678,6 +678,21 @@ const AdminPrateleirasEstoque = () => {
             produtos={produtosConferenciaBR}
             filtro={filtroBarras}
             filtrar={filtrarConferencia}
+            actionSlot={(produtoId) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                title="Editar produto"
+                onClick={() =>
+                  navigate(
+                    `/admin/produtos?editar=${produtoId}&voltar=/admin/prateleiras-estoque`
+                  )
+                }
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           />
         )}
 
