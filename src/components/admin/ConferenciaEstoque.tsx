@@ -280,7 +280,7 @@ const ConferenciaEstoque = ({
             <ClipboardCheck className="h-6 w-6 text-primary" />
             {mercadinhoNome} — Conferência em andamento
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -289,6 +289,15 @@ const ConferenciaEstoque = ({
             >
               <Trash2 className="h-4 w-4" />
               Limpar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmCancelar(true)}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <XCircle className="h-4 w-4" />
+              Cancelar
             </Button>
             <Button
               size="sm"
