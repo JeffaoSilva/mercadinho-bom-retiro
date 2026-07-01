@@ -794,7 +794,19 @@ const AdminProdutos = () => {
       </div>
 
       {/* Dialog Novo/Editar Produto */}
-      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) focusCodigoEntrada(); }}>
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        setShowDialog(open);
+        if (!open) {
+          focusCodigoEntrada();
+          const voltar = searchParams.get("voltar");
+          if (voltar) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("voltar");
+            setSearchParams(next, { replace: true });
+            navigate(voltar);
+          }
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
