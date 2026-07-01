@@ -186,6 +186,77 @@ export type Database = {
           },
         ]
       }
+      conferencias_estoque: {
+        Row: {
+          finalizado_em: string | null
+          id: number
+          iniciado_em: string
+          mercadinho_id: number
+          status: string
+          ultima_atualizacao_em: string
+        }
+        Insert: {
+          finalizado_em?: string | null
+          id?: number
+          iniciado_em?: string
+          mercadinho_id: number
+          status?: string
+          ultima_atualizacao_em?: string
+        }
+        Update: {
+          finalizado_em?: string | null
+          id?: number
+          iniciado_em?: string
+          mercadinho_id?: number
+          status?: string
+          ultima_atualizacao_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_estoque_mercadinho_id_fkey"
+            columns: ["mercadinho_id"]
+            isOneToOne: false
+            referencedRelation: "mercadinhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conferencias_estoque_itens: {
+        Row: {
+          conferencia_id: number
+          conferido_em: string
+          id: number
+          produto_id: number
+        }
+        Insert: {
+          conferencia_id: number
+          conferido_em?: string
+          id?: number
+          produto_id: number
+        }
+        Update: {
+          conferencia_id?: number
+          conferido_em?: string
+          id?: number
+          produto_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_estoque_itens_conferencia_id_fkey"
+            columns: ["conferencia_id"]
+            isOneToOne: false
+            referencedRelation: "conferencias_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencias_estoque_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_cobranca: {
         Row: {
           atualizado_em: string
