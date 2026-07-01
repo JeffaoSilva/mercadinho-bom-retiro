@@ -45,6 +45,7 @@ interface Produto {
 
 const AdminProdutos = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
