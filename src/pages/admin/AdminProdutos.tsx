@@ -1026,7 +1026,19 @@ const AdminProdutos = () => {
       </Dialog>
 
       {/* Dialog Entrada para Produto Existente */}
-      <Dialog open={showEntradaDialog} onOpenChange={(open) => { setShowEntradaDialog(open); if (!open) focusCodigoEntrada(); }}>
+      <Dialog open={showEntradaDialog} onOpenChange={(open) => {
+        setShowEntradaDialog(open);
+        if (!open) {
+          focusCodigoEntrada();
+          const voltar = searchParams.get("voltar");
+          if (voltar) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("voltar");
+            setSearchParams(next, { replace: true });
+            navigate(voltar);
+          }
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Entrada / Reposição</DialogTitle>
