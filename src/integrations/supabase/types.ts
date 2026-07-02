@@ -224,6 +224,7 @@ export type Database = {
       conferencias_estoque_itens: {
         Row: {
           conferencia_id: number
+          conferido: boolean
           conferido_em: string
           diferenca: number | null
           id: number
@@ -235,6 +236,7 @@ export type Database = {
         }
         Insert: {
           conferencia_id: number
+          conferido?: boolean
           conferido_em?: string
           diferenca?: number | null
           id?: number
@@ -246,6 +248,7 @@ export type Database = {
         }
         Update: {
           conferencia_id?: number
+          conferido?: boolean
           conferido_em?: string
           diferenca?: number | null
           id?: number
