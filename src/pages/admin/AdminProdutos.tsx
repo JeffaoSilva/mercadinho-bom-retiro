@@ -171,6 +171,8 @@ const AdminProdutos = () => {
 
   // Abrir edição via query param ?editar=<id>
   const editarParam = searchParams.get("editar");
+  const entradaParam = searchParams.get("entrada");
+  const voltarParam = searchParams.get("voltar"); void voltarParam;
   useEffect(() => {
     if (loading || !editarParam) return;
     const id = parseInt(editarParam);
@@ -183,6 +185,30 @@ const AdminProdutos = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, editarParam, produtos]);
+
+  // Abrir entrada de estoque via query param ?entrada=<id>
+  useEffect(() => {
+    if (loading || !entradaParam) return;
+    const id = parseInt(entradaParam);
+    const produto = produtos.find((p) => p.id === id);
+    if (produto) {
+      setProdutoEntrada(produto);
+      setEntradaProdutoForm({
+        quantidadeTotal: "",
+        precoCompraEntrada: produto.preco_compra ?? 0,
+        precoVendaEntrada: produto.preco_venda,
+        validade: "",
+        rateioCentral: "",
+        rateioBomRetiro: "",
+        rateioSaoFrancisco: "",
+      });
+      setShowEntradaDialog(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("entrada");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, entradaParam, produtos]);
 
 
   // Filtrar por busca (nome ou código de barras) com matching flexível
@@ -1000,7 +1026,19 @@ const AdminProdutos = () => {
       </Dialog>
 
       {/* Dialog Entrada para Produto Existente */}
-      <Dialog open={showEntradaDialog} onOpenChange={(open) => { setShowEntradaDialog(open); if (!open) focusCodigoEntrada(); }}>
+      <Dialog open={showEntradaDialog} onOpenChange={(open) => {
+        setShowEntradaDialog(open);
+        if (!open) {
+          focusCodigoEntrada();
+          const voltar = searchParams.get("voltar");
+          if (voltar) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("voltar");
+            setSearchParams(next, { replace: true });
+            navigate(voltar);
+          }
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Entrada / Reposição</DialogTitle>
