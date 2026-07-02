@@ -73,6 +73,11 @@ interface Props {
   onRemover?: (produtoId: number) => void;
 }
 
+const isConferido = (itens: Map<number, ItemConf>, produtoId: number) => {
+  const it = itens.get(produtoId);
+  return it?.conferido === true;
+};
+
 const fmtDate = (iso: string) =>
   format(new Date(iso), "dd/MM/yyyy HH:mm", { locale: ptBR });
 
@@ -374,28 +379,26 @@ const ConferenciaEstoque = ({
   };
 
   const produtosFiltrados = useMemo(
-    () => produtos.filter(filtrar),
-    [produtos, filtrar, filtro]
+    () =>
+      produtos
+        .filter(filtrar)
+        .sort((a, b) =>
+          a.nome.toLowerCase().localeCompare(b.nome.toLowerCase(), "pt-BR")
+        ),
+    [produtos, filtrar]
   );
 
-  const isConferido = (produtoId: number) => {
-    const it = itens.get(produtoId);
-    return it?.conferido === true;
-  };
-
   const pendentes = useMemo(
-    () => produtosFiltrados.filter((p) => !isConferido(p.produto_id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => produtosFiltrados.filter((p) => !isConferido(itens, p.produto_id)),
     [produtosFiltrados, itens]
   );
   const conferidos = useMemo(
-    () => produtosFiltrados.filter((p) => isConferido(p.produto_id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => produtosFiltrados.filter((p) => isConferido(itens, p.produto_id)),
     [produtosFiltrados, itens]
   );
 
   const totalGeral = produtos.length;
-  const totalConferidosGeral = produtos.filter((p) => isConferido(p.produto_id)).length;
+  const totalConferidosGeral = produtos.filter((p) => isConferido(itens, p.produto_id)).length;
   const totalPendentesGeral = totalGeral - totalConferidosGeral;
 
   if (loading) {
