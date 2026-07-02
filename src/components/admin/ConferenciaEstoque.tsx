@@ -374,7 +374,7 @@ const ConferenciaEstoque = ({
   };
 
   const produtosFiltrados = useMemo(
-    () => produtos.filter(filtrar),
+    () => produtos.filter(filtrar).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [produtos, filtrar, filtro]
   );
 
@@ -385,12 +385,10 @@ const ConferenciaEstoque = ({
 
   const pendentes = useMemo(
     () => produtosFiltrados.filter((p) => !isConferido(p.produto_id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [produtosFiltrados, itens]
   );
   const conferidos = useMemo(
     () => produtosFiltrados.filter((p) => isConferido(p.produto_id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [produtosFiltrados, itens]
   );
 
