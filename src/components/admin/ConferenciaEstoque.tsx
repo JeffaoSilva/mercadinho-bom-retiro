@@ -385,7 +385,7 @@ const ConferenciaEstoque = ({
         .sort((a, b) =>
           a.nome.toLowerCase().localeCompare(b.nome.toLowerCase(), "pt-BR")
         ),
-    [produtos, filtrar, filtro]
+    [produtos, filtrar]
   );
 
   const pendentes = useMemo(
