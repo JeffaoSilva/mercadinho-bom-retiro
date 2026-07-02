@@ -374,7 +374,12 @@ const ConferenciaEstoque = ({
   };
 
   const produtosFiltrados = useMemo(
-    () => produtos.filter(filtrar).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    () =>
+      produtos
+        .filter(filtrar)
+        .sort((a, b) =>
+          a.nome.toLowerCase().localeCompare(b.nome.toLowerCase(), "pt-BR")
+        ),
     [produtos, filtrar, filtro]
   );
 
