@@ -73,6 +73,11 @@ interface Props {
   onRemover?: (produtoId: number) => void;
 }
 
+const isConferido = (itens: Map<number, ItemConf>, produtoId: number) => {
+  const it = itens.get(produtoId);
+  return it?.conferido === true;
+};
+
 const fmtDate = (iso: string) =>
   format(new Date(iso), "dd/MM/yyyy HH:mm", { locale: ptBR });
 
