@@ -172,7 +172,7 @@ const AdminProdutos = () => {
   // Abrir edição via query param ?editar=<id>
   const editarParam = searchParams.get("editar");
   const entradaParam = searchParams.get("entrada");
-  const voltarParam = searchParams.get("voltar");
+  const voltarParam = searchParams.get("voltar"); void voltarParam;
   useEffect(() => {
     if (loading || !editarParam) return;
     const id = parseInt(editarParam);
