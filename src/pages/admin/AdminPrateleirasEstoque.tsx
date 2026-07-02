@@ -678,6 +678,27 @@ const AdminPrateleirasEstoque = () => {
             produtos={produtosConferenciaBR}
             filtro={filtroBarras}
             filtrar={filtrarConferencia}
+            onAdicionar={(produtoId) =>
+              navigate(
+                `/admin/produtos?entrada=${produtoId}&voltar=/admin/prateleiras-estoque`
+              )
+            }
+            onRemover={(produtoId) => {
+              const item = prateleiraBR.find((i) => i.produto_id === produtoId);
+              if (!item || !item.produtos) {
+                toast.error("Produto não encontrado na prateleira");
+                return;
+              }
+              openRemoveModal({
+                produto_id: produtoId,
+                produto_nome: item.produtos.nome,
+                origem: "br",
+                disponivel: item.quantidade_prateleira,
+                preco_compra: item.produtos.preco_compra,
+                preco_venda: item.preco_venda_prateleira,
+                prateleira_id: item.id,
+              });
+            }}
             actionSlot={(produtoId) => (
               <Button
                 variant="ghost"
