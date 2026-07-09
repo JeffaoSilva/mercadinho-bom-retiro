@@ -265,12 +265,12 @@ export default function AdminCadernetaV2() {
     const meses = (data.meses ?? []).filter((m) => m.mes >= ini && m.mes <= fim);
     let totalCad = 0;
     let totalPix = 0;
-    let totalAbat = 0;
+    let totalPagamentosPeriodo = 0;
     const compras: (CompraV2 & { mes: string })[] = [];
+    const pagamentos: AbatimentoLancado[] = [];
     for (const m of meses) {
       totalCad += Number(m.total_caderneta || 0);
       totalPix += Number(m.total_pix || 0);
-      totalAbat += Number(m.abatimento_aplicado_mes || 0);
       for (const c of m.compras || []) {
         if (
           exportTipo === "todas" ||
@@ -280,8 +280,16 @@ export default function AdminCadernetaV2() {
           compras.push({ ...c, mes: m.mes });
         }
       }
+      for (const a of m.abatimentos_lancados_no_mes || []) {
+        totalPagamentosPeriodo += Number(a.valor_lancado || 0);
+        pagamentos.push(a);
+      }
     }
-    return { totalCad, totalPix, totalAbat, compras };
+    pagamentos.sort((a, b) =>
+      (a.data_lancamento || "").localeCompare(b.data_lancamento || "")
+    );
+    const saldoPeriodo = totalCad - totalPagamentosPeriodo;
+    return { totalCad, totalPix, totalPagamentosPeriodo, saldoPeriodo, compras, pagamentos };
   }, [data, exportMesInicio, exportMesFim, exportTipo]);
 
   const handlePrint = () => {
