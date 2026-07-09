@@ -517,10 +517,10 @@ export default function AdminCadernetaV2() {
 
           <table style={{ width: "100%", marginBottom: 16, borderCollapse: "collapse" }}>
             <tbody>
-              <tr><td>Total caderneta</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalCad)}</td></tr>
-              <tr><td>Total PIX</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPix)}</td></tr>
-              <tr><td>Abatimentos aplicados</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalAbat)}</td></tr>
-              <tr><td><strong>Total devido atual</strong></td><td style={{ textAlign: "right" }}><strong>{formatBRL(data?.total_devido_atual ?? 0)}</strong></td></tr>
+              <tr><td>Total compras em caderneta</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalCad)}</td></tr>
+              <tr><td>Total compras pagas via PIX</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPix)}</td></tr>
+              <tr><td>Total de pagamentos realizados no período</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPagamentosPeriodo)}</td></tr>
+              <tr><td><strong>Saldo do período</strong></td><td style={{ textAlign: "right" }}><strong>{formatBRL(relatorio.saldoPeriodo)}</strong></td></tr>
             </tbody>
           </table>
 
@@ -544,6 +544,60 @@ export default function AdminCadernetaV2() {
               </div>
             ))
           )}
+
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 20, marginBottom: 8 }}>
+            Pagamentos realizados no período
+          </h2>
+          {relatorio.pagamentos.length === 0 ? (
+            <p>Nenhum pagamento realizado no período.</p>
+          ) : (
+            relatorio.pagamentos.map((p) => (
+              <div key={p.abatimento_id} style={{ borderTop: "1px solid #ccc", padding: "8px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                  <span>
+                    {p.data_lancamento_brasil}
+                    {p.hora_lancamento_brasil ? ` às ${p.hora_lancamento_brasil}` : ""} — Pagamento recebido
+                  </span>
+                  <span>{formatBRL(Number(p.valor_lancado))}</span>
+                </div>
+                {p.distribuicao && p.distribuicao.length > 0 && (
+                  <div style={{ marginLeft: 16, marginTop: 4, fontSize: 13 }}>
+                    <div style={{ fontStyle: "italic", marginBottom: 2 }}>Aplicado em:</div>
+                    <ul style={{ marginLeft: 16 }}>
+                      {p.distribuicao.map((d, i) => (
+                        <li key={i}>
+                          {d.mes_formatado} — {formatBRL(Number(d.valor_aplicado))}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          <p style={{ fontSize: 11, fontStyle: "italic", color: "#555", marginTop: 8 }}>
+            Os pagamentos são aplicados automaticamente nas dívidas mais antigas primeiro.
+            Por isso, um pagamento realizado neste período pode ter sido utilizado para
+            quitar compras de meses anteriores.
+          </p>
+
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 24, marginBottom: 8, borderTop: "2px solid #000", paddingTop: 12 }}>
+            Situação Atual do Cliente
+          </h2>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <tbody>
+              <tr>
+                <td><strong>Total devido atual</strong></td>
+                <td style={{ textAlign: "right" }}>
+                  <strong>{formatBRL(data?.total_devido_atual ?? 0)}</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p style={{ fontSize: 11, fontStyle: "italic", color: "#555", marginTop: 6 }}>
+            Este valor representa toda a dívida atual do cliente considerando todo o
+            histórico de compras e pagamentos até a data de emissão deste relatório.
+          </p>
         </div>
       )}
 
