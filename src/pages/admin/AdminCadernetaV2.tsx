@@ -583,6 +583,9 @@ export default function AdminCadernetaV2() {
                     </ul>
                   </div>
                 )}
+                <div style={{ marginLeft: 16, marginTop: 4, fontSize: 13, fontWeight: 600 }}>
+                  Aplicado às compras deste relatório: {formatBRL(Number(p.aplicado_no_periodo || 0))}
+                </div>
               </div>
             ))
           )}
