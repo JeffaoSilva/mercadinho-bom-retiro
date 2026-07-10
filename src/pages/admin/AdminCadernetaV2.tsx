@@ -266,8 +266,9 @@ export default function AdminCadernetaV2() {
     let totalCad = 0;
     let totalPix = 0;
     let totalPagamentosPeriodo = 0;
+    let totalAplicadoPeriodo = 0;
     const compras: (CompraV2 & { mes: string })[] = [];
-    const pagamentos: AbatimentoLancado[] = [];
+    const pagamentos: (AbatimentoLancado & { aplicado_no_periodo: number })[] = [];
     for (const m of meses) {
       totalCad += Number(m.total_caderneta || 0);
       totalPix += Number(m.total_pix || 0);
@@ -282,14 +283,23 @@ export default function AdminCadernetaV2() {
       }
       for (const a of m.abatimentos_lancados_no_mes || []) {
         totalPagamentosPeriodo += Number(a.valor_lancado || 0);
-        pagamentos.push(a);
+        // soma somente as parcelas da distribuição pertencentes ao intervalo [ini, fim]
+        const aplicadoNoPeriodo = (a.distribuicao || []).reduce((acc, d) => {
+          const mesDist = String(d.mes || "");
+          if (mesDist >= ini && mesDist <= fim) {
+            return acc + Number(d.valor_aplicado || 0);
+          }
+          return acc;
+        }, 0);
+        totalAplicadoPeriodo += aplicadoNoPeriodo;
+        pagamentos.push({ ...a, aplicado_no_periodo: aplicadoNoPeriodo });
       }
     }
     pagamentos.sort((a, b) =>
       (a.data_lancamento || "").localeCompare(b.data_lancamento || "")
     );
-    const saldoPeriodo = totalCad - totalPagamentosPeriodo;
-    return { totalCad, totalPix, totalPagamentosPeriodo, saldoPeriodo, compras, pagamentos };
+    const saldoPeriodo = totalCad - totalAplicadoPeriodo;
+    return { totalCad, totalPix, totalPagamentosPeriodo, totalAplicadoPeriodo, saldoPeriodo, compras, pagamentos };
   }, [data, exportMesInicio, exportMesFim, exportTipo]);
 
   const handlePrint = () => {
