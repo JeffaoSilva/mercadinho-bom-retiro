@@ -530,7 +530,8 @@ export default function AdminCadernetaV2() {
               <tr><td>Total compras em caderneta</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalCad)}</td></tr>
               <tr><td>Total compras pagas via PIX</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPix)}</td></tr>
               <tr><td>Total de pagamentos realizados no período</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPagamentosPeriodo)}</td></tr>
-              <tr><td><strong>Saldo do período</strong></td><td style={{ textAlign: "right" }}><strong>{formatBRL(relatorio.saldoPeriodo)}</strong></td></tr>
+              <tr><td>Total de pagamentos aplicados às compras deste período</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalAplicadoPeriodo)}</td></tr>
+              <tr><td><strong>Saldo das compras deste período</strong></td><td style={{ textAlign: "right" }}><strong>{formatBRL(relatorio.saldoPeriodo)}</strong></td></tr>
             </tbody>
           </table>
 
