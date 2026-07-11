@@ -765,7 +765,7 @@ export default function AdminCadernetaV2() {
           <DialogHeader>
             <DialogTitle>Exportar relatório</DialogTitle>
             <DialogDescription>
-              Selecione o período e o tipo de compra. A impressão usa a janela do navegador.
+              Selecione o período. O relatório considera apenas compras da caderneta.
             </DialogDescription>
           </DialogHeader>
 
@@ -796,18 +796,6 @@ export default function AdminCadernetaV2() {
             </div>
           </div>
 
-          <div>
-            <Label>Tipo de compra</Label>
-            <select
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-              value={exportTipo}
-              onChange={(e) => setExportTipo(e.target.value as any)}
-            >
-              <option value="todas">Todas</option>
-              <option value="caderneta">Caderneta</option>
-              <option value="pix">PIX</option>
-            </select>
-          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowExport(false)}>Fechar</Button>
