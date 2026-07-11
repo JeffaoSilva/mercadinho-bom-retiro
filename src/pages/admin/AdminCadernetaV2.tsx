@@ -262,45 +262,86 @@ export default function AdminCadernetaV2() {
     if (!data) return null;
     const ini = exportMesInicio;
     const fim = exportMesFim;
-    const meses = (data.meses ?? []).filter((m) => m.mes >= ini && m.mes <= fim);
+    const mesesPeriodo = (data.meses ?? [])
+      .filter((m) => m.mes >= ini && m.mes <= fim)
+      .slice()
+      .sort((a, b) => a.mes.localeCompare(b.mes));
+
+    // Compras da caderneta agrupadas por mês (cronológico crescente)
+    type CompraExt = CompraV2 & { mes: string };
+    const comprasPorMes: { mes: string; compras: CompraExt[] }[] = [];
     let totalCad = 0;
-    let totalPix = 0;
-    let totalPagamentosPeriodo = 0;
-    let totalAplicadoPeriodo = 0;
-    const compras: (CompraV2 & { mes: string })[] = [];
-    const pagamentos: (AbatimentoLancado & { aplicado_no_periodo: number })[] = [];
-    for (const m of meses) {
-      totalCad += Number(m.total_caderneta || 0);
-      totalPix += Number(m.total_pix || 0);
-      for (const c of m.compras || []) {
-        if (
-          exportTipo === "todas" ||
-          (exportTipo === "caderneta" && c.forma_pagamento === "caderneta") ||
-          (exportTipo === "pix" && c.forma_pagamento === "pix")
-        ) {
-          compras.push({ ...c, mes: m.mes });
-        }
-      }
-      for (const a of m.abatimentos_lancados_no_mes || []) {
-        totalPagamentosPeriodo += Number(a.valor_lancado || 0);
-        // soma somente as parcelas da distribuição pertencentes ao intervalo [ini, fim]
-        const aplicadoNoPeriodo = (a.distribuicao || []).reduce((acc, d) => {
-          const mesDist = String(d.mes || "");
-          if (mesDist >= ini && mesDist <= fim) {
-            return acc + Number(d.valor_aplicado || 0);
-          }
-          return acc;
-        }, 0);
-        totalAplicadoPeriodo += aplicadoNoPeriodo;
-        pagamentos.push({ ...a, aplicado_no_periodo: aplicadoNoPeriodo });
+
+    for (const m of mesesPeriodo) {
+      const cadDoMes = (m.compras || [])
+        .filter((c) => c.forma_pagamento === "caderneta")
+        .map((c) => ({ ...c, mes: m.mes }))
+        .sort((a, b) =>
+          (a.data_compra || "").localeCompare(b.data_compra || "")
+        );
+      for (const c of cadDoMes) totalCad += Number(c.valor_total || 0);
+      if (cadDoMes.length > 0) {
+        comprasPorMes.push({ mes: m.mes, compras: cadDoMes });
       }
     }
-    pagamentos.sort((a, b) =>
-      (a.data_lancamento || "").localeCompare(b.data_lancamento || "")
+
+    // Pagamentos realizados dentro do período (data de lançamento no intervalo)
+    // agrupados por mês em ordem cronológica crescente
+    type PagExt = AbatimentoLancado & { aplicado_no_periodo: number };
+    const pagamentosPorMes: { mes: string; pagamentos: PagExt[] }[] = [];
+    let totalPagamentosRealizados = 0;
+
+    for (const m of mesesPeriodo) {
+      const pags = (m.abatimentos_lancados_no_mes || [])
+        .slice()
+        .sort((a, b) =>
+          (a.data_lancamento || "").localeCompare(b.data_lancamento || "")
+        )
+        .map((a) => {
+          const aplicadoNoPeriodo = (a.distribuicao || []).reduce(
+            (acc, d) => {
+              const md = String(d.mes || "");
+              return md >= ini && md <= fim
+                ? acc + Number(d.valor_aplicado || 0)
+                : acc;
+            },
+            0
+          );
+          return { ...a, aplicado_no_periodo: aplicadoNoPeriodo };
+        });
+      for (const p of pags) totalPagamentosRealizados += Number(p.valor_lancado || 0);
+      if (pags.length > 0) {
+        pagamentosPorMes.push({ mes: m.mes, pagamentos: pags });
+      }
+    }
+
+    // Dívida do período = soma dos saldo_mes atuais dos meses (RPC já aplica FIFO)
+    const dividaPeriodo = mesesPeriodo.reduce(
+      (acc, m) => acc + Number(m.saldo_mes || 0),
+      0
     );
-    const saldoPeriodo = totalCad - totalAplicadoPeriodo;
-    return { totalCad, totalPix, totalPagamentosPeriodo, totalAplicadoPeriodo, saldoPeriodo, compras, pagamentos };
-  }, [data, exportMesInicio, exportMesFim, exportTipo]);
+    // Pagamentos aplicados à dívida do período = compras do período - dívida do período
+    // (equivalente à soma das parcelas FIFO cuja `mes` pertence ao intervalo)
+    const totalAplicadoPeriodo = totalCad - dividaPeriodo;
+
+    // Situação por mês (para o resumo final)
+    const situacaoMeses = mesesPeriodo.map((m) => ({
+      mes: m.mes,
+      saldo: Number(m.saldo_mes || 0),
+      quitado: Number(m.saldo_mes || 0) <= 0 && Number(m.total_caderneta || 0) > 0,
+      semMov: Number(m.total_caderneta || 0) === 0,
+    }));
+
+    return {
+      totalCad,
+      totalPagamentosRealizados,
+      totalAplicadoPeriodo,
+      dividaPeriodo,
+      comprasPorMes,
+      pagamentosPorMes,
+      situacaoMeses,
+    };
+  }, [data, exportMesInicio, exportMesFim]);
 
   const handlePrint = () => {
     setTimeout(() => window.print(), 100);
