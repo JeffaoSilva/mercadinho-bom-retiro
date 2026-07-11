@@ -175,7 +175,7 @@ export default function AdminCadernetaV2() {
   const [showExport, setShowExport] = useState(false);
   const [exportMesInicio, setExportMesInicio] = useState(currentMonthKey());
   const [exportMesFim, setExportMesFim] = useState(currentMonthKey());
-  const [exportTipo, setExportTipo] = useState<"todas" | "caderneta" | "pix">("todas");
+  
 
   async function carregar() {
     if (!clienteId) {
