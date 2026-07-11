@@ -175,7 +175,7 @@ export default function AdminCadernetaV2() {
   const [showExport, setShowExport] = useState(false);
   const [exportMesInicio, setExportMesInicio] = useState(currentMonthKey());
   const [exportMesFim, setExportMesFim] = useState(currentMonthKey());
-  const [exportTipo, setExportTipo] = useState<"todas" | "caderneta" | "pix">("todas");
+  
 
   async function carregar() {
     if (!clienteId) {
@@ -262,45 +262,86 @@ export default function AdminCadernetaV2() {
     if (!data) return null;
     const ini = exportMesInicio;
     const fim = exportMesFim;
-    const meses = (data.meses ?? []).filter((m) => m.mes >= ini && m.mes <= fim);
+    const mesesPeriodo = (data.meses ?? [])
+      .filter((m) => m.mes >= ini && m.mes <= fim)
+      .slice()
+      .sort((a, b) => a.mes.localeCompare(b.mes));
+
+    // Compras da caderneta agrupadas por mês (cronológico crescente)
+    type CompraExt = CompraV2 & { mes: string };
+    const comprasPorMes: { mes: string; compras: CompraExt[] }[] = [];
     let totalCad = 0;
-    let totalPix = 0;
-    let totalPagamentosPeriodo = 0;
-    let totalAplicadoPeriodo = 0;
-    const compras: (CompraV2 & { mes: string })[] = [];
-    const pagamentos: (AbatimentoLancado & { aplicado_no_periodo: number })[] = [];
-    for (const m of meses) {
-      totalCad += Number(m.total_caderneta || 0);
-      totalPix += Number(m.total_pix || 0);
-      for (const c of m.compras || []) {
-        if (
-          exportTipo === "todas" ||
-          (exportTipo === "caderneta" && c.forma_pagamento === "caderneta") ||
-          (exportTipo === "pix" && c.forma_pagamento === "pix")
-        ) {
-          compras.push({ ...c, mes: m.mes });
-        }
-      }
-      for (const a of m.abatimentos_lancados_no_mes || []) {
-        totalPagamentosPeriodo += Number(a.valor_lancado || 0);
-        // soma somente as parcelas da distribuição pertencentes ao intervalo [ini, fim]
-        const aplicadoNoPeriodo = (a.distribuicao || []).reduce((acc, d) => {
-          const mesDist = String(d.mes || "");
-          if (mesDist >= ini && mesDist <= fim) {
-            return acc + Number(d.valor_aplicado || 0);
-          }
-          return acc;
-        }, 0);
-        totalAplicadoPeriodo += aplicadoNoPeriodo;
-        pagamentos.push({ ...a, aplicado_no_periodo: aplicadoNoPeriodo });
+
+    for (const m of mesesPeriodo) {
+      const cadDoMes = (m.compras || [])
+        .filter((c) => c.forma_pagamento === "caderneta")
+        .map((c) => ({ ...c, mes: m.mes }))
+        .sort((a, b) =>
+          (a.data_compra || "").localeCompare(b.data_compra || "")
+        );
+      for (const c of cadDoMes) totalCad += Number(c.valor_total || 0);
+      if (cadDoMes.length > 0) {
+        comprasPorMes.push({ mes: m.mes, compras: cadDoMes });
       }
     }
-    pagamentos.sort((a, b) =>
-      (a.data_lancamento || "").localeCompare(b.data_lancamento || "")
+
+    // Pagamentos realizados dentro do período (data de lançamento no intervalo)
+    // agrupados por mês em ordem cronológica crescente
+    type PagExt = AbatimentoLancado & { aplicado_no_periodo: number };
+    const pagamentosPorMes: { mes: string; pagamentos: PagExt[] }[] = [];
+    let totalPagamentosRealizados = 0;
+
+    for (const m of mesesPeriodo) {
+      const pags = (m.abatimentos_lancados_no_mes || [])
+        .slice()
+        .sort((a, b) =>
+          (a.data_lancamento || "").localeCompare(b.data_lancamento || "")
+        )
+        .map((a) => {
+          const aplicadoNoPeriodo = (a.distribuicao || []).reduce(
+            (acc, d) => {
+              const md = String(d.mes || "");
+              return md >= ini && md <= fim
+                ? acc + Number(d.valor_aplicado || 0)
+                : acc;
+            },
+            0
+          );
+          return { ...a, aplicado_no_periodo: aplicadoNoPeriodo };
+        });
+      for (const p of pags) totalPagamentosRealizados += Number(p.valor_lancado || 0);
+      if (pags.length > 0) {
+        pagamentosPorMes.push({ mes: m.mes, pagamentos: pags });
+      }
+    }
+
+    // Dívida do período = soma dos saldo_mes atuais dos meses (RPC já aplica FIFO)
+    const dividaPeriodo = mesesPeriodo.reduce(
+      (acc, m) => acc + Number(m.saldo_mes || 0),
+      0
     );
-    const saldoPeriodo = totalCad - totalAplicadoPeriodo;
-    return { totalCad, totalPix, totalPagamentosPeriodo, totalAplicadoPeriodo, saldoPeriodo, compras, pagamentos };
-  }, [data, exportMesInicio, exportMesFim, exportTipo]);
+    // Pagamentos aplicados à dívida do período = compras do período - dívida do período
+    // (equivalente à soma das parcelas FIFO cuja `mes` pertence ao intervalo)
+    const totalAplicadoPeriodo = totalCad - dividaPeriodo;
+
+    // Situação por mês (para o resumo final)
+    const situacaoMeses = mesesPeriodo.map((m) => ({
+      mes: m.mes,
+      saldo: Number(m.saldo_mes || 0),
+      quitado: Number(m.saldo_mes || 0) <= 0 && Number(m.total_caderneta || 0) > 0,
+      semMov: Number(m.total_caderneta || 0) === 0,
+    }));
+
+    return {
+      totalCad,
+      totalPagamentosRealizados,
+      totalAplicadoPeriodo,
+      dividaPeriodo,
+      comprasPorMes,
+      pagamentosPorMes,
+      situacaoMeses,
+    };
+  }, [data, exportMesInicio, exportMesFim]);
 
   const handlePrint = () => {
     setTimeout(() => window.print(), 100);
@@ -514,44 +555,72 @@ export default function AdminCadernetaV2() {
       {/* Área de impressão (oculta na tela, visível no print) */}
       {relatorio && (
         <div id="area-impressao" className="hidden print:block">
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
-            Relatório — {clienteNome}
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+            Relatório de cobrança — Caderneta
           </h1>
           <p style={{ marginBottom: 4 }}>
-            Período: <strong>{formatMesLabel(exportMesInicio)}</strong> até{" "}
-            <strong>{formatMesLabel(exportMesFim)}</strong>
+            Cliente: <strong>{clienteNome}</strong>
           </p>
           <p style={{ marginBottom: 12 }}>
-            Filtro: <strong>{exportTipo}</strong>
+            Período: <strong>{formatMesLabel(exportMesInicio)}</strong> até{" "}
+            <strong>{formatMesLabel(exportMesFim)}</strong>
           </p>
 
           <table style={{ width: "100%", marginBottom: 16, borderCollapse: "collapse" }}>
             <tbody>
-              <tr><td>Total compras em caderneta</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalCad)}</td></tr>
-              <tr><td>Total compras pagas via PIX</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPix)}</td></tr>
-              <tr><td>Total de pagamentos realizados no período</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPagamentosPeriodo)}</td></tr>
-              <tr><td>Total de pagamentos aplicados às compras deste período</td><td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalAplicadoPeriodo)}</td></tr>
-              <tr><td><strong>Saldo das compras deste período</strong></td><td style={{ textAlign: "right" }}><strong>{formatBRL(relatorio.saldoPeriodo)}</strong></td></tr>
+              <tr>
+                <td>Total compras em caderneta</td>
+                <td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalCad)}</td>
+              </tr>
+              <tr>
+                <td>Pagamentos realizados no período</td>
+                <td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalPagamentosRealizados)}</td>
+              </tr>
+              <tr>
+                <td>Pagamentos aplicados à dívida do período</td>
+                <td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalAplicadoPeriodo)}</td>
+              </tr>
+              <tr>
+                <td><strong>Dívida do período</strong></td>
+                <td style={{ textAlign: "right" }}><strong>{formatBRL(relatorio.dividaPeriodo)}</strong></td>
+              </tr>
             </tbody>
           </table>
 
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Compras</h2>
-          {relatorio.compras.length === 0 ? (
-            <p>Nenhuma compra no período/filtro.</p>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Compras da caderneta</h2>
+          {relatorio.comprasPorMes.length === 0 ? (
+            <p>Nenhuma compra em caderneta no período.</p>
           ) : (
-            relatorio.compras.map((c) => (
-              <div key={c.compra_id} style={{ borderTop: "1px solid #ccc", padding: "8px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                  <span>{c.data_compra_brasil} {c.hora_compra_brasil} — {c.forma_pagamento}</span>
-                  <span>{formatBRL(Number(c.valor_total))}</span>
+            relatorio.comprasPorMes.map((grupo) => (
+              <div key={grupo.mes} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    borderTop: "2px solid #000",
+                    borderBottom: "1px solid #000",
+                    padding: "6px 0",
+                    marginBottom: 4,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  {formatMesLabel(grupo.mes)}
                 </div>
-                <ul style={{ marginLeft: 16, marginTop: 4 }}>
-                  {c.itens.map((it) => (
-                    <li key={it.item_compra_id} style={{ fontSize: 13 }}>
-                      {it.quantidade}x {it.nome_produto} — {formatBRL(Number(it.valor_total))}
-                    </li>
-                  ))}
-                </ul>
+                {grupo.compras.map((c) => (
+                  <div key={c.compra_id} style={{ borderTop: "1px solid #ddd", padding: "6px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                      <span>{c.data_compra_brasil} {c.hora_compra_brasil}</span>
+                      <span>{formatBRL(Number(c.valor_total))}</span>
+                    </div>
+                    <ul style={{ marginLeft: 16, marginTop: 4 }}>
+                      {c.itens.map((it) => (
+                        <li key={it.item_compra_id} style={{ fontSize: 13 }}>
+                          {it.quantidade}x {it.nome_produto} — {formatBRL(Number(it.valor_total))}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             ))
           )}
@@ -559,33 +628,47 @@ export default function AdminCadernetaV2() {
           <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 20, marginBottom: 8 }}>
             Pagamentos realizados no período
           </h2>
-          {relatorio.pagamentos.length === 0 ? (
+          {relatorio.pagamentosPorMes.length === 0 ? (
             <p>Nenhum pagamento realizado no período.</p>
           ) : (
-            relatorio.pagamentos.map((p) => (
-              <div key={p.abatimento_id} style={{ borderTop: "1px solid #ccc", padding: "8px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                  <span>
-                    {p.data_lancamento_brasil}
-                    {p.hora_lancamento_brasil ? ` às ${p.hora_lancamento_brasil}` : ""} — Pagamento recebido
-                  </span>
-                  <span>{formatBRL(Number(p.valor_lancado))}</span>
+            relatorio.pagamentosPorMes.map((grupo) => (
+              <div key={grupo.mes} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    borderTop: "2px solid #000",
+                    borderBottom: "1px solid #000",
+                    padding: "6px 0",
+                    marginBottom: 4,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  {formatMesLabel(grupo.mes)}
                 </div>
-                {p.distribuicao && p.distribuicao.length > 0 && (
-                  <div style={{ marginLeft: 16, marginTop: 4, fontSize: 13 }}>
-                    <div style={{ fontStyle: "italic", marginBottom: 2 }}>Aplicado em:</div>
-                    <ul style={{ marginLeft: 16 }}>
-                      {p.distribuicao.map((d, i) => (
-                        <li key={i}>
-                          {d.mes_formatado} — {formatBRL(Number(d.valor_aplicado))}
-                        </li>
-                      ))}
-                    </ul>
+                {grupo.pagamentos.map((p) => (
+                  <div key={p.abatimento_id} style={{ borderTop: "1px solid #ddd", padding: "6px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                      <span>
+                        {p.data_lancamento_brasil}
+                        {p.hora_lancamento_brasil ? ` às ${p.hora_lancamento_brasil}` : ""} — Pagamento recebido
+                      </span>
+                      <span>{formatBRL(Number(p.valor_lancado))}</span>
+                    </div>
+                    {p.distribuicao && p.distribuicao.length > 0 && (
+                      <div style={{ marginLeft: 16, marginTop: 4, fontSize: 13 }}>
+                        <div style={{ fontStyle: "italic", marginBottom: 2 }}>Aplicado em:</div>
+                        <ul style={{ marginLeft: 16 }}>
+                          {p.distribuicao.map((d, i) => (
+                            <li key={i}>
+                              {d.mes_formatado} — {formatBRL(Number(d.valor_aplicado))}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div style={{ marginLeft: 16, marginTop: 4, fontSize: 13, fontWeight: 600 }}>
-                  Aplicado às compras deste relatório: {formatBRL(Number(p.aplicado_no_periodo || 0))}
-                </div>
+                ))}
               </div>
             ))
           )}
@@ -594,6 +677,37 @@ export default function AdminCadernetaV2() {
             Por isso, um pagamento realizado neste período pode ter sido utilizado para
             quitar compras de meses anteriores.
           </p>
+
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 24, marginBottom: 8, borderTop: "2px solid #000", paddingTop: 12 }}>
+            Situação dos meses deste relatório
+          </h2>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <tbody>
+              {relatorio.situacaoMeses.map((s) => {
+                const quitado = s.saldo <= 0;
+                return (
+                  <tr key={s.mes} style={{ borderBottom: "1px dotted #ccc" }}>
+                    <td style={{ padding: "4px 0" }}>{formatMesLabel(s.mes)}</td>
+                    <td style={{ textAlign: "right", padding: "4px 0" }}>
+                      {quitado ? (
+                        <strong style={{ color: "#0a7c3a" }}>Quitado</strong>
+                      ) : (
+                        <strong>{formatBRL(s.saldo)}</strong>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr>
+                <td style={{ paddingTop: 8, borderTop: "2px solid #000" }}>
+                  <strong>Dívida do período</strong>
+                </td>
+                <td style={{ paddingTop: 8, borderTop: "2px solid #000", textAlign: "right" }}>
+                  <strong>{formatBRL(relatorio.dividaPeriodo)}</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 24, marginBottom: 8, borderTop: "2px solid #000", paddingTop: 12 }}>
             Situação Atual do Cliente
@@ -614,6 +728,7 @@ export default function AdminCadernetaV2() {
           </p>
         </div>
       )}
+
 
       {/* Modal Abatimento */}
       <Dialog open={showAbatimento} onOpenChange={setShowAbatimento}>
@@ -650,7 +765,7 @@ export default function AdminCadernetaV2() {
           <DialogHeader>
             <DialogTitle>Exportar relatório</DialogTitle>
             <DialogDescription>
-              Selecione o período e o tipo de compra. A impressão usa a janela do navegador.
+              Selecione o período. O relatório considera apenas compras da caderneta.
             </DialogDescription>
           </DialogHeader>
 
@@ -681,18 +796,6 @@ export default function AdminCadernetaV2() {
             </div>
           </div>
 
-          <div>
-            <Label>Tipo de compra</Label>
-            <select
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-              value={exportTipo}
-              onChange={(e) => setExportTipo(e.target.value as any)}
-            >
-              <option value="todas">Todas</option>
-              <option value="caderneta">Caderneta</option>
-              <option value="pix">PIX</option>
-            </select>
-          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowExport(false)}>Fechar</Button>
