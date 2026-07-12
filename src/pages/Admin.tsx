@@ -113,6 +113,7 @@ const Admin = () => {
     { title: "Cadernetas", icon: BookOpen, route: "/admin/cadernetas" },
     { title: "Caderneta V2 (Beta)", icon: BookOpen, route: "/admin/cadernetas?dest=v2" },
     { title: "Caderneta V3 (Beta)", icon: BookOpen, route: "/admin/cadernetas?dest=v3" },
+    { title: "Prévia Migração V2 → V3", icon: BookOpen, route: "/admin/previa-migracao-v3" },
     { title: "Compras", icon: ShoppingBag, route: "/admin/compras" },
     { title: "Clientes", icon: Users, route: "/admin/clientes" },
     { title: "Códigos Três", icon: Key, route: "/admin/codigos-tres" },
