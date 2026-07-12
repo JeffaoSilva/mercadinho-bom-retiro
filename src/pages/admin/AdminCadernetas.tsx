@@ -95,6 +95,7 @@ const AdminCadernetas = () => {
   const [search, setSearch] = useState("");
   
   const [abatimentosPorCliente, setAbatimentosPorCliente] = useState<Record<number, number>>({});
+  const [pagamentosV3PorCliente, setPagamentosV3PorCliente] = useState<Record<number, number>>({});
   
   const [selectedCliente, setSelectedCliente] = useState<ClienteDebito | null>(null);
   const [comprasCliente, setComprasCliente] = useState<Compra[]>([]);
