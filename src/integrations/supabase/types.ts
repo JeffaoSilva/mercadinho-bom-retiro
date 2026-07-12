@@ -643,7 +643,7 @@ export type Database = {
           forma_pagamento: string
           forma_pagamento_outro: string | null
           id: number
-          mercadinho_id: number | null
+          mercadinho_id: number
           mes_referencia: string
           observacao: string | null
           observacao_cancelamento: string | null
@@ -660,7 +660,7 @@ export type Database = {
           forma_pagamento: string
           forma_pagamento_outro?: string | null
           id?: never
-          mercadinho_id?: number | null
+          mercadinho_id: number
           mes_referencia: string
           observacao?: string | null
           observacao_cancelamento?: string | null
@@ -677,7 +677,7 @@ export type Database = {
           forma_pagamento?: string
           forma_pagamento_outro?: string | null
           id?: never
-          mercadinho_id?: number | null
+          mercadinho_id?: number
           mes_referencia?: string
           observacao?: string | null
           observacao_cancelamento?: string | null
@@ -1055,6 +1055,7 @@ export type Database = {
         Returns: Json
       }
       cliente_caderneta_v2: { Args: { p_cliente_id: number }; Returns: Json }
+      cliente_caderneta_v3: { Args: { p_cliente_id: number }; Returns: Json }
       cliente_extrato_periodo: {
         Args: {
           p_cliente_id: number
