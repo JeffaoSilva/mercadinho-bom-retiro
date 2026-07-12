@@ -24,6 +24,7 @@ import AdminCadernetas from "./pages/admin/AdminCadernetas";
 import AdminCadernetaDetalhe from "./pages/admin/AdminCadernetaDetalhe";
 import AdminCadernetaV2 from "./pages/admin/AdminCadernetaV2";
 import AdminCadernetaV3 from "./pages/admin/AdminCadernetaV3";
+import AdminPreviaMigracaoV3 from "./pages/admin/AdminPreviaMigracaoV3";
 import AdminCodigosTres from "./pages/admin/AdminCodigosTres";
 import AdminAoVivo from "./pages/admin/AdminAoVivo";
 import AdminLancarCompra from "./pages/admin/AdminLancarCompra";
