@@ -456,7 +456,7 @@ const AdminCadernetas = () => {
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Total Devido</TableHead>
                   <TableHead className="text-right">Compras PIX</TableHead>
-                  <TableHead className="text-right">Abatido</TableHead>
+                  <TableHead className="text-right">{destV3 ? "Pagamentos" : "Abatido"}</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -465,6 +465,7 @@ const AdminCadernetas = () => {
                   const totalCaderneta = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
                   const totalAbatido = abatimentosPorCliente[cliente.cliente_id] || 0;
                   const totalDevido = Math.max(totalCaderneta - totalAbatido, 0);
+                  const totalPagamentosV3 = pagamentosV3PorCliente[cliente.cliente_id] || 0;
                   return (
                     <TableRow
                       key={cliente.cliente_id}
@@ -478,9 +479,15 @@ const AdminCadernetas = () => {
                       <TableCell className="text-right text-emerald-700">
                         {cliente.total_pix > 0 ? `R$ ${Number(cliente.total_pix).toFixed(2)}` : "-"}
                       </TableCell>
-                      <TableCell className="text-right text-green-600">
-                        {totalAbatido > 0 ? `-R$ ${totalAbatido.toFixed(2)}` : "-"}
-                      </TableCell>
+                      {destV3 ? (
+                        <TableCell className="text-right text-emerald-700">
+                          {totalPagamentosV3 > 0 ? `R$ ${totalPagamentosV3.toFixed(2)}` : "-"}
+                        </TableCell>
+                      ) : (
+                        <TableCell className="text-right text-green-600">
+                          {totalAbatido > 0 ? `-R$ ${totalAbatido.toFixed(2)}` : "-"}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       </TableCell>
