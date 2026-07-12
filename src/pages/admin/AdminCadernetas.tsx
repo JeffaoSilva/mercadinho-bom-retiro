@@ -80,8 +80,14 @@ interface Abatimento {
 const AdminCadernetas = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const destV2 = searchParams.get("dest") === "v2";
-  const basePath = destV2 ? "/admin/cadernetas-v2" : "/admin/cadernetas";
+  const dest = searchParams.get("dest");
+  const destV2 = dest === "v2";
+  const destV3 = dest === "v3";
+  const basePath = destV3
+    ? "/admin/cadernetas-v3"
+    : destV2
+    ? "/admin/cadernetas-v2"
+    : "/admin/cadernetas";
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   
   const [debitos, setDebitos] = useState<DebitosPayload | null>(null);
