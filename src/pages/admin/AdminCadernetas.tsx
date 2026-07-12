@@ -80,8 +80,14 @@ interface Abatimento {
 const AdminCadernetas = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const destV2 = searchParams.get("dest") === "v2";
-  const basePath = destV2 ? "/admin/cadernetas-v2" : "/admin/cadernetas";
+  const dest = searchParams.get("dest");
+  const destV2 = dest === "v2";
+  const destV3 = dest === "v3";
+  const basePath = destV3
+    ? "/admin/cadernetas-v3"
+    : destV2
+    ? "/admin/cadernetas-v2"
+    : "/admin/cadernetas";
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   
   const [debitos, setDebitos] = useState<DebitosPayload | null>(null);
@@ -394,7 +400,7 @@ const AdminCadernetas = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <BackButton to="/admin" />
-            <h1 className="text-3xl font-bold">Cadernetas{destV2 ? " V2 (Beta)" : ""}</h1>
+            <h1 className="text-3xl font-bold">Cadernetas{destV3 ? " V3 (Beta)" : destV2 ? " V2 (Beta)" : ""}</h1>
           </div>
           <Button variant="outline" onClick={abrirVisitantes}>
             <Users className="h-4 w-4 mr-2" />
