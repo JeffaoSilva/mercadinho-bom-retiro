@@ -154,6 +154,21 @@ const AdminCadernetas = () => {
       setAbatimentosPorCliente(mapa);
     }
     
+
+    if (destV3) {
+      const { data: pagsData, error: pagsErr } = await (supabase
+        .from("pagamentos" as any)
+        .select("cliente_id, valor, cancelado") as any);
+      if (!pagsErr && pagsData) {
+        const mapa: Record<number, number> = {};
+        for (const p of pagsData as any[]) {
+          if (p.cancelado) continue;
+          mapa[p.cliente_id] = (mapa[p.cliente_id] || 0) + Number(p.valor);
+        }
+        setPagamentosV3PorCliente(mapa);
+      }
+    }
+
     setLoading(false);
   };
 
