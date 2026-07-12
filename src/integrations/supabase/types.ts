@@ -632,6 +632,82 @@ export type Database = {
         }
         Relationships: []
       }
+      pagamentos: {
+        Row: {
+          cancelado: boolean
+          cancelado_em: string | null
+          cancelado_por: number | null
+          cliente_id: number
+          criado_em: string | null
+          criado_por: number | null
+          forma_pagamento: string
+          forma_pagamento_outro: string | null
+          id: number
+          mercadinho_id: number | null
+          mes_referencia: string
+          observacao: string | null
+          observacao_cancelamento: string | null
+          origem: string
+          valor: number
+        }
+        Insert: {
+          cancelado?: boolean
+          cancelado_em?: string | null
+          cancelado_por?: number | null
+          cliente_id: number
+          criado_em?: string | null
+          criado_por?: number | null
+          forma_pagamento: string
+          forma_pagamento_outro?: string | null
+          id?: never
+          mercadinho_id?: number | null
+          mes_referencia: string
+          observacao?: string | null
+          observacao_cancelamento?: string | null
+          origem: string
+          valor: number
+        }
+        Update: {
+          cancelado?: boolean
+          cancelado_em?: string | null
+          cancelado_por?: number | null
+          cliente_id?: number
+          criado_em?: string | null
+          criado_por?: number | null
+          forma_pagamento?: string
+          forma_pagamento_outro?: string | null
+          id?: never
+          mercadinho_id?: number | null
+          mes_referencia?: string
+          observacao?: string | null
+          observacao_cancelamento?: string | null
+          origem?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_kiosk"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_mercadinho_id_fkey"
+            columns: ["mercadinho_id"]
+            isOneToOne: false
+            referencedRelation: "mercadinhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pins: {
         Row: {
           cliente_id: number
