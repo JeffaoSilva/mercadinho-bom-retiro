@@ -167,17 +167,13 @@ const Cart = () => {
     }, 250);
   }, [buscarSugestoes]);
 
-  const handleSelectSugestao = useCallback(async (produto: Sugestao) => {
+  const handleSelectSugestao = async (produto: Sugestao) => {
     setShowSugestoes(false);
     setSugestoes([]);
     setBarcode("");
-    // Adiciona pelo ID exato do produto clicado, evitando re-busca por nome
-    // que poderia retornar outro item correspondente.
     await addProductById(produto.id);
-    setTimeout(() => {
-      if (inputRef.current) inputRef.current.focus();
-    }, 50);
-  }, []);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
