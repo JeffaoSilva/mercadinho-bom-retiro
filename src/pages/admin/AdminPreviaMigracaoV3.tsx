@@ -82,7 +82,7 @@ const AdminPreviaMigracaoV3 = () => {
   useEffect(() => {
     (async () => {
       const [{ data: c }, { data: m }] = await Promise.all([
-        supabase.from("clientes").select("id, nome, mercadinho_id").eq("ativo", true).order("nome"),
+        supabase.from("clientes").select("id, nome, mercadinho_id").order("nome"),
         supabase.from("mercadinhos").select("id, nome").order("id"),
       ]);
       setClientes((c as any) || []);
