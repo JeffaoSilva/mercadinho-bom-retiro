@@ -6,7 +6,7 @@
 -- (origem = 'migracao_v2') preservando exatamente a dívida mensal da V2.
 --
 -- Prévia: recalculada com a MESMA fonte da tela de auditoria
---         (cliente_caderneta_v2, clientes ativos), sem tocar na V2.
+--         (cliente_caderneta_v2, TODOS os clientes: ativos e inativos), sem tocar na V2.
 -- Regra:  pagamento_inicial = total_caderneta do mês - saldo_mes (dívida V2)
 --         Grava somente quando pagamento_inicial > 0.
 --         PIX e visitantes já são excluídos pela própria RPC V2.
@@ -57,7 +57,7 @@ BEGIN
   ------------------------------------------------------------------
   CREATE TEMP TABLE previa ON COMMIT DROP AS
   WITH cli AS (
-    SELECT id, mercadinho_id FROM public.clientes WHERE ativo = true
+    SELECT id, mercadinho_id FROM public.clientes
   ),
   r AS (
     SELECT c.id AS cliente_id, c.mercadinho_id, public.cliente_caderneta_v2(c.id) AS j FROM cli c
@@ -89,14 +89,14 @@ BEGIN
     INTO v_clientes, v_meses, v_sugerido, v_div
   FROM previa;
 
-  IF v_clientes <> 16 THEN
-    RAISE EXCEPTION 'Previa divergente: % clientes (esperado 16). Nada foi inserido.', v_clientes;
+  IF v_clientes <> 21 THEN
+    RAISE EXCEPTION 'Previa divergente: % clientes (esperado 21). Nada foi inserido.', v_clientes;
   END IF;
-  IF v_meses <> 53 THEN
-    RAISE EXCEPTION 'Previa divergente: % meses (esperado 53). Nada foi inserido.', v_meses;
+  IF v_meses <> 60 THEN
+    RAISE EXCEPTION 'Previa divergente: % meses (esperado 60). Nada foi inserido.', v_meses;
   END IF;
-  IF v_sugerido <> 2532.25 THEN
-    RAISE EXCEPTION 'Previa divergente: total sugerido % (esperado 2532.25). Nada foi inserido.', v_sugerido;
+  IF v_sugerido <> 2968.89 THEN
+    RAISE EXCEPTION 'Previa divergente: total sugerido % (esperado 2968.89). Nada foi inserido.', v_sugerido;
   END IF;
   IF v_div <> 0 THEN
     RAISE EXCEPTION 'Previa possui % divergencia(s) matematica(s) (esperado 0). Nada foi inserido.', v_div;
@@ -180,7 +180,6 @@ BEGIN
            round((public.cliente_caderneta_v2(cl.id)->>'total_devido_atual')::numeric, 2) AS v2,
            round((public.cliente_caderneta_v3(cl.id)->>'total_devido')::numeric, 2)       AS v3
     FROM public.clientes cl
-    WHERE cl.ativo = true
   ) t
   WHERE t.v2 IS DISTINCT FROM t.v3;
   IF v_div > 0 THEN
