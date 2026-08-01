@@ -5,11 +5,15 @@
 -- Objetivo: criar pagamentos mensais consolidados em public.pagamentos
 -- (origem = 'migracao_v2') preservando exatamente a dívida mensal da V2.
 --
--- Prévia: recalculada com a MESMA fonte da tela de auditoria
---         (cliente_caderneta_v2, TODOS os clientes: ativos e inativos), sem tocar na V2.
--- Regra:  pagamento_inicial = total_caderneta do mês - saldo_mes (dívida V2)
+-- Prévia: TODAS as compras em caderneta (nao visitante), inclusive as ja
+--         marcadas com paga = true, de TODOS os clientes (ativos e inativos),
+--         cruzadas com a divida mensal atual (saldo_mes) da cliente_caderneta_v2.
+-- Regra:  pagamento_inicial = total de compras do mes - saldo_mes (divida V2)
 --         Grava somente quando pagamento_inicial > 0.
---         PIX e visitantes já são excluídos pela própria RPC V2.
+--         Meses quitados via paga = true tambem entram (divida V2 = 0),
+--         gerando pagamento igual ao total de compras do mes.
+--         PIX e visitantes ficam de fora pelo proprio filtro das compras.
+
 --
 -- Transacional (DO block = 1 transação), idempotente e auditável.
 --
