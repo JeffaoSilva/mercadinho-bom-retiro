@@ -57,7 +57,9 @@ BEGIN
   RAISE NOTICE 'Registros migracao_v2 existentes antes da execucao: %', v_existentes;
 
   ------------------------------------------------------------------
-  -- 3) Prévia recalculada (mesma fonte da tela de auditoria)
+  -- 3) Prévia recalculada: TODAS as compras em caderneta (inclusive paga = true)
+  --    cruzadas com a divida mensal atual da V2 (saldo_mes; 0 quando o mes
+  --    nao aparece mais na V2 por ja estar quitado via paga = true)
   ------------------------------------------------------------------
   CREATE TEMP TABLE previa ON COMMIT DROP AS
   WITH cli AS (
@@ -68,22 +70,39 @@ BEGIN
   ),
   mm AS (
     SELECT r.cliente_id,
-           r.mercadinho_id,
-           (m->>'mes')                       AS mes,
-           (m->>'total_caderneta')::numeric  AS compras,
-           (m->>'saldo_mes')::numeric        AS divida_v2
+           (m->>'mes')                AS mes,
+           (m->>'saldo_mes')::numeric AS divida_v2
     FROM r, jsonb_array_elements(r.j->'meses') m
+  ),
+  ct AS (
+    SELECT c.cliente_id,
+           to_char(c.data_compra AT TIME ZONE 'America/Sao_Paulo','YYYY-MM') AS mes,
+           sum(c.valor_total) AS compras
+    FROM public.compras c
+    WHERE c.eh_visitante = false
+      AND c.forma_pagamento = 'caderneta'
+      AND c.cliente_id IS NOT NULL
+    GROUP BY 1, 2
+  ),
+  base AS (
+    SELECT coalesce(ct.cliente_id, mm.cliente_id) AS cliente_id,
+           coalesce(ct.mes, mm.mes)               AS mes,
+           coalesce(ct.compras, 0)                AS compras,
+           coalesce(mm.divida_v2, 0)              AS divida_v2
+    FROM ct
+    FULL OUTER JOIN mm ON mm.cliente_id = ct.cliente_id AND mm.mes = ct.mes
   )
-  SELECT cliente_id,
-         mercadinho_id,
-         mes,
-         ((mes || '-01')::date) AS mes_referencia,
-         compras,
-         divida_v2,
-         greatest(compras - divida_v2, 0) AS pagamento,
-         (compras < 0 OR divida_v2 < 0 OR divida_v2 > compras) AS divergencia
-  FROM mm
-  WHERE NOT (compras = 0 AND divida_v2 = 0);
+  SELECT b.cliente_id,
+         cli.mercadinho_id,
+         b.mes,
+         ((b.mes || '-01')::date) AS mes_referencia,
+         b.compras,
+         b.divida_v2,
+         greatest(b.compras - b.divida_v2, 0) AS pagamento,
+         (b.compras < 0 OR b.divida_v2 < 0 OR b.divida_v2 > b.compras) AS divergencia
+  FROM base b
+  JOIN cli ON cli.id = b.cliente_id
+  WHERE NOT (b.compras = 0 AND b.divida_v2 = 0);
 
   ------------------------------------------------------------------
   -- 4) Conferência obrigatória contra os números já validados
@@ -93,18 +112,19 @@ BEGIN
     INTO v_clientes, v_meses, v_sugerido, v_div
   FROM previa;
 
-  IF v_clientes <> 21 THEN
-    RAISE EXCEPTION 'Previa divergente: % clientes (esperado 21). Nada foi inserido.', v_clientes;
+  IF v_clientes <> 22 THEN
+    RAISE EXCEPTION 'Previa divergente: % clientes (esperado 22). Nada foi inserido.', v_clientes;
   END IF;
-  IF v_meses <> 60 THEN
-    RAISE EXCEPTION 'Previa divergente: % meses (esperado 60). Nada foi inserido.', v_meses;
+  IF v_meses <> 63 THEN
+    RAISE EXCEPTION 'Previa divergente: % meses (esperado 63). Nada foi inserido.', v_meses;
   END IF;
-  IF v_sugerido <> 2968.89 THEN
-    RAISE EXCEPTION 'Previa divergente: total sugerido % (esperado 2968.89). Nada foi inserido.', v_sugerido;
+  IF v_sugerido <> 3164.38 THEN
+    RAISE EXCEPTION 'Previa divergente: total sugerido % (esperado 3164.38). Nada foi inserido.', v_sugerido;
   END IF;
   IF v_div <> 0 THEN
     RAISE EXCEPTION 'Previa possui % divergencia(s) matematica(s) (esperado 0). Nada foi inserido.', v_div;
   END IF;
+
 
   -- datas sempre no primeiro dia do mês
   IF EXISTS (SELECT 1 FROM previa WHERE mes_referencia <> date_trunc('month', mes_referencia)::date) THEN
