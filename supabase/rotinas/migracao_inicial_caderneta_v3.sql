@@ -167,8 +167,8 @@ BEGIN
 
   ------------------------------------------------------------------
   -- 7) Validação pós-carga A: por cliente e mês, direto nas tabelas
-  --    compras (caderneta, nao paga, nao visitante) - pagamentos V3
-  --    deve ser igual ao saldo_mes retornado por cliente_caderneta_v2
+  --    TODAS as compras em caderneta do mes (mesmo criterio da V3,
+  --    sem filtrar paga) - pagamentos V3 deve ser igual ao saldo_mes da V2
   ------------------------------------------------------------------
   SELECT count(*) INTO v_div
   FROM (
@@ -179,9 +179,9 @@ BEGIN
              WHERE c.cliente_id = p.cliente_id
                AND c.eh_visitante = false
                AND c.forma_pagamento = 'caderneta'
-               AND c.paga = false
                AND to_char(c.data_compra AT TIME ZONE 'America/Sao_Paulo','YYYY-MM') = p.mes
            ), 0) AS compras_tab,
+
            coalesce((
              SELECT sum(pg.valor) FROM public.pagamentos pg
              WHERE pg.cliente_id = p.cliente_id
