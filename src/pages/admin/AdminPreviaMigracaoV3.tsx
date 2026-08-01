@@ -90,6 +90,16 @@ const AdminPreviaMigracaoV3 = () => {
     })();
   }, []);
 
+  const mesBrasil = (iso: string) => {
+    const d = new Date(iso);
+    const f = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+    }).format(d);
+    return f.slice(0, 7);
+  };
+
   const carregarPrevia = async () => {
     setLoading(true);
     setLinhas([]);
@@ -100,7 +110,21 @@ const AdminPreviaMigracaoV3 = () => {
       setProgresso({ atual: 0, total: alvos.length });
       const resultado: Linha[] = [];
 
-      // pequeno paralelismo para não sobrecarregar
+      // 1) Total de TODAS as compras em caderneta por cliente/mês (inclusive paga = true)
+      const comprasMap = new Map<string, number>();
+      const { data: comprasRaw } = await (supabase as any)
+        .from("compras")
+        .select("cliente_id, data_compra, valor_total")
+        .eq("eh_visitante", false)
+        .eq("forma_pagamento", "caderneta")
+        .not("cliente_id", "is", null);
+      for (const c of ((comprasRaw as any[]) || [])) {
+        const key = `${c.cliente_id}|${mesBrasil(c.data_compra)}`;
+        comprasMap.set(key, (comprasMap.get(key) || 0) + Number(c.valor_total || 0));
+      }
+
+      // 2) Dívida mensal atual da V2 por cliente/mês
+      const dividaMap = new Map<string, number>();
       const chunkSize = 5;
       for (let i = 0; i < alvos.length; i += chunkSize) {
         const chunk = alvos.slice(i, i + chunkSize);
@@ -114,47 +138,57 @@ const AdminPreviaMigracaoV3 = () => {
           if (error || !data) continue;
           const meses: MesV2[] = (data.meses || []) as any;
           for (const mes of meses) {
-            const compras = Number(mes.total_caderneta || 0);
-            const divida = Number(mes.saldo_mes || 0);
-            let divergencia = false;
-            let motivo: string | undefined;
-
-            if (compras < 0) {
-              divergencia = true;
-              motivo = "Compras negativas";
-            } else if (divida < 0) {
-              divergencia = true;
-              motivo = "Dívida V2 negativa";
-            } else if (divida > compras) {
-              divergencia = true;
-              motivo = "Dívida V2 maior que compras do mês";
-            }
-
-            const pagamento = divergencia ? 0 : Math.max(0, compras - divida);
-
-            let status: Linha["status"];
-            if (divida === 0) status = "quitado";
-            else if (pagamento > 0 && divida > 0) status = "parcial";
-            else status = "em_aberto";
-
-            // ignorar meses totalmente vazios (sem compra e sem dívida)
-            if (compras === 0 && divida === 0) continue;
-
-            resultado.push({
-              cliente_id: cli.id,
-              cliente_nome: cli.nome,
-              mercadinho_id: cli.mercadinho_id,
-              mes: mes.mes,
-              compras,
-              divida_v2: divida,
-              pagamento_sugerido: pagamento,
-              status,
-              divergencia,
-              motivo_divergencia: motivo,
-            });
+            dividaMap.set(`${cli.id}|${mes.mes}`, Number(mes.saldo_mes || 0));
           }
         }
         setProgresso({ atual: Math.min(i + chunkSize, alvos.length), total: alvos.length });
+      }
+
+      // 3) União das chaves cliente/mês (compras reais ∪ meses da V2)
+      const chaves = new Set<string>([...comprasMap.keys(), ...dividaMap.keys()]);
+      const porId = new Map(alvos.map((c) => [c.id, c]));
+
+      for (const chave of chaves) {
+        const [idStr, mes] = chave.split("|");
+        const cli = porId.get(Number(idStr));
+        if (!cli) continue;
+
+        const compras = comprasMap.get(chave) || 0;
+        const divida = dividaMap.get(chave) || 0;
+        if (compras === 0 && divida === 0) continue;
+
+        let divergencia = false;
+        let motivo: string | undefined;
+        if (compras < 0) {
+          divergencia = true;
+          motivo = "Compras negativas";
+        } else if (divida < 0) {
+          divergencia = true;
+          motivo = "Dívida V2 negativa";
+        } else if (divida > compras) {
+          divergencia = true;
+          motivo = "Dívida V2 maior que compras do mês";
+        }
+
+        const pagamento = divergencia ? 0 : Math.max(0, compras - divida);
+
+        let status: Linha["status"];
+        if (divida === 0) status = "quitado";
+        else if (pagamento > 0 && divida > 0) status = "parcial";
+        else status = "em_aberto";
+
+        resultado.push({
+          cliente_id: cli.id,
+          cliente_nome: cli.nome,
+          mercadinho_id: cli.mercadinho_id,
+          mes,
+          compras,
+          divida_v2: divida,
+          pagamento_sugerido: pagamento,
+          status,
+          divergencia,
+          motivo_divergencia: motivo,
+        });
       }
 
       // ordena: cliente asc, mes asc
@@ -170,6 +204,7 @@ const AdminPreviaMigracaoV3 = () => {
       setLoading(false);
     }
   };
+
 
   const linhasFiltradas = useMemo(() => {
     const termo = filtroCliente.trim().toLowerCase();
