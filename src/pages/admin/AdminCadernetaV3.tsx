@@ -132,27 +132,35 @@ const AdminCadernetaV3 = () => {
   const [loading, setLoading] = useState(true);
   const [mesSelecionado, setMesSelecionado] = useState<string>(currentYYYYMM());
 
-  useEffect(() => {
+  const [modalAberto, setModalAberto] = useState(false);
+  const [valor, setValor] = useState<number | null>(null);
+  const [forma, setForma] = useState<string>("");
+  const [formaOutro, setFormaOutro] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const load = useCallback(async (showLoading = true) => {
     if (!clienteId) return;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [{ data: rpcData, error: rpcErr }, { data: cli }] = await Promise.all([
-          (supabase.rpc as any)("cliente_caderneta_v3", { p_cliente_id: Number(clienteId) }),
-          supabase.from("clientes").select("nome").eq("id", Number(clienteId)).maybeSingle(),
-        ]);
-        if (rpcErr) throw rpcErr;
-        setPayload(rpcData as CadernetaV3Payload);
-        setNomeCliente((cli as any)?.nome || "");
-      } catch (e: any) {
-        console.error(e);
-        toast.error("Erro ao carregar caderneta V3");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    if (showLoading) setLoading(true);
+    try {
+      const [{ data: rpcData, error: rpcErr }, { data: cli }] = await Promise.all([
+        (supabase.rpc as any)("cliente_caderneta_v3", { p_cliente_id: Number(clienteId) }),
+        supabase.from("clientes").select("nome").eq("id", Number(clienteId)).maybeSingle(),
+      ]);
+      if (rpcErr) throw rpcErr;
+      setPayload(rpcData as CadernetaV3Payload);
+      setNomeCliente((cli as any)?.nome || "");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Erro ao carregar caderneta V3");
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, [clienteId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const mesData: MesV3 = useMemo(() => {
     const found = payload?.meses.find((m) => m.mes === mesSelecionado);
@@ -169,6 +177,55 @@ const AdminCadernetaV3 = () => {
   }, [payload, mesSelecionado]);
 
   const st = statusLabel(mesData.status);
+
+  const limparForm = () => {
+    setValor(null);
+    setForma("");
+    setFormaOutro("");
+    setObservacao("");
+  };
+
+  const handleSalvar = async () => {
+    if (!valor || valor <= 0) {
+      toast.error("Informe um valor maior que zero.");
+      return;
+    }
+    if (!forma) {
+      toast.error("Selecione a forma de pagamento.");
+      return;
+    }
+    if (forma === "Outro" && !formaOutro.trim()) {
+      toast.error("Informe a descrição da forma de pagamento.");
+      return;
+    }
+    if (valor > mesData.divida_mes) {
+      toast.error("O valor do pagamento não pode ser maior que a dívida restante deste mês.");
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      const { error } = await (supabase.rpc as any)("registrar_pagamento_v3", {
+        p_cliente_id: Number(clienteId),
+        p_mes_referencia: `${mesSelecionado}-01`,
+        p_valor: valor,
+        p_forma_pagamento: forma,
+        p_forma_pagamento_outro: forma === "Outro" ? formaOutro.trim() : null,
+        p_observacao: observacao.trim() || null,
+      });
+      if (error) throw error;
+      toast.success("Pagamento registrado");
+      setModalAberto(false);
+      limparForm();
+      await load(false);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao registrar pagamento");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background p-6">
