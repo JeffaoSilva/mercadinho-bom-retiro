@@ -1,11 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { MoneyInput } from "@/components/MoneyInput";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import BackButton from "@/components/BackButton";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 type ItemCompraV3 = {
@@ -114,27 +132,35 @@ const AdminCadernetaV3 = () => {
   const [loading, setLoading] = useState(true);
   const [mesSelecionado, setMesSelecionado] = useState<string>(currentYYYYMM());
 
-  useEffect(() => {
+  const [modalAberto, setModalAberto] = useState(false);
+  const [valor, setValor] = useState<number | null>(null);
+  const [forma, setForma] = useState<string>("");
+  const [formaOutro, setFormaOutro] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const load = useCallback(async (showLoading = true) => {
     if (!clienteId) return;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [{ data: rpcData, error: rpcErr }, { data: cli }] = await Promise.all([
-          (supabase.rpc as any)("cliente_caderneta_v3", { p_cliente_id: Number(clienteId) }),
-          supabase.from("clientes").select("nome").eq("id", Number(clienteId)).maybeSingle(),
-        ]);
-        if (rpcErr) throw rpcErr;
-        setPayload(rpcData as CadernetaV3Payload);
-        setNomeCliente((cli as any)?.nome || "");
-      } catch (e: any) {
-        console.error(e);
-        toast.error("Erro ao carregar caderneta V3");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    if (showLoading) setLoading(true);
+    try {
+      const [{ data: rpcData, error: rpcErr }, { data: cli }] = await Promise.all([
+        (supabase.rpc as any)("cliente_caderneta_v3", { p_cliente_id: Number(clienteId) }),
+        supabase.from("clientes").select("nome").eq("id", Number(clienteId)).maybeSingle(),
+      ]);
+      if (rpcErr) throw rpcErr;
+      setPayload(rpcData as CadernetaV3Payload);
+      setNomeCliente((cli as any)?.nome || "");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Erro ao carregar caderneta V3");
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, [clienteId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const mesData: MesV3 = useMemo(() => {
     const found = payload?.meses.find((m) => m.mes === mesSelecionado);
@@ -151,6 +177,55 @@ const AdminCadernetaV3 = () => {
   }, [payload, mesSelecionado]);
 
   const st = statusLabel(mesData.status);
+
+  const limparForm = () => {
+    setValor(null);
+    setForma("");
+    setFormaOutro("");
+    setObservacao("");
+  };
+
+  const handleSalvar = async () => {
+    if (!valor || valor <= 0) {
+      toast.error("Informe um valor maior que zero.");
+      return;
+    }
+    if (!forma) {
+      toast.error("Selecione a forma de pagamento.");
+      return;
+    }
+    if (forma === "Outro" && !formaOutro.trim()) {
+      toast.error("Informe a descrição da forma de pagamento.");
+      return;
+    }
+    if (valor > mesData.divida_mes) {
+      toast.error("O valor do pagamento não pode ser maior que a dívida restante deste mês.");
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      const { error } = await (supabase.rpc as any)("registrar_pagamento_v3", {
+        p_cliente_id: Number(clienteId),
+        p_mes_referencia: `${mesSelecionado}-01`,
+        p_valor: valor,
+        p_forma_pagamento: forma,
+        p_forma_pagamento_outro: forma === "Outro" ? formaOutro.trim() : null,
+        p_observacao: observacao.trim() || null,
+      });
+      if (error) throw error;
+      toast.success("Pagamento registrado");
+      setModalAberto(false);
+      limparForm();
+      await load(false);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao registrar pagamento");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -268,7 +343,12 @@ const AdminCadernetaV3 = () => {
 
             {/* Pagamentos */}
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold">Pagamentos</h2>
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold">Pagamentos</h2>
+                <Button onClick={() => setModalAberto(true)} disabled={mesData.divida_mes <= 0}>
+                  <Plus className="h-4 w-4 mr-1" /> Registrar pagamento
+                </Button>
+              </div>
               {mesData.pagamentos.length === 0 ? (
                 <Card>
                   <CardContent className="p-4 text-sm text-muted-foreground">
@@ -314,6 +394,85 @@ const AdminCadernetaV3 = () => {
             </section>
           </>
         )}
+
+        <Dialog
+          open={modalAberto}
+          onOpenChange={(o) => {
+            setModalAberto(o);
+            if (!o) limparForm();
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Registrar pagamento — {formatMesLabel(mesSelecionado)}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Dívida restante do mês: <strong>{formatBRL(mesData.divida_mes)}</strong>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Valor *</Label>
+                <MoneyInput value={valor} onChange={setValor} allowEmpty />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Forma de pagamento *</Label>
+                <Select value={forma} onValueChange={setForma}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PIX">PIX</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Cartão">Cartão</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {forma === "Outro" && (
+                <div className="space-y-2">
+                  <Label>Descrição da forma de pagamento *</Label>
+                  <Input
+                    value={formaOutro}
+                    onChange={(e) => setFormaOutro(e.target.value)}
+                    placeholder="Ex: Vale, troca, transferência"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Observação</Label>
+                <Textarea
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setModalAberto(false);
+                  limparForm();
+                }}
+                disabled={salvando}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSalvar} disabled={salvando}>
+                {salvando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
