@@ -394,6 +394,85 @@ const AdminCadernetaV3 = () => {
             </section>
           </>
         )}
+
+        <Dialog
+          open={modalAberto}
+          onOpenChange={(o) => {
+            setModalAberto(o);
+            if (!o) limparForm();
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Registrar pagamento — {formatMesLabel(mesSelecionado)}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Dívida restante do mês: <strong>{formatBRL(mesData.divida_mes)}</strong>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Valor *</Label>
+                <MoneyInput value={valor} onChange={setValor} allowEmpty />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Forma de pagamento *</Label>
+                <Select value={forma} onValueChange={setForma}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PIX">PIX</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Cartão">Cartão</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {forma === "Outro" && (
+                <div className="space-y-2">
+                  <Label>Descrição da forma de pagamento *</Label>
+                  <Input
+                    value={formaOutro}
+                    onChange={(e) => setFormaOutro(e.target.value)}
+                    placeholder="Ex: Vale, troca, transferência"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Observação</Label>
+                <Textarea
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setModalAberto(false);
+                  limparForm();
+                }}
+                disabled={salvando}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSalvar} disabled={salvando}>
+                {salvando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
