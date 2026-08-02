@@ -343,7 +343,12 @@ const AdminCadernetaV3 = () => {
 
             {/* Pagamentos */}
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold">Pagamentos</h2>
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold">Pagamentos</h2>
+                <Button onClick={() => setModalAberto(true)} disabled={mesData.divida_mes <= 0}>
+                  <Plus className="h-4 w-4 mr-1" /> Registrar pagamento
+                </Button>
+              </div>
               {mesData.pagamentos.length === 0 ? (
                 <Card>
                   <CardContent className="p-4 text-sm text-muted-foreground">
