@@ -20,7 +20,6 @@ const Index = () => {
     setMercadinhoAtualId,
     getSelectClientPath,
     getAreaClientePath,
-    getAreaClienteV2Path,
   } = useCheckout();
 
 
@@ -125,14 +124,7 @@ const Index = () => {
           Área do Cliente
         </Button>
 
-        {/* Botão Área do Cliente V2 (Beta) */}
-        <Button
-          variant="secondary"
-          className="w-full max-w-sm mx-auto h-12 text-base"
-          onClick={() => navigate(getAreaClienteV2Path())}
-        >
-          Área do Cliente V2 (Beta)
-        </Button>
+
 
       </div>
 
