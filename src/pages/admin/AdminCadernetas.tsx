@@ -158,18 +158,25 @@ const AdminCadernetas = () => {
     
 
     if (destV3) {
-      const { data: pagsData, error: pagsErr } = await (supabase
-        .from("pagamentos" as any)
-        .select("cliente_id, valor, cancelado") as any);
-      if (!pagsErr && pagsData) {
-        const mapa: Record<number, number> = {};
-        for (const p of pagsData as any[]) {
-          if (p.cancelado) continue;
-          mapa[p.cliente_id] = (mapa[p.cliente_id] || 0) + Number(p.valor);
+      const { data: v3Data, error: v3Err } = await (supabase.rpc as any)(
+        "admin_listar_clientes_debitos_v3"
+      );
+      if (!v3Err && v3Data) {
+        const mapa: Record<number, { devido: number; pagamentos: number; pix: number }> = {};
+        for (const c of v3Data as any[]) {
+          mapa[c.cliente_id] = {
+            devido: Number(c.total_devido_v3) || 0,
+            pagamentos: Number(c.total_pagamentos_v3) || 0,
+            pix: Number(c.total_compras_pix) || 0,
+          };
         }
-        setPagamentosV3PorCliente(mapa);
+        setV3PorCliente(mapa);
+      } else if (v3Err) {
+        console.error("Erro ao carregar dados V3", v3Err);
+        toast.error("Erro ao carregar dados da V3");
       }
     }
+
 
     setLoading(false);
   };
