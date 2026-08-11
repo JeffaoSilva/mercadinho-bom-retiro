@@ -11,6 +11,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -23,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import BackButton from "@/components/BackButton";
-import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 type ItemCompraV3 = {
