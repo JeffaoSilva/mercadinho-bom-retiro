@@ -562,8 +562,215 @@ const AdminCadernetaV3 = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Modal Exportar */}
+        <Dialog open={showExport} onOpenChange={setShowExport}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Exportar relatório</DialogTitle>
+              <DialogDescription>
+                Escolha o período. O relatório usa apenas as compras em caderneta e os
+                pagamentos da Caderneta V3.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Mês inicial</Label>
+                <select
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={exportMesInicio}
+                  onChange={(e) => setExportMesInicio(e.target.value)}
+                >
+                  {mesesComMovimento.map((m) => (
+                    <option key={m} value={m}>{formatMesLabel(m)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Mês final</Label>
+                <select
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={exportMesFim}
+                  onChange={(e) => setExportMesFim(e.target.value)}
+                >
+                  {mesesComMovimento.map((m) => (
+                    <option key={m} value={m}>{formatMesLabel(m)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowExport(false)}>
+                Fechar
+              </Button>
+              <Button onClick={handlePrint} disabled={!relatorio}>
+                <Printer className="h-4 w-4 mr-2" /> Gerar relatório
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {/* Área de impressão */}
+      {relatorio && (
+        <div id="area-impressao-v3" className="hidden print:block">
+          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>Caderneta</h1>
+          <p style={{ fontSize: 14, marginBottom: 2 }}>
+            Cliente: <strong>{nomeCliente}</strong>
+          </p>
+          <p style={{ fontSize: 14, marginBottom: 2 }}>
+            Período: <strong>{formatMesLabel(relatorio.ini)}</strong> até{" "}
+            <strong>{formatMesLabel(relatorio.fim)}</strong>
+          </p>
+          <p style={{ fontSize: 12, marginBottom: 16 }}>
+            Data de emissão: {new Date().toLocaleDateString("pt-BR")}
+          </p>
+
+          {relatorio.meses.length === 0 && <p>Nenhuma movimentação no período.</p>}
+
+          {relatorio.meses.map((m) => (
+            <div
+              key={m.mes}
+              className="bloco-mes"
+              style={{
+                border: "1px solid #000",
+                borderRadius: 6,
+                padding: 12,
+                marginBottom: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  borderBottom: "2px solid #000",
+                  paddingBottom: 4,
+                  marginBottom: 8,
+                }}
+              >
+                {formatMesLabel(m.mes)}
+              </div>
+
+              <table style={{ width: "100%", fontSize: 13, marginBottom: 10 }}>
+                <tbody>
+                  <tr>
+                    <td>Você comprou:</td>
+                    <td style={{ textAlign: "right" }}>{formatBRL(m.total_compras)}</td>
+                  </tr>
+                  <tr>
+                    <td>Você já pagou:</td>
+                    <td style={{ textAlign: "right" }}>{formatBRL(m.total_pagamentos)}</td>
+                  </tr>
+                  <tr style={{ fontWeight: 700, fontSize: 15 }}>
+                    <td>Falta pagar:</td>
+                    <td style={{ textAlign: "right" }}>{formatBRL(m.divida_mes)}</td>
+                  </tr>
+                  <tr>
+                    <td>Status:</td>
+                    <td style={{ textAlign: "right", fontWeight: 700 }}>
+                      {m.divida_mes <= 0 ? "Pago" : "Falta pagar"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Compras:</div>
+              {m.compras.length === 0 ? (
+                <div style={{ fontSize: 12, marginBottom: 8 }}>Nenhuma compra neste mês.</div>
+              ) : (
+                <div style={{ marginBottom: 10 }}>
+                  {m.compras.map((c) => (
+                    <div key={c.compra_id} style={{ fontSize: 12, marginBottom: 6 }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {c.data_compra_brasil} - {c.hora_compra_brasil}
+                      </div>
+                      <table style={{ width: "100%" }}>
+                        <tbody>
+                          {c.itens.map((i) => (
+                            <tr key={i.item_id}>
+                              <td>{i.produto ?? `Produto #${i.produto_id ?? "?"}`}</td>
+                              <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                                {i.quantidade} x {formatBRL(i.valor_unitario)}
+                              </td>
+                              <td style={{ textAlign: "right", whiteSpace: "nowrap", width: 90 }}>
+                                {formatBRL(i.valor_total)}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr>
+                            <td colSpan={2} style={{ textAlign: "right", fontWeight: 600 }}>
+                              Total da compra
+                            </td>
+                            <td style={{ textAlign: "right", fontWeight: 600 }}>
+                              {formatBRL(c.valor_total)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Pagamentos:</div>
+              {m.migrado <= 0 && m.manuais.length === 0 ? (
+                <div style={{ fontSize: 12 }}>Nenhum pagamento neste mês.</div>
+              ) : (
+                <div style={{ fontSize: 12 }}>
+                  {m.migrado > 0 && (
+                    <div style={{ marginBottom: 6 }}>
+                      Valores já pagos anteriormente: <strong>{formatBRL(m.migrado)}</strong>
+                    </div>
+                  )}
+                  {m.manuais.map((p) => (
+                    <div key={p.pagamento_id} style={{ marginBottom: 6 }}>
+                      <div>
+                        {p.data_pagamento_brasil} - {p.hora_pagamento_brasil}
+                      </div>
+                      <div>
+                        <strong>{formatBRL(p.valor)}</strong>
+                        {p.forma_pagamento ? ` — ${formaPagamentoLabel(p)}` : ""}
+                      </div>
+                      {p.observacao && <div>Observação: {p.observacao}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div
+            className="bloco-mes"
+            style={{ border: "2px solid #000", borderRadius: 6, padding: 12, marginTop: 8 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>RESUMO</div>
+            <table style={{ width: "100%", fontSize: 13 }}>
+              <tbody>
+                {relatorio.meses.map((m) => (
+                  <tr key={m.mes}>
+                    <td>{formatMesLabel(m.mes)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {m.divida_mes <= 0 ? "Pago" : `Falta pagar: ${formatBRL(m.divida_mes)}`}
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td colSpan={2} style={{ borderTop: "1px solid #000", paddingTop: 6 }} />
+                </tr>
+                <tr style={{ fontSize: 16, fontWeight: 700 }}>
+                  <td>TOTAL QUE FALTA PAGAR</td>
+                  <td style={{ textAlign: "right" }}>{formatBRL(relatorio.totalFalta)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 };
 
