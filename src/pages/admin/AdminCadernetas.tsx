@@ -95,7 +95,9 @@ const AdminCadernetas = () => {
   const [search, setSearch] = useState("");
   
   const [abatimentosPorCliente, setAbatimentosPorCliente] = useState<Record<number, number>>({});
-  const [pagamentosV3PorCliente, setPagamentosV3PorCliente] = useState<Record<number, number>>({});
+  const [v3PorCliente, setV3PorCliente] = useState<
+    Record<number, { devido: number; pagamentos: number; pix: number }>
+  >({});
   
   const [selectedCliente, setSelectedCliente] = useState<ClienteDebito | null>(null);
   const [comprasCliente, setComprasCliente] = useState<Compra[]>([]);
@@ -156,18 +158,25 @@ const AdminCadernetas = () => {
     
 
     if (destV3) {
-      const { data: pagsData, error: pagsErr } = await (supabase
-        .from("pagamentos" as any)
-        .select("cliente_id, valor, cancelado") as any);
-      if (!pagsErr && pagsData) {
-        const mapa: Record<number, number> = {};
-        for (const p of pagsData as any[]) {
-          if (p.cancelado) continue;
-          mapa[p.cliente_id] = (mapa[p.cliente_id] || 0) + Number(p.valor);
+      const { data: v3Data, error: v3Err } = await (supabase.rpc as any)(
+        "admin_listar_clientes_debitos_v3"
+      );
+      if (!v3Err && v3Data) {
+        const mapa: Record<number, { devido: number; pagamentos: number; pix: number }> = {};
+        for (const c of v3Data as any[]) {
+          mapa[c.cliente_id] = {
+            devido: Number(c.total_devido_v3) || 0,
+            pagamentos: Number(c.total_pagamentos_v3) || 0,
+            pix: Number(c.total_compras_pix) || 0,
+          };
         }
-        setPagamentosV3PorCliente(mapa);
+        setV3PorCliente(mapa);
+      } else if (v3Err) {
+        console.error("Erro ao carregar dados V3", v3Err);
+        toast.error("Erro ao carregar dados da V3");
       }
     }
+
 
     setLoading(false);
   };
@@ -384,6 +393,10 @@ const AdminCadernetas = () => {
   ) || [];
 
   const clientesComDebito = clientesFiltrados.filter((c) => {
+    if (destV3) {
+      const v3 = v3PorCliente[c.cliente_id];
+      return (v3?.devido || 0) > 0 || (v3?.pix || 0) > 0;
+    }
     const totalCaderneta = c.total_mes_atual + c.total_mes_anterior + c.total_atrasado;
     const totalAbatido = abatimentosPorCliente[c.cliente_id] || 0;
     const totalDevido = totalCaderneta - totalAbatido;
@@ -462,10 +475,14 @@ const AdminCadernetas = () => {
               </TableHeader>
               <TableBody>
                 {clientesComDebito.map((cliente) => {
+                  const v3 = v3PorCliente[cliente.cliente_id];
                   const totalCaderneta = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
                   const totalAbatido = abatimentosPorCliente[cliente.cliente_id] || 0;
-                  const totalDevido = Math.max(totalCaderneta - totalAbatido, 0);
-                  const totalPagamentosV3 = pagamentosV3PorCliente[cliente.cliente_id] || 0;
+                  const totalDevido = destV3
+                    ? v3?.devido || 0
+                    : Math.max(totalCaderneta - totalAbatido, 0);
+                  const totalPagamentosV3 = v3?.pagamentos || 0;
+                  const totalPix = destV3 ? v3?.pix || 0 : Number(cliente.total_pix) || 0;
                   return (
                     <TableRow
                       key={cliente.cliente_id}
@@ -477,12 +494,13 @@ const AdminCadernetas = () => {
                         {totalDevido > 0 ? `R$ ${totalDevido.toFixed(2)}` : "-"}
                       </TableCell>
                       <TableCell className="text-right text-emerald-700">
-                        {cliente.total_pix > 0 ? `R$ ${Number(cliente.total_pix).toFixed(2)}` : "-"}
+                        {totalPix > 0 ? `R$ ${totalPix.toFixed(2)}` : "-"}
                       </TableCell>
                       {destV3 ? (
                         <TableCell className="text-right text-emerald-700">
                           {totalPagamentosV3 > 0 ? `R$ ${totalPagamentosV3.toFixed(2)}` : "-"}
                         </TableCell>
+
                       ) : (
                         <TableCell className="text-right text-green-600">
                           {totalAbatido > 0 ? `-R$ ${totalAbatido.toFixed(2)}` : "-"}

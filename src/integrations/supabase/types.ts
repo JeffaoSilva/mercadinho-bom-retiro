@@ -1046,6 +1046,7 @@ export type Database = {
         Returns: Json
       }
       admin_listar_clientes_debitos: { Args: never; Returns: Json }
+      admin_listar_clientes_debitos_v3: { Args: never; Returns: Json }
       admin_marcar_atrasadas_pagas: {
         Args: { p_cliente_id: number }
         Returns: Json
