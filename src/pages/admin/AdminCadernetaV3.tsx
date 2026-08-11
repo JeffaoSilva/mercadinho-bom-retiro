@@ -297,13 +297,34 @@ const AdminCadernetaV3 = () => {
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body * { visibility: hidden !important; }
+          #area-impressao-v3, #area-impressao-v3 * { visibility: visible !important; }
+          #area-impressao-v3 {
+            position: absolute; left: 0; top: 0; width: 100%;
+            background: white; color: black;
+          }
+          .bloco-mes { break-inside: avoid; page-break-inside: avoid; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+      <div className="max-w-6xl mx-auto space-y-6 no-print">
         <div className="flex items-center gap-4">
           <BackButton to="/admin/cadernetas?dest=v3" />
           <h1 className="text-3xl font-bold">
             Caderneta V3 {nomeCliente ? `- ${nomeCliente}` : ""}
           </h1>
+          <Button
+            variant="outline"
+            className="ml-auto"
+            onClick={() => setShowExport(true)}
+          >
+            <Printer className="h-4 w-4 mr-2" /> Exportar relatório
+          </Button>
         </div>
+
 
         {/* Navegação de mês */}
         <div className="flex items-center justify-between">
