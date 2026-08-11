@@ -179,6 +179,73 @@ const AdminCadernetaV3 = () => {
 
   const st = statusLabel(mesData.status);
 
+  // ===== Exportar relatório (PDF via impressão) =====
+  const [showExport, setShowExport] = useState(false);
+  const [exportMesInicio, setExportMesInicio] = useState<string>("");
+  const [exportMesFim, setExportMesFim] = useState<string>("");
+
+  const mesesComMovimento = useMemo(() => {
+    return (payload?.meses || [])
+      .filter(
+        (m) =>
+          m.compras.length > 0 ||
+          m.pagamentos.some((p) => !p.cancelado) ||
+          Number(m.total_compras) !== 0 ||
+          Number(m.total_pagamentos) !== 0
+      )
+      .map((m) => m.mes)
+      .sort();
+  }, [payload]);
+
+  useEffect(() => {
+    if (mesesComMovimento.length === 0) return;
+    const mesFechado = shiftMes(currentYYYYMM(), -1);
+    const primeiro = mesesComMovimento[0];
+    const ultimo = mesesComMovimento[mesesComMovimento.length - 1];
+    const fim = mesesComMovimento.filter((m) => m <= mesFechado).pop() || ultimo;
+    setExportMesInicio((v) => v || primeiro);
+    setExportMesFim((v) => v || fim);
+  }, [mesesComMovimento]);
+
+  const relatorio = useMemo(() => {
+    if (!payload || !exportMesInicio || !exportMesFim) return null;
+    const ini = exportMesInicio <= exportMesFim ? exportMesInicio : exportMesFim;
+    const fim = exportMesInicio <= exportMesFim ? exportMesFim : exportMesInicio;
+
+    const meses = payload.meses
+      .filter((m) => m.mes >= ini && m.mes <= fim)
+      .filter(
+        (m) =>
+          m.compras.length > 0 ||
+          m.pagamentos.some((p) => !p.cancelado) ||
+          Number(m.total_compras) !== 0 ||
+          Number(m.total_pagamentos) !== 0
+      )
+      .sort((a, b) => a.mes.localeCompare(b.mes))
+      .map((m) => {
+        const validos = m.pagamentos.filter((p) => !p.cancelado);
+        const migrado = validos
+          .filter((p) => p.origem === "migracao_v2")
+          .reduce((s, p) => s + Number(p.valor || 0), 0);
+        const manuais = validos
+          .filter((p) => p.origem !== "migracao_v2")
+          .sort((a, b) => a.data_pagamento.localeCompare(b.data_pagamento));
+        const compras = [...m.compras].sort((a, b) =>
+          a.data_compra.localeCompare(b.data_compra)
+        );
+        return { ...m, compras, migrado, manuais };
+      });
+
+    const totalFalta = meses.reduce((s, m) => s + Number(m.divida_mes || 0), 0);
+    return { ini, fim, meses, totalFalta };
+  }, [payload, exportMesInicio, exportMesFim]);
+
+  const handlePrint = () => {
+    setShowExport(false);
+    setTimeout(() => window.print(), 150);
+  };
+
+
   const limparForm = () => {
     setValor(null);
     setForma("");
