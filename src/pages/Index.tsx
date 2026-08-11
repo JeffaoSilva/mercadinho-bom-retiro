@@ -20,7 +20,6 @@ const Index = () => {
     setMercadinhoAtualId,
     getSelectClientPath,
     getAreaClientePath,
-    getAreaClienteV2Path,
   } = useCheckout();
 
 
