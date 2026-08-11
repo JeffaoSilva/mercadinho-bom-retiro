@@ -475,10 +475,14 @@ const AdminCadernetas = () => {
               </TableHeader>
               <TableBody>
                 {clientesComDebito.map((cliente) => {
+                  const v3 = v3PorCliente[cliente.cliente_id];
                   const totalCaderneta = cliente.total_mes_atual + cliente.total_mes_anterior + cliente.total_atrasado;
                   const totalAbatido = abatimentosPorCliente[cliente.cliente_id] || 0;
-                  const totalDevido = Math.max(totalCaderneta - totalAbatido, 0);
-                  const totalPagamentosV3 = pagamentosV3PorCliente[cliente.cliente_id] || 0;
+                  const totalDevido = destV3
+                    ? v3?.devido || 0
+                    : Math.max(totalCaderneta - totalAbatido, 0);
+                  const totalPagamentosV3 = v3?.pagamentos || 0;
+                  const totalPix = destV3 ? v3?.pix || 0 : Number(cliente.total_pix) || 0;
                   return (
                     <TableRow
                       key={cliente.cliente_id}
@@ -490,12 +494,13 @@ const AdminCadernetas = () => {
                         {totalDevido > 0 ? `R$ ${totalDevido.toFixed(2)}` : "-"}
                       </TableCell>
                       <TableCell className="text-right text-emerald-700">
-                        {cliente.total_pix > 0 ? `R$ ${Number(cliente.total_pix).toFixed(2)}` : "-"}
+                        {totalPix > 0 ? `R$ ${totalPix.toFixed(2)}` : "-"}
                       </TableCell>
                       {destV3 ? (
                         <TableCell className="text-right text-emerald-700">
                           {totalPagamentosV3 > 0 ? `R$ ${totalPagamentosV3.toFixed(2)}` : "-"}
                         </TableCell>
+
                       ) : (
                         <TableCell className="text-right text-green-600">
                           {totalAbatido > 0 ? `-R$ ${totalAbatido.toFixed(2)}` : "-"}
