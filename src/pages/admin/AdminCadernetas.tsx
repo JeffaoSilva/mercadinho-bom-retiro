@@ -393,6 +393,10 @@ const AdminCadernetas = () => {
   ) || [];
 
   const clientesComDebito = clientesFiltrados.filter((c) => {
+    if (destV3) {
+      const v3 = v3PorCliente[c.cliente_id];
+      return (v3?.devido || 0) > 0 || (v3?.pix || 0) > 0;
+    }
     const totalCaderneta = c.total_mes_atual + c.total_mes_anterior + c.total_atrasado;
     const totalAbatido = abatimentosPorCliente[c.cliente_id] || 0;
     const totalDevido = totalCaderneta - totalAbatido;
