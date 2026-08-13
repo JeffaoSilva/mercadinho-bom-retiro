@@ -875,6 +875,122 @@ export type Database = {
           },
         ]
       }
+      reservas_checkout: {
+        Row: {
+          cancelada_em: string | null
+          chave_idempotencia: string
+          cliente_id: number | null
+          confirmada_em: string | null
+          criado_em: string
+          expira_em: string
+          forma_pagamento: string
+          id: number
+          mercadinho_id: number
+          tablet_id: number | null
+          valor_total: number
+        }
+        Insert: {
+          cancelada_em?: string | null
+          chave_idempotencia: string
+          cliente_id?: number | null
+          confirmada_em?: string | null
+          criado_em?: string
+          expira_em?: string
+          forma_pagamento: string
+          id?: number
+          mercadinho_id: number
+          tablet_id?: number | null
+          valor_total: number
+        }
+        Update: {
+          cancelada_em?: string | null
+          chave_idempotencia?: string
+          cliente_id?: number | null
+          confirmada_em?: string | null
+          criado_em?: string
+          expira_em?: string
+          forma_pagamento?: string
+          id?: number
+          mercadinho_id?: number
+          tablet_id?: number | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservas_checkout_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_checkout_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_kiosk"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_checkout_mercadinho_id_fkey"
+            columns: ["mercadinho_id"]
+            isOneToOne: false
+            referencedRelation: "mercadinhos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_checkout_tablet_id_fkey"
+            columns: ["tablet_id"]
+            isOneToOne: false
+            referencedRelation: "tablets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservas_checkout_itens: {
+        Row: {
+          criado_em: string
+          id: number
+          prateleira_id: number
+          quantidade: number
+          reserva_id: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          criado_em?: string
+          id?: number
+          prateleira_id: number
+          quantidade: number
+          reserva_id: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Update: {
+          criado_em?: string
+          id?: number
+          prateleira_id?: number
+          quantidade?: number
+          reserva_id?: number
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservas_checkout_itens_prateleira_id_fkey"
+            columns: ["prateleira_id"]
+            isOneToOne: false
+            referencedRelation: "prateleiras_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_checkout_itens_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas_checkout"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retiradas: {
         Row: {
           criado_em: string
