@@ -267,7 +267,7 @@ BEGIN
     END IF;
 
     -- reserva aguardando e válida: devolve dados persistidos
-    SELECT pg_catalog.COALESCE(
+    SELECT COALESCE(
              pg_catalog.jsonb_agg(
                pg_catalog.jsonb_build_object(
                  'prateleira_id', ri.prateleira_id,
@@ -405,7 +405,7 @@ BEGIN
     END IF;
 
     -- estoque disponível = prateleira - reservas PIX ativas
-    SELECT pg_catalog.COALESCE(pg_catalog.SUM(ri.quantidade), 0)
+    SELECT COALESCE(pg_catalog.SUM(ri.quantidade), 0)
       INTO v_reservado
     FROM public.reservas_checkout_itens ri
     JOIN public.reservas_checkout r ON r.id = ri.reserva_id
@@ -439,7 +439,7 @@ BEGIN
   ---------------------------------------------------------------------
   -- 11. Total da reserva
   ---------------------------------------------------------------------
-  SELECT pg_catalog.COALESCE(pg_catalog.SUM((i.value ->> 'valor_total')::numeric), 0)
+  SELECT COALESCE(pg_catalog.SUM((i.value ->> 'valor_total')::numeric), 0)
     INTO v_total
   FROM pg_catalog.jsonb_array_elements(v_itens_out) i;
 
