@@ -14,7 +14,6 @@ AS $$
 DECLARE
   v_agora            timestamptz;
   v_chave            uuid;
-  v_chave_txt        text;
   v_itens            jsonb;
   v_item             jsonb;
   v_val              jsonb;
@@ -51,9 +50,8 @@ BEGIN
   IF v_val IS NULL OR pg_catalog.jsonb_typeof(v_val) <> 'string' THEN
     RETURN pg_catalog.jsonb_build_object('sucesso', false, 'erro', 'PAYLOAD_INVALIDO');
   END IF;
-  v_chave_txt := v_val #>> '{}';
   BEGIN
-    v_chave := v_chave_txt::uuid;
+    v_chave := (v_val #>> '{}')::uuid;
   EXCEPTION WHEN others THEN
     RETURN pg_catalog.jsonb_build_object('sucesso', false, 'erro', 'PAYLOAD_INVALIDO');
   END;
