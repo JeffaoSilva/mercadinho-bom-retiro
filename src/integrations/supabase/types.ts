@@ -991,6 +991,74 @@ export type Database = {
           },
         ]
       }
+      reservas_checkout_pagbank: {
+        Row: {
+          atualizado_em: string
+          chave_idempotencia: string
+          criado_em: string
+          erro_mensagem: string | null
+          id: number
+          pagbank_order_id: string | null
+          pagbank_qr_code_id: string | null
+          pagbank_status: string | null
+          payload_criacao: Json | null
+          payload_ultimo_webhook: Json | null
+          qr_code_base64_url: string | null
+          qr_code_png_url: string | null
+          qr_code_text: string | null
+          reference_id: string
+          reserva_id: number
+          status: string
+          valor_centavos: number
+        }
+        Insert: {
+          atualizado_em?: string
+          chave_idempotencia: string
+          criado_em?: string
+          erro_mensagem?: string | null
+          id?: never
+          pagbank_order_id?: string | null
+          pagbank_qr_code_id?: string | null
+          pagbank_status?: string | null
+          payload_criacao?: Json | null
+          payload_ultimo_webhook?: Json | null
+          qr_code_base64_url?: string | null
+          qr_code_png_url?: string | null
+          qr_code_text?: string | null
+          reference_id: string
+          reserva_id: number
+          status?: string
+          valor_centavos: number
+        }
+        Update: {
+          atualizado_em?: string
+          chave_idempotencia?: string
+          criado_em?: string
+          erro_mensagem?: string | null
+          id?: never
+          pagbank_order_id?: string | null
+          pagbank_qr_code_id?: string | null
+          pagbank_status?: string | null
+          payload_criacao?: Json | null
+          payload_ultimo_webhook?: Json | null
+          qr_code_base64_url?: string | null
+          qr_code_png_url?: string | null
+          qr_code_text?: string | null
+          reference_id?: string
+          reserva_id?: number
+          status?: string
+          valor_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservas_checkout_pagbank_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: true
+            referencedRelation: "reservas_checkout"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retiradas: {
         Row: {
           criado_em: string
