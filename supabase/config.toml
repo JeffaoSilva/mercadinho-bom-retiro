@@ -1,1 +1,4 @@
 project_id = "tnukgjtnjmuirhsxcyfu"
+
+[functions.criar-pix-pagbank]
+verify_jwt = true
