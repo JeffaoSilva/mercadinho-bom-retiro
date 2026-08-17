@@ -38,6 +38,7 @@ import AreaClienteSelect from "@/pages/AreaClienteSelect";
 import AreaCliente from "@/pages/AreaCliente";
 import AreaClienteV2 from "@/pages/AreaClienteV2";
 import AreaClienteV3 from "@/pages/AreaClienteV3";
+import HistoricoComprasCliente from "@/pages/HistoricoComprasCliente";
 import { useConfigRealtime } from "@/hooks/useConfigRealtime";
 
 const queryClient = new QueryClient();
@@ -104,6 +105,7 @@ const AppContent = () => {
 
         <Route path="/area-cliente" element={<AreaClienteSelect />} />
         <Route path="/area-cliente/:clienteId" element={<AreaClienteV3 />} />
+        <Route path="/area-cliente/:clienteId/historico" element={<HistoricoComprasCliente />} />
         <Route path="/area-cliente-v1/:clienteId" element={<AreaCliente />} />
         <Route path="/area-cliente-v2/:clienteId" element={<AreaClienteV2 />} />
 

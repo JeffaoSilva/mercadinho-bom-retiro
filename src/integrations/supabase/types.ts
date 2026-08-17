@@ -1254,6 +1254,10 @@ export type Database = {
         Args: { p_cliente_id: number; p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      cliente_historico_mensal: {
+        Args: { p_cliente_id: number; p_mes: string }
+        Returns: Json
+      }
       criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       criar_reserva_checkout_pix: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }

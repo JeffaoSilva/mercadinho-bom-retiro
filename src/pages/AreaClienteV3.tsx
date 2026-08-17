@@ -199,6 +199,17 @@ export default function AreaClienteV3() {
           {clienteNome ? `Área do Cliente - ${clienteNome}` : "Área do Cliente"}
         </h1>
 
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => navigate(`/area-cliente/${clienteId}/historico`)}
+          >
+            Histórico de compras
+          </Button>
+        </div>
+
+
         {/* Navegação entre meses */}
         <div className="flex items-center justify-between gap-2">
           <Button variant="outline" onClick={() => setMesSelecionado((m) => shiftMes(m, -1))}>
