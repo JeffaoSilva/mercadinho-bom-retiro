@@ -63,6 +63,20 @@ function extrairLink(links: unknown, rel: string): string | null {
   return typeof href === "string" ? href : null;
 }
 
+// Telefone é OPCIONAL no contrato PagBank. Só é enviado quando os componentes
+// (DDI/DDD/número) podem ser separados com segurança a partir do valor salvo.
+function normalizarTelefone(valor: unknown): Json | null {
+  if (typeof valor !== "string") return null;
+  let d = valor.replace(/\D/g, "");
+  if (d.startsWith("55") && (d.length === 12 || d.length === 13)) {
+    d = d.slice(2);
+  }
+  if (d.length !== 10 && d.length !== 11) return null;
+  const area = d.slice(0, 2);
+  const number = d.slice(2);
+  return { country: "55", area, number };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -97,19 +111,6 @@ Deno.serve(async (req) => {
     return erro("CHAVE_IDEMPOTENCIA_INVALIDA", 400);
   }
   const chave = chaveRaw.toLowerCase();
-
-  // ---------------- Etapa 12: configuração PagBank ----------------
-  const pagbankEnv = Deno.env.get("PAGBANK_ENV");
-  if (pagbankEnv !== "sandbox" && pagbankEnv !== "production") {
-    return erro("CONFIGURACAO_PAGBANK_INVALIDA", 500);
-  }
-  const pagbankToken = Deno.env.get("PAGBANK_TOKEN");
-  if (!pagbankToken) {
-    return erro("PAGBANK_TOKEN_NAO_CONFIGURADO", 500);
-  }
-  const baseUrl = pagbankEnv === "sandbox"
-    ? "https://sandbox.api.pagseguro.com"
-    : "https://api.pagseguro.com";
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -230,35 +231,40 @@ Deno.serve(async (req) => {
   if (existente) return avaliarExistente(existente);
 
   // ---------------- Etapa 9: customer PagBank ----------------
-  // POST /orders exige customer.name, customer.email e customer.tax_id.
-  // public.clientes possui apenas: nome, telefone (sem email, sem CPF).
-  const camposAusentes: string[] = [];
-  let clienteNome: string | null = null;
-
+  // Contrato oficial POST /orders: o body exige "customer" e customer exige
+  // apenas "tax_id". name, email e phones são opcionais.
   if (reserva.cliente_id === null || reserva.cliente_id === undefined) {
-    camposAusentes.push("customer.name", "customer.email", "customer.tax_id");
-  } else {
-    const { data: cliente, error: eCliente } = await supabase
-      .from("clientes")
-      .select("id, nome, telefone")
-      .eq("id", reserva.cliente_id)
-      .maybeSingle();
-    if (eCliente) return erro("ERRO_BANCO", 500);
-    if (!cliente) {
-      camposAusentes.push("customer.name", "customer.email", "customer.tax_id");
-    } else {
-      clienteNome = typeof cliente.nome === "string" ? cliente.nome.trim() : "";
-      if (!clienteNome) camposAusentes.push("customer.name");
-      // Não existem colunas de email nem CPF em public.clientes.
-      camposAusentes.push("customer.email", "customer.tax_id");
-    }
+    return erro("CLIENTE_OBRIGATORIO_PIX", 422);
   }
 
-  if (camposAusentes.length > 0) {
-    return erro("DADO_OBRIGATORIO_PAGBANK_AUSENTE", 422, {
-      campos_ausentes: camposAusentes,
-    });
+  const { data: cliente, error: eCliente } = await supabase
+    .from("clientes")
+    .select("id, nome, telefone, email, tax_id")
+    .eq("id", reserva.cliente_id)
+    .maybeSingle();
+  if (eCliente) return erro("ERRO_BANCO", 500);
+  if (!cliente) return erro("CLIENTE_NAO_ENCONTRADO", 404);
+
+  const taxIdRaw = cliente.tax_id;
+  if (
+    taxIdRaw === null || taxIdRaw === undefined ||
+    (typeof taxIdRaw === "string" && taxIdRaw.trim() === "")
+  ) {
+    return erro("CLIENTE_INCOMPLETO", 422, { campos_ausentes: ["tax_id"] });
   }
+  if (typeof taxIdRaw !== "string" || !/^\d{11}$/.test(taxIdRaw)) {
+    return erro("DADO_CLIENTE_INVALIDO", 422, { campos_invalidos: ["tax_id"] });
+  }
+  const taxId = taxIdRaw;
+
+  const clienteNome = typeof cliente.nome === "string" ? cliente.nome.trim() : "";
+  const emailNorm = typeof cliente.email === "string"
+    ? cliente.email.trim().toLowerCase()
+    : "";
+  const emailCliente = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)
+    ? emailNorm
+    : null;
+  const telefoneCliente = normalizarTelefone(cliente.telefone);
 
   // ---------------- Etapa 10: items ----------------
   const prateleiraIds = [...new Set(itensCalc.map((i) => i.prateleira_id))];
@@ -281,6 +287,19 @@ Deno.serve(async (req) => {
     quantity: i.quantidade,
     unit_amount: i.unit_centavos,
   }));
+
+  // ------- Etapa 12: configuração PagBank (só agora, antes da reivindicação)
+  const pagbankEnv = Deno.env.get("PAGBANK_ENV");
+  if (pagbankEnv !== "sandbox" && pagbankEnv !== "production") {
+    return erro("CONFIGURACAO_PAGBANK_INVALIDA", 500);
+  }
+  const pagbankToken = Deno.env.get("PAGBANK_TOKEN");
+  if (!pagbankToken) {
+    return erro("PAGBANK_TOKEN_NAO_CONFIGURADO", 500);
+  }
+  const baseUrl = pagbankEnv === "sandbox"
+    ? "https://sandbox.api.pagseguro.com"
+    : "https://api.pagseguro.com";
 
   // ---------------- Etapa 7: reivindicação local (status CRIANDO) --------
   const { data: criando, error: eInsert } = await supabase
@@ -322,9 +341,15 @@ Deno.serve(async (req) => {
   };
 
   // ---------------- Etapa 15: payload ----------------
+  // Contrato oficial: customer.tax_id é o único campo obrigatório do customer.
+  const customer: Json = { tax_id: taxId };
+  if (clienteNome) customer.name = clienteNome;
+  if (emailCliente) customer.email = emailCliente;
+  if (telefoneCliente) customer.phones = [telefoneCliente];
+
   const payload: Json = {
     reference_id: referenceId,
-    customer: { name: clienteNome },
+    customer,
     items: pagbankItems,
     qr_codes: [
       {
