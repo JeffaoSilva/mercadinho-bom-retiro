@@ -191,12 +191,29 @@ const AdminClientes = () => {
       return;
     }
 
+    const emailNormalizado = form.email.trim().toLowerCase();
+    if (emailNormalizado && !emailValido(emailNormalizado)) {
+      toast.error("E-mail inválido");
+      return;
+    }
+
+    const cpfDigitos = somenteDigitos(form.cpf);
+    if (cpfDigitos && !cpfValido(cpfDigitos)) {
+      toast.error("CPF inválido");
+      return;
+    }
+
     const payload = {
       nome: form.nome.trim(),
       telefone: form.telefone.trim(),
       mercadinho_id: parseInt(form.mercadinho_id),
       ativo: form.ativo,
+      email: emailNormalizado || null,
+      tax_id: cpfDigitos || null,
     };
+
+    const isDuplicidadeCpf = (err: { code?: string; message?: string }) =>
+      err.code === "23505" || (err.message ?? "").includes("clientes_tax_id_unique_idx");
 
     if (editingCliente) {
       const { error } = await supabase
@@ -205,7 +222,11 @@ const AdminClientes = () => {
         .eq("id", editingCliente.id);
 
       if (error) {
-        toast.error("Erro ao atualizar cliente");
+        toast.error(
+          isDuplicidadeCpf(error)
+            ? "Este CPF já está cadastrado para outro cliente."
+            : "Erro ao atualizar cliente"
+        );
         return;
       }
       toast.success("Cliente atualizado");
@@ -213,7 +234,11 @@ const AdminClientes = () => {
       const { error } = await supabase.from("clientes").insert(payload);
 
       if (error) {
-        toast.error("Erro ao criar cliente");
+        toast.error(
+          isDuplicidadeCpf(error)
+            ? "Este CPF já está cadastrado para outro cliente."
+            : "Erro ao criar cliente"
+        );
         return;
       }
       toast.success("Cliente criado");
