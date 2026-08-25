@@ -122,7 +122,7 @@ const AdminClientes = () => {
     const [clientesRes, mercadinhosRes] = await Promise.all([
       supabase
         .from("clientes")
-        .select("*, mercadinho:mercadinhos(nome)")
+        .select(CLIENTES_SELECT)
         .order("ativo", { ascending: false })
         .order("nome"),
       supabase.from("mercadinhos").select("id, nome").order("nome"),
