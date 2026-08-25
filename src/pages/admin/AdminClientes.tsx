@@ -105,6 +105,8 @@ const AdminClientes = () => {
     telefone: "",
     mercadinho_id: "",
     ativo: true,
+    email: "",
+    cpf: "",
   });
 
   useEffect(() => {
