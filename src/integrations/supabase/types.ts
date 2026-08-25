@@ -54,25 +54,31 @@ export type Database = {
         Row: {
           ativo: boolean
           criado_em: string
+          email: string | null
           id: number
           mercadinho_id: number
           nome: string
+          tax_id: string | null
           telefone: string
         }
         Insert: {
           ativo?: boolean
           criado_em?: string
+          email?: string | null
           id?: number
           mercadinho_id: number
           nome: string
+          tax_id?: string | null
           telefone: string
         }
         Update: {
           ativo?: boolean
           criado_em?: string
+          email?: string | null
           id?: number
           mercadinho_id?: number
           nome?: string
+          tax_id?: string | null
           telefone?: string
         }
         Relationships: [

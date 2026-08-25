@@ -39,8 +39,42 @@ interface Cliente {
   mercadinho_id: number;
   criado_em: string;
   ativo: boolean;
+  email: string | null;
+  tax_id: string | null;
   mercadinho?: { nome: string };
 }
+
+const CLIENTES_SELECT =
+  "id, nome, telefone, mercadinho_id, criado_em, ativo, email, tax_id, mercadinho:mercadinhos(nome)";
+
+const somenteDigitos = (v: string) => v.replace(/\D/g, "");
+
+const formatarCpf = (v: string) => {
+  const d = somenteDigitos(v).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+const cpfValido = (cpf: string) => {
+  const d = somenteDigitos(cpf);
+  if (d.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(d)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(d[i], 10) * (10 - i);
+  let dv1 = (soma * 10) % 11;
+  if (dv1 === 10) dv1 = 0;
+  if (dv1 !== parseInt(d[9], 10)) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(d[i], 10) * (11 - i);
+  let dv2 = (soma * 10) % 11;
+  if (dv2 === 10) dv2 = 0;
+  return dv2 === parseInt(d[10], 10);
+};
+
+const emailValido = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 interface Compra {
   id: number;
@@ -71,6 +105,8 @@ const AdminClientes = () => {
     telefone: "",
     mercadinho_id: "",
     ativo: true,
+    email: "",
+    cpf: "",
   });
 
   useEffect(() => {
@@ -86,7 +122,7 @@ const AdminClientes = () => {
     const [clientesRes, mercadinhosRes] = await Promise.all([
       supabase
         .from("clientes")
-        .select("*, mercadinho:mercadinhos(nome)")
+        .select(CLIENTES_SELECT)
         .order("ativo", { ascending: false })
         .order("nome"),
       supabase.from("mercadinhos").select("id, nome").order("nome"),
@@ -126,7 +162,7 @@ const AdminClientes = () => {
 
   const openNew = () => {
     setEditingCliente(null);
-    setForm({ nome: "", telefone: "", mercadinho_id: "", ativo: true });
+    setForm({ nome: "", telefone: "", mercadinho_id: "", ativo: true, email: "", cpf: "" });
     setShowDialog(true);
   };
 
@@ -137,6 +173,8 @@ const AdminClientes = () => {
       telefone: cliente.telefone,
       mercadinho_id: cliente.mercadinho_id.toString(),
       ativo: cliente.ativo,
+      email: cliente.email ?? "",
+      cpf: cliente.tax_id ? formatarCpf(cliente.tax_id) : "",
     });
     setShowDialog(true);
   };
@@ -153,12 +191,29 @@ const AdminClientes = () => {
       return;
     }
 
+    const emailNormalizado = form.email.trim().toLowerCase();
+    if (emailNormalizado && !emailValido(emailNormalizado)) {
+      toast.error("E-mail inválido");
+      return;
+    }
+
+    const cpfDigitos = somenteDigitos(form.cpf);
+    if (cpfDigitos && !cpfValido(cpfDigitos)) {
+      toast.error("CPF inválido");
+      return;
+    }
+
     const payload = {
       nome: form.nome.trim(),
       telefone: form.telefone.trim(),
       mercadinho_id: parseInt(form.mercadinho_id),
       ativo: form.ativo,
+      email: emailNormalizado || null,
+      tax_id: cpfDigitos || null,
     };
+
+    const isDuplicidadeCpf = (err: { code?: string; message?: string }) =>
+      err.code === "23505" || (err.message ?? "").includes("clientes_tax_id_unique_idx");
 
     if (editingCliente) {
       const { error } = await supabase
@@ -167,7 +222,11 @@ const AdminClientes = () => {
         .eq("id", editingCliente.id);
 
       if (error) {
-        toast.error("Erro ao atualizar cliente");
+        toast.error(
+          isDuplicidadeCpf(error)
+            ? "Este CPF já está cadastrado para outro cliente."
+            : "Erro ao atualizar cliente"
+        );
         return;
       }
       toast.success("Cliente atualizado");
@@ -175,7 +234,11 @@ const AdminClientes = () => {
       const { error } = await supabase.from("clientes").insert(payload);
 
       if (error) {
-        toast.error("Erro ao criar cliente");
+        toast.error(
+          isDuplicidadeCpf(error)
+            ? "Este CPF já está cadastrado para outro cliente."
+            : "Erro ao criar cliente"
+        );
         return;
       }
       toast.success("Cliente criado");
@@ -321,6 +384,26 @@ const AdminClientes = () => {
               <Input
                 value={form.telefone}
                 onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>E-mail (opcional)</Label>
+              <Input
+                type="email"
+                placeholder="cliente@exemplo.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>CPF (opcional)</Label>
+              <Input
+                inputMode="numeric"
+                placeholder="000.000.000-00"
+                value={form.cpf}
+                onChange={(e) =>
+                  setForm({ ...form, cpf: formatarCpf(e.target.value) })
+                }
               />
             </div>
             <div>
