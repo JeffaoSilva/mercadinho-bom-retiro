@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
         expiration_date: expiraEm.toISOString(),
       },
     ],
-    // notification_urls omitido de propósito: webhook ainda não existe.
+    ...(notificationUrl ? { notification_urls: [notificationUrl] } : {}),
   };
 
   // ---------------- Etapa 16: chamada externa ----------------
