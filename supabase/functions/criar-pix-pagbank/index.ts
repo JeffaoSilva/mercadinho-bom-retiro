@@ -63,18 +63,19 @@ function extrairLink(links: unknown, rel: string): string | null {
   return typeof href === "string" ? href : null;
 }
 
-// Telefone é OPCIONAL no contrato PagBank. Só é enviado quando os componentes
-// (DDI/DDD/número) podem ser separados com segurança a partir do valor salvo.
+// Telefone só é enviado quando os componentes (DDI/DDD/número) podem ser
+// separados com segurança E o número é um celular brasileiro (11 dígitos).
+// O Sandbox exige "type" em cada objeto de phones.
 function normalizarTelefone(valor: unknown): Json | null {
   if (typeof valor !== "string") return null;
   let d = valor.replace(/\D/g, "");
-  if (d.startsWith("55") && (d.length === 12 || d.length === 13)) {
+  if (d.startsWith("55") && d.length === 13) {
     d = d.slice(2);
   }
-  if (d.length !== 10 && d.length !== 11) return null;
+  if (d.length !== 11 || d[2] !== "9") return null;
   const area = d.slice(0, 2);
   const number = d.slice(2);
-  return { country: "55", area, number };
+  return { country: "55", area, number, type: "MOBILE" };
 }
 
 Deno.serve(async (req) => {
