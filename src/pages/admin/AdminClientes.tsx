@@ -162,7 +162,7 @@ const AdminClientes = () => {
 
   const openNew = () => {
     setEditingCliente(null);
-    setForm({ nome: "", telefone: "", mercadinho_id: "", ativo: true });
+    setForm({ nome: "", telefone: "", mercadinho_id: "", ativo: true, email: "", cpf: "" });
     setShowDialog(true);
   };
 
@@ -173,6 +173,8 @@ const AdminClientes = () => {
       telefone: cliente.telefone,
       mercadinho_id: cliente.mercadinho_id.toString(),
       ativo: cliente.ativo,
+      email: cliente.email ?? "",
+      cpf: cliente.tax_id ? formatarCpf(cliente.tax_id) : "",
     });
     setShowDialog(true);
   };
