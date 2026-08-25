@@ -304,6 +304,13 @@ Deno.serve(async (req) => {
     ? "https://sandbox.api.pagseguro.com"
     : "https://api.pagseguro.com";
 
+  // URL pública do webhook (somente HTTPS). Derivada de SUPABASE_URL.
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const notificationUrl = supabaseUrl.startsWith("https://")
+    ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/pagbank-webhook`
+    : null;
+
+
   // ---------------- Etapa 7: reivindicação local (status CRIANDO) --------
   const { data: criando, error: eInsert } = await supabase
     .from("reservas_checkout_pagbank")
@@ -360,7 +367,7 @@ Deno.serve(async (req) => {
         expiration_date: expiraEm.toISOString(),
       },
     ],
-    // notification_urls omitido de propósito: webhook ainda não existe.
+    ...(notificationUrl ? { notification_urls: [notificationUrl] } : {}),
   };
 
   // ---------------- Etapa 16: chamada externa ----------------
