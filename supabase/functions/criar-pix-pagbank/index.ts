@@ -259,12 +259,14 @@ Deno.serve(async (req) => {
   const taxId = taxIdRaw;
 
   const clienteNome = typeof cliente.nome === "string" ? cliente.nome.trim() : "";
+  // E-mail é obrigatório neste fluxo: o PagBank rejeita customer.email nulo.
   const emailNorm = typeof cliente.email === "string"
     ? cliente.email.trim().toLowerCase()
     : "";
-  const emailCliente = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)
-    ? emailNorm
-    : null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+    return erro("CLIENTE_INCOMPLETO", 422, { campos_ausentes: ["email"] });
+  }
+  const emailCliente = emailNorm;
   const telefoneCliente = normalizarTelefone(cliente.telefone);
 
   // ---------------- Etapa 10: items ----------------
