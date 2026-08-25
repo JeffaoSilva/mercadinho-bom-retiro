@@ -39,8 +39,42 @@ interface Cliente {
   mercadinho_id: number;
   criado_em: string;
   ativo: boolean;
+  email: string | null;
+  tax_id: string | null;
   mercadinho?: { nome: string };
 }
+
+const CLIENTES_SELECT =
+  "id, nome, telefone, mercadinho_id, criado_em, ativo, email, tax_id, mercadinho:mercadinhos(nome)";
+
+const somenteDigitos = (v: string) => v.replace(/\D/g, "");
+
+const formatarCpf = (v: string) => {
+  const d = somenteDigitos(v).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+const cpfValido = (cpf: string) => {
+  const d = somenteDigitos(cpf);
+  if (d.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(d)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(d[i], 10) * (10 - i);
+  let dv1 = (soma * 10) % 11;
+  if (dv1 === 10) dv1 = 0;
+  if (dv1 !== parseInt(d[9], 10)) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(d[i], 10) * (11 - i);
+  let dv2 = (soma * 10) % 11;
+  if (dv2 === 10) dv2 = 0;
+  return dv2 === parseInt(d[10], 10);
+};
+
+const emailValido = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 interface Compra {
   id: number;
