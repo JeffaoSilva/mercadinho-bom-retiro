@@ -387,6 +387,26 @@ const AdminClientes = () => {
               />
             </div>
             <div>
+              <Label>E-mail (opcional)</Label>
+              <Input
+                type="email"
+                placeholder="cliente@exemplo.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>CPF (opcional)</Label>
+              <Input
+                inputMode="numeric"
+                placeholder="000.000.000-00"
+                value={form.cpf}
+                onChange={(e) =>
+                  setForm({ ...form, cpf: formatarCpf(e.target.value) })
+                }
+              />
+            </div>
+            <div>
               <Label>Mercadinho *</Label>
               <Select
                 value={form.mercadinho_id}
