@@ -1001,6 +1001,7 @@ export type Database = {
         Row: {
           atualizado_em: string
           chave_idempotencia: string
+          compra_id: number | null
           criado_em: string
           erro_mensagem: string | null
           id: number
@@ -1020,6 +1021,7 @@ export type Database = {
         Insert: {
           atualizado_em?: string
           chave_idempotencia: string
+          compra_id?: number | null
           criado_em?: string
           erro_mensagem?: string | null
           id?: never
@@ -1039,6 +1041,7 @@ export type Database = {
         Update: {
           atualizado_em?: string
           chave_idempotencia?: string
+          compra_id?: number | null
           criado_em?: string
           erro_mensagem?: string | null
           id?: never
@@ -1056,6 +1059,13 @@ export type Database = {
           valor_centavos?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "reservas_checkout_pagbank_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reservas_checkout_pagbank_reserva_id_fkey"
             columns: ["reserva_id"]
@@ -1266,6 +1276,7 @@ export type Database = {
       }
       criar_compra_kiosk: { Args: { payload: Json }; Returns: Json }
       criar_reserva_checkout_pix: { Args: { payload: Json }; Returns: Json }
+      finalizar_venda_pix_pagbank: { Args: { payload: Json }; Returns: Json }
       get_corte_atual: { Args: never; Returns: string }
       pin_create: {
         Args: { p_cliente_id: number; p_pin: string }
