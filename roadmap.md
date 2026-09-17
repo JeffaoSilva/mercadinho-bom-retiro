@@ -8,5 +8,7 @@
 - [ ] Apresentar trecho alterado e 6 confirmações (aguardando OK do usuário)
 - [ ] Executar migration após aprovação
 - [ ] Atualizar pagbank-webhook para chamar a RPC em PAID
+- [x] Migration aplicada (compra_id + índice único parcial + RPC + grants)
+- [ ] Corrigir harness: T7 sem violar unicidade; renomear T8 para retry sequencial (não executar)
 - [ ] Bateria de 10 testes controlados (sem chamar PagBank)
 - [ ] Limpeza + auditoria final + relatório 30 itens
