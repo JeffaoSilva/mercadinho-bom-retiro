@@ -9,6 +9,6 @@
 - [ ] Executar migration após aprovação
 - [ ] Atualizar pagbank-webhook para chamar a RPC em PAID
 - [x] Migration aplicada (compra_id + índice único parcial + RPC + grants)
-- [ ] Corrigir harness: T7 sem violar unicidade; renomear T8 para retry sequencial (não executar)
+- [ ] Corrigir harness T7: CHECK reservas_checkout_itens_consistencia_check impede item inconsistente (aguardando OK)
 - [ ] Bateria de 10 testes controlados (sem chamar PagBank)
 - [ ] Limpeza + auditoria final + relatório 30 itens
