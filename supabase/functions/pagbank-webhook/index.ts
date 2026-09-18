@@ -132,17 +132,19 @@ async function webhookHandler(req: Request): Promise<Response> {
   }
 
   // ---- Autenticidade ----
+  // Com x-authenticity-token: validação de assinatura (comportamento atual).
+  // Sem assinatura: o corpo NÃO é confiável; serve somente para descobrir o
+  // order_id, que é depois confirmado por consulta oficial ao PagBank.
   const assinatura = req.headers.get("x-authenticity-token");
-  if (!assinatura) {
-    return erro("ASSINATURA_AUSENTE", 401);
+  const assinado = assinatura !== null;
+
+  if (assinado) {
+    const esperada = await sha256Hex(`${pagbankToken}-${rawBody}`);
+    if (!comparacaoSegura(esperada, assinatura!.trim().toLowerCase())) {
+      return erro("ASSINATURA_INVALIDA", 403);
+    }
   }
 
-  const esperada = await sha256Hex(`${pagbankToken}-${rawBody}`);
-  if (!comparacaoSegura(esperada, assinatura.trim().toLowerCase())) {
-    return erro("ASSINATURA_INVALIDA", 403);
-  }
-
-  // ---- Parse somente após assinatura válida ----
   let payload: Json;
   try {
     const parsed = JSON.parse(rawBody);
@@ -158,6 +160,10 @@ async function webhookHandler(req: Request): Promise<Response> {
   if (!orderId) {
     return erro("PAYLOAD_INVALIDO", 400);
   }
+  if (!assinado && !/^ORDE_[A-Za-z0-9-]{6,80}$/.test(orderId)) {
+    return erro("ORDER_ID_INVALIDO", 400);
+  }
+
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
