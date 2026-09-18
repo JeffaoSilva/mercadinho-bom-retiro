@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { Book, Smartphone, CheckCircle, AlertTriangle } from "lucide-react";
+import { Book, Smartphone, CheckCircle, AlertTriangle, ArrowLeft, QrCode } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import PixPagamento from "@/components/PixPagamento";
 import { toast } from "sonner";
@@ -17,6 +17,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// DOWNGRADE TEMPORÁRIO: enquanto false, o kiosk usa o PIX manual antigo
+// (QR estático de config_sistema + confirmação manual + criar_compra_kiosk).
+// Para reativar o PIX PagBank dinâmico, basta voltar para true.
+// O backend PagBank (Edge Functions, RPCs, webhook) permanece intacto.
+const USE_PAGBANK_PIX = false;
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -39,9 +45,31 @@ const Checkout = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirmPayment, setConfirmPayment] = useState<"caderneta" | "pix" | null>(null);
 
+  // ---- Fluxo PIX manual (legado) ----
+  const [showPixManual, setShowPixManual] = useState(false);
+  const [pixChave, setPixChave] = useState("");
+  const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
+
   const total = getTotal();
 
-  // Itens do PIX: somente identificadores. Preço/total são definidos no backend.
+  // Carregar config PIX estática apenas quando o fluxo PagBank está desativado.
+  useEffect(() => {
+    if (USE_PAGBANK_PIX) return;
+    const loadPixConfig = async () => {
+      const { data } = await supabase
+        .from("config_sistema")
+        .select("pix_chave, pix_qr_code_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setPixChave((data as { pix_chave?: string }).pix_chave || "");
+        setPixQrCodeUrl((data as { pix_qr_code_url?: string }).pix_qr_code_url || "");
+      }
+    };
+    loadPixConfig();
+  }, []);
+
+  // Itens do PIX dinâmico: somente identificadores. Preço/total são definidos no backend.
   const itensPix = useMemo(
     () =>
       cart
@@ -65,8 +93,8 @@ const Checkout = () => {
     }
   };
 
-  // Usado apenas por formas de pagamento não-PIX (caderneta).
-  const handleFinalizarCompra = async (formaPagamento: "caderneta") => {
+  // Usado por formas não-PagBank: caderneta e PIX manual (legado).
+  const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
     // Bloqueio de múltiplos cliques / chamadas concorrentes
     if (isProcessing) return;
     setIsProcessing(true);
@@ -144,6 +172,11 @@ const Checkout = () => {
   };
 
   const handlePixClick = () => {
+    if (!USE_PAGBANK_PIX) {
+      // PIX manual legado: apenas exibe o QR estático de config_sistema.
+      setShowPixManual(true);
+      return;
+    }
     if (isVisitante || !clienteId) {
       toast.error("Para pagar com PIX é preciso identificar o cliente.");
       return;
@@ -154,6 +187,8 @@ const Checkout = () => {
     }
     setShowPix(true);
   };
+
+  const handleConfirmarPixManual = () => handleFinalizarCompra("pix");
 
   // Pagamento confirmado pelo webhook: a venda já foi criada no backend.
   const handlePixPago = () => {
@@ -180,7 +215,8 @@ const Checkout = () => {
     );
   }
 
-  if (showPix) {
+  // PIX dinâmico PagBank (desativado enquanto USE_PAGBANK_PIX = false)
+  if (USE_PAGBANK_PIX && showPix) {
     return (
       <PixPagamento
         mercadinhoId={mercadinhoAtualId || 1}
@@ -191,6 +227,85 @@ const Checkout = () => {
         onVoltar={() => setShowPix(false)}
         onPago={handlePixPago}
       />
+    );
+  }
+
+  // PIX manual (legado): QR estático + confirmação manual
+  if (!USE_PAGBANK_PIX && showPixManual) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowPixManual(false)}
+            className="mb-4"
+            disabled={loading}
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </Button>
+
+          <div className="text-center space-y-4">
+            <h1 className="text-3xl font-bold">Pagamento PIX</h1>
+            <p className="text-lg text-muted-foreground">
+              Agora realize o pagamento via Pix no valor de
+            </p>
+            <p className="text-3xl font-bold text-foreground">
+              R$ {total.toFixed(2)}
+            </p>
+            <p className="text-2xl text-muted-foreground">
+              Só após pagar via PIX, clique no botão abaixo "Confirmar pagamento".
+            </p>
+          </div>
+
+          {/* QR Code + Chave Pix */}
+          <div className="flex flex-col items-center gap-3">
+            {pixQrCodeUrl ? (
+              <div className="bg-white p-4 rounded-xl shadow-lg">
+                <img
+                  src={pixQrCodeUrl}
+                  alt="QR Code PIX"
+                  className="w-64 h-64 object-contain"
+                />
+              </div>
+            ) : (
+              <div className="bg-white p-8 rounded-xl shadow-lg">
+                <div className="w-64 h-64 border-4 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center bg-muted/20">
+                  <QrCode className="w-16 h-16 text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground text-center px-4">
+                    QR Code não configurado
+                  </p>
+                </div>
+              </div>
+            )}
+            {pixChave && (
+              <p className="text-base font-semibold text-foreground text-center">
+                {pixChave}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <Button
+              size="lg"
+              className="w-full h-16 text-xl"
+              onClick={handleConfirmarPixManual}
+              disabled={loading || isProcessing}
+            >
+              {loading ? "Processando..." : "Confirmar Pagamento"}
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowPixManual(false)}
+              disabled={loading}
+            >
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -258,9 +373,12 @@ const Checkout = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              if (confirmPayment === "pix") {
+              if (confirmPayment === "pix" && USE_PAGBANK_PIX) {
                 setConfirmPayment(null);
                 handlePixClick();
+              } else if (confirmPayment === "pix") {
+                setConfirmPayment(null);
+                setShowPixManual(true);
               } else {
                 handleFinalizarCompra("caderneta");
               }
