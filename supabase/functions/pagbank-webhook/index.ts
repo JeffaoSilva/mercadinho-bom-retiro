@@ -185,6 +185,45 @@ async function webhookHandler(req: Request): Promise<Response> {
     return json({ ok: true, resultado: "PEDIDO_NAO_ENCONTRADO" }, 200);
   }
 
+  // ---- Webhook sem assinatura: confirmação oficial obrigatória ----
+  // O corpo recebido é descartado como fonte de verdade; usamos exclusivamente
+  // a resposta autenticada de GET {base}/orders/{order_id}.
+  if (!assinado) {
+    const baseUrl = Deno.env.get("PAGBANK_ENV") === "sandbox"
+      ? "https://sandbox.api.pagseguro.com"
+      : "https://api.pagseguro.com";
+
+    let oficial: Json | null = null;
+    let httpOficial = 0;
+    try {
+      const r = await fetch(`${baseUrl}/orders/${encodeURIComponent(orderId)}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${pagbankToken}`,
+          Accept: "application/json",
+        },
+      });
+      httpOficial = r.status;
+      oficial = (await r.json().catch(() => null)) as Json | null;
+    } catch {
+      console.log("webhook: consulta oficial indisponivel");
+      return json({ ok: false, resultado: "CONSULTA_PAGBANK_INDISPONIVEL" }, 200);
+    }
+
+    console.log("webhook-consulta-oficial", JSON.stringify({ http: httpOficial }));
+
+    if (httpOficial !== 200 || !oficial || typeof oficial !== "object") {
+      return json({ ok: false, resultado: "CONSULTA_PAGBANK_FALHOU" }, 200);
+    }
+    if (typeof oficial.id !== "string" || oficial.id.trim() !== orderId) {
+      return json({ ok: false, resultado: "CONSULTA_PAGBANK_DIVERGENTE" }, 200);
+    }
+
+    payload = oficial;
+  }
+
+
+
   // Reserva correspondente (apenas leitura de contexto; nada é alterado).
   await supabase
     .from("reservas_checkout")
