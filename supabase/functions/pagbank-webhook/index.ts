@@ -187,9 +187,64 @@ Deno.serve(async (req) => {
 
   if (eUp) return erro("ERRO_BANCO", 500);
 
+  // ---- Finalização: somente status PAID e valor extraído com segurança ----
+  if (statusObservado !== "PAID") {
+    return json({
+      ok: true,
+      resultado: divergencia ? "VALOR_DIVERGENTE" : "WEBHOOK_REGISTRADO",
+      pagbank_status: statusObservado,
+    }, 200);
+  }
+
+  if (typeof valorWebhook !== "number" || !Number.isSafeInteger(valorWebhook) || valorWebhook <= 0) {
+    await supabase
+      .from("reservas_checkout_pagbank")
+      .update({ erro_mensagem: "WEBHOOK_VALOR_NAO_EXTRAIDO" })
+      .eq("id", cobranca.id);
+    return json({ ok: false, resultado: "VALOR_NAO_EXTRAIDO" }, 200);
+  }
+
+  // Toda a lógica financeira/estoque vive na RPC (SECURITY DEFINER, service_role).
+  const { data: rpcData, error: eRpc } = await supabase.rpc(
+    "finalizar_venda_pix_pagbank",
+    {
+      payload: {
+        pagbank_order_id: orderId,
+        status_pagbank: "PAID",
+        valor_centavos: valorWebhook,
+      },
+    },
+  );
+
+  if (eRpc) {
+    // Exceções controladas da RPC: FIN_PIX:<CODIGO>. Nunca expor stack/detalhe interno.
+    const bruto = typeof eRpc.message === "string" ? eRpc.message : "";
+    const m = bruto.match(/FIN_PIX:([A-Z_]{3,60})/);
+    const codigo = m ? m[1] : "ERRO_FINALIZACAO";
+    console.log("webhook: finalizacao nao concluida", codigo);
+    await supabase
+      .from("reservas_checkout_pagbank")
+      .update({ erro_mensagem: codigo })
+      .eq("id", cobranca.id);
+    return json({ ok: false, resultado: codigo }, 200);
+  }
+
+  const res = (rpcData ?? {}) as Json;
+
+  if (res.ok !== true) {
+    const codigo = typeof res.codigo === "string" ? res.codigo.slice(0, 60) : "ERRO_FINALIZACAO";
+    await supabase
+      .from("reservas_checkout_pagbank")
+      .update({ erro_mensagem: codigo })
+      .eq("id", cobranca.id);
+    return json({ ok: false, resultado: codigo }, 200);
+  }
+
+  // Sucesso: a RPC já marcou cobrança como PAGA. Nada é sobrescrito aqui.
   return json({
     ok: true,
-    resultado: divergencia ? "VALOR_DIVERGENTE" : "WEBHOOK_REGISTRADO",
-    pagbank_status: statusObservado,
+    resultado: res.reutilizada === true ? "JA_FINALIZADA" : "VENDA_FINALIZADA",
+    reutilizada: res.reutilizada === true,
+    pagbank_status: "PAID",
   }, 200);
 });
