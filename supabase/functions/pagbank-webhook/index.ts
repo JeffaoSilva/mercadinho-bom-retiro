@@ -20,6 +20,36 @@ function erro(codigo: string, status: number): Response {
   return json({ ok: false, codigo }, status);
 }
 
+// ---- Diagnóstico sanitizado temporário (somente runtime; nunca PII/segredos) ----
+interface Diag {
+  metodo?: string;
+  content_type?: string | null;
+  body_bytes?: number;
+  has_authenticity_token?: boolean;
+  has_payload_signature?: boolean;
+  payload_signature_count?: number;
+  has_product_origin?: boolean;
+  product_origin?: string | null;
+  has_product_id?: boolean;
+  product_id_mask?: string | null;
+  validacao?: string;
+  motivo?: string;
+  http?: number;
+}
+
+function mascararId(v: string | null): string | null {
+  if (!v) return null;
+  return v.length <= 6 ? "***" : `...${v.slice(-6)}`;
+}
+
+function logDiag(d: Diag): void {
+  try {
+    console.log("webhook-diag", JSON.stringify({ ts: new Date().toISOString(), ...d }));
+  } catch {
+    // nunca quebrar o webhook por causa do log
+  }
+}
+
 // Comparação de tempo constante entre duas strings hexadecimais.
 function comparacaoSegura(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -83,7 +113,7 @@ function sanitizarWebhook(p: Json): Json {
   };
 }
 
-Deno.serve(async (req) => {
+async function webhookHandler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return erro("METODO_NAO_PERMITIDO", 405);
   }
@@ -247,4 +277,79 @@ Deno.serve(async (req) => {
     reutilizada: res.reutilizada === true,
     pagbank_status: "PAID",
   }, 200);
+}
+
+// ---- Wrapper de diagnóstico sanitizado (temporário) ----
+// Não altera nenhuma validação: observa headers/tamanho, delega ao handler
+// original e registra somente metadados + motivo sanitizado.
+Deno.serve(async (req) => {
+  const diag: Diag = { metodo: req.method };
+
+  diag.content_type = (req.headers.get("content-type") ?? "").slice(0, 100) || null;
+  diag.has_authenticity_token = req.headers.has("x-authenticity-token");
+
+  const sig = req.headers.get("x-payload-signature");
+  diag.has_payload_signature = sig !== null;
+  if (sig !== null) {
+    // Apenas a contagem de possíveis valores; NUNCA registrar os valores.
+    diag.payload_signature_count = sig.split(",").filter((s) => s.trim().length > 0).length;
+  }
+
+  const productOrigin = req.headers.get("x-product-origin");
+  diag.has_product_origin = productOrigin !== null;
+  diag.product_origin = productOrigin ? productOrigin.slice(0, 60) : null;
+
+  const productId = req.headers.get("x-product-id");
+  diag.has_product_id = productId !== null;
+  diag.product_id_mask = mascararId(productId);
+
+  // Lê o corpo para medir bytes e repassa um Request equivalente ao handler
+  // (o handler continua lendo o rawBody antes de qualquer parse, como antes).
+  let repassado = req;
+  if (req.method === "POST") {
+    let raw = "";
+    try {
+      raw = await req.text();
+    } catch {
+      raw = "";
+    }
+    diag.body_bytes = new TextEncoder().encode(raw).length;
+    repassado = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: raw,
+    });
+  }
+
+  const resp = await webhookHandler(repassado);
+  diag.http = resp.status;
+
+  // Motivo sanitizado extraído do próprio JSON de resposta (codigo/resultado).
+  let motivo = "OK";
+  try {
+    const corpo = (await resp.clone().json()) as Record<string, unknown>;
+    if (typeof corpo.codigo === "string") motivo = corpo.codigo;
+    else if (typeof corpo.resultado === "string") motivo = corpo.resultado;
+  } catch {
+    motivo = "SEM_CORPO_JSON";
+  }
+  diag.motivo = motivo.slice(0, 60);
+
+  // Caminho de validação utilizado (inferência a partir dos headers + motivo).
+  if (diag.has_authenticity_token) {
+    diag.validacao = motivo === "ASSINATURA_INVALIDA"
+      ? "LEGACY_HASH_DIVERGIU"
+      : motivo === "PAYLOAD_INVALIDO"
+        ? "LEGACY_ACEITA_JSON_INVALIDO"
+        : "LEGACY_ACEITA";
+  } else if (diag.has_payload_signature) {
+    diag.validacao = "PAYLOAD_SIGNATURE_PRESENTE_NAO_SUPORTADA_AINDA";
+  } else if (req.method !== "POST") {
+    diag.validacao = "METODO_INVALIDO";
+  } else {
+    diag.validacao = "AUTH_HEADER_AUSENTE";
+  }
+
+  logDiag(diag);
+  return resp;
 });
