@@ -20,6 +20,36 @@ function erro(codigo: string, status: number): Response {
   return json({ ok: false, codigo }, status);
 }
 
+// ---- Diagnóstico sanitizado temporário (somente runtime; nunca PII/segredos) ----
+interface Diag {
+  metodo?: string;
+  content_type?: string | null;
+  body_bytes?: number;
+  has_authenticity_token?: boolean;
+  has_payload_signature?: boolean;
+  payload_signature_count?: number;
+  has_product_origin?: boolean;
+  product_origin?: string | null;
+  has_product_id?: boolean;
+  product_id_mask?: string | null;
+  validacao?: string;
+  motivo?: string;
+  http?: number;
+}
+
+function mascararId(v: string | null): string | null {
+  if (!v) return null;
+  return v.length <= 6 ? "***" : `...${v.slice(-6)}`;
+}
+
+function logDiag(d: Diag): void {
+  try {
+    console.log("webhook-diag", JSON.stringify({ ts: new Date().toISOString(), ...d }));
+  } catch {
+    // nunca quebrar o webhook por causa do log
+  }
+}
+
 // Comparação de tempo constante entre duas strings hexadecimais.
 function comparacaoSegura(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
