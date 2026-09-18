@@ -94,8 +94,16 @@ export default function PixPagamento({
         },
       );
 
-      const resp = (data ?? null) as (Record<string, unknown> | null);
-      if (error && !resp) throw error;
+      let resp = (data ?? null) as Record<string, unknown> | null;
+
+      // Erros HTTP (4xx/5xx) chegam em `error`; o corpo JSON vem em error.context
+      if (!resp && error) {
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === "function") {
+          resp = await ctx.json().catch(() => null);
+        }
+      }
+
       if (!resp || resp.ok !== true) {
         setErroTexto(mensagemDeErro(resp?.codigo as string | undefined));
         return;
