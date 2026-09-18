@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.pagbank-webhook]
 verify_jwt = false
+
+[functions.iniciar-checkout-pix]
+verify_jwt = true
+
+[functions.status-checkout-pix]
+verify_jwt = true
