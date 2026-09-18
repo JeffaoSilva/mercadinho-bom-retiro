@@ -132,17 +132,19 @@ async function webhookHandler(req: Request): Promise<Response> {
   }
 
   // ---- Autenticidade ----
+  // Com x-authenticity-token: validação de assinatura (comportamento atual).
+  // Sem assinatura: o corpo NÃO é confiável; serve somente para descobrir o
+  // order_id, que é depois confirmado por consulta oficial ao PagBank.
   const assinatura = req.headers.get("x-authenticity-token");
-  if (!assinatura) {
-    return erro("ASSINATURA_AUSENTE", 401);
+  const assinado = assinatura !== null;
+
+  if (assinado) {
+    const esperada = await sha256Hex(`${pagbankToken}-${rawBody}`);
+    if (!comparacaoSegura(esperada, assinatura!.trim().toLowerCase())) {
+      return erro("ASSINATURA_INVALIDA", 403);
+    }
   }
 
-  const esperada = await sha256Hex(`${pagbankToken}-${rawBody}`);
-  if (!comparacaoSegura(esperada, assinatura.trim().toLowerCase())) {
-    return erro("ASSINATURA_INVALIDA", 403);
-  }
-
-  // ---- Parse somente após assinatura válida ----
   let payload: Json;
   try {
     const parsed = JSON.parse(rawBody);
@@ -158,6 +160,10 @@ async function webhookHandler(req: Request): Promise<Response> {
   if (!orderId) {
     return erro("PAYLOAD_INVALIDO", 400);
   }
+  if (!assinado && !/^ORDE_[A-Za-z0-9-]{6,80}$/.test(orderId)) {
+    return erro("ORDER_ID_INVALIDO", 400);
+  }
+
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -178,6 +184,45 @@ async function webhookHandler(req: Request): Promise<Response> {
     console.log("webhook: pedido nao encontrado localmente");
     return json({ ok: true, resultado: "PEDIDO_NAO_ENCONTRADO" }, 200);
   }
+
+  // ---- Webhook sem assinatura: confirmação oficial obrigatória ----
+  // O corpo recebido é descartado como fonte de verdade; usamos exclusivamente
+  // a resposta autenticada de GET {base}/orders/{order_id}.
+  if (!assinado) {
+    const baseUrl = Deno.env.get("PAGBANK_ENV") === "sandbox"
+      ? "https://sandbox.api.pagseguro.com"
+      : "https://api.pagseguro.com";
+
+    let oficial: Json | null = null;
+    let httpOficial = 0;
+    try {
+      const r = await fetch(`${baseUrl}/orders/${encodeURIComponent(orderId)}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${pagbankToken}`,
+          Accept: "application/json",
+        },
+      });
+      httpOficial = r.status;
+      oficial = (await r.json().catch(() => null)) as Json | null;
+    } catch {
+      console.log("webhook: consulta oficial indisponivel");
+      return json({ ok: false, resultado: "CONSULTA_PAGBANK_INDISPONIVEL" }, 200);
+    }
+
+    console.log("webhook-consulta-oficial", JSON.stringify({ http: httpOficial }));
+
+    if (httpOficial !== 200 || !oficial || typeof oficial !== "object") {
+      return json({ ok: false, resultado: "CONSULTA_PAGBANK_FALHOU" }, 200);
+    }
+    if (typeof oficial.id !== "string" || oficial.id.trim() !== orderId) {
+      return json({ ok: false, resultado: "CONSULTA_PAGBANK_DIVERGENTE" }, 200);
+    }
+
+    payload = oficial;
+  }
+
+
 
   // Reserva correspondente (apenas leitura de contexto; nada é alterado).
   await supabase
