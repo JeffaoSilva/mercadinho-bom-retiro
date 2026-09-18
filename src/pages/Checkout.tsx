@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCheckout } from "@/hooks/useCheckout";
-import { Book, Smartphone, CheckCircle, QrCode, AlertTriangle } from "lucide-react";
+import { Book, Smartphone, CheckCircle, AlertTriangle } from "lucide-react";
 import BackButton from "@/components/BackButton";
+import PixPagamento from "@/components/PixPagamento";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -34,29 +35,23 @@ const Checkout = () => {
 
   const [loading, setLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showPixQR, setShowPixQR] = useState(false);
+  const [showPix, setShowPix] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [pixChave, setPixChave] = useState("");
-  const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
   const [confirmPayment, setConfirmPayment] = useState<"caderneta" | "pix" | null>(null);
 
   const total = getTotal();
 
-  // Carregar config PIX
-  useEffect(() => {
-    const loadPixConfig = async () => {
-      const { data } = await supabase
-        .from("config_sistema")
-        .select("pix_chave, pix_qr_code_url")
-        .eq("id", 1)
-        .maybeSingle();
-      if (data) {
-        setPixChave((data as any).pix_chave || "");
-        setPixQrCodeUrl((data as any).pix_qr_code_url || "");
-      }
-    };
-    loadPixConfig();
-  }, []);
+  // Itens do PIX: somente identificadores. Preço/total são definidos no backend.
+  const itensPix = useMemo(
+    () =>
+      cart
+        .filter((i) => !!i.prateleira_id)
+        .map((i) => ({
+          prateleira_id: i.prateleira_id as number,
+          quantidade: i.quantidade,
+        })),
+    [cart]
+  );
 
   const mercadinhoNome = mercadinhoAtualId === 1 ? "Bom Retiro" : mercadinhoAtualId === 2 ? "São Francisco" : "Desconhecido";
 
@@ -70,7 +65,8 @@ const Checkout = () => {
     }
   };
 
-  const handleFinalizarCompra = async (formaPagamento: "caderneta" | "pix") => {
+  // Usado apenas por formas de pagamento não-PIX (caderneta).
+  const handleFinalizarCompra = async (formaPagamento: "caderneta") => {
     // Bloqueio de múltiplos cliques / chamadas concorrentes
     if (isProcessing) return;
     setIsProcessing(true);
@@ -115,7 +111,6 @@ const Checkout = () => {
           toast.error(`O produto ${nome} está sem estoque. Remova para continuar.`, {
             duration: 6000,
           });
-          setShowPixQR(false);
           setLoading(false);
           setIsProcessing(false);
           navigate("/cart", {
@@ -148,9 +143,29 @@ const Checkout = () => {
     }
   };
 
-  const handlePixClick = () => setShowPixQR(true);
-  const handleConfirmarPix = () => handleFinalizarCompra("pix");
+  const handlePixClick = () => {
+    if (isVisitante || !clienteId) {
+      toast.error("Para pagar com PIX é preciso identificar o cliente.");
+      return;
+    }
+    if (itensPix.length === 0 || itensPix.length !== cart.length) {
+      toast.error("Um dos produtos do carrinho não pode ser pago por PIX.");
+      return;
+    }
+    setShowPix(true);
+  };
 
+  // Pagamento confirmado pelo webhook: a venda já foi criada no backend.
+  const handlePixPago = () => {
+    setTimeout(() => {
+      reset();
+      if (isAdminPurchase) {
+        navigate("/admin");
+      } else {
+        navigate(getHomePath());
+      }
+    }, 4000);
+  };
 
   if (showSuccess) {
     return (
@@ -165,73 +180,17 @@ const Checkout = () => {
     );
   }
 
-  if (showPixQR) {
+  if (showPix) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-6">
-          <BackButton onClick={() => setShowPixQR(false)} />
-
-          <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold">Pagamento PIX</h1>
-            <p className="text-lg text-muted-foreground">
-              Agora realize o pagamento via Pix no valor de
-            </p>
-            <p className="text-3xl font-bold text-foreground">
-              R$ {total.toFixed(2)}
-            </p>
-            <p className="text-2xl text-muted-foreground">
-              Só após pagar via PIX, clique no botão abaixo "Confirmar pagamento".
-            </p>
-          </div>
-
-          {/* QR Code + Chave Pix */}
-          <div className="flex flex-col items-center gap-3">
-            {pixQrCodeUrl ? (
-              <div className="bg-white p-4 rounded-xl shadow-lg">
-                <img
-                  src={pixQrCodeUrl}
-                  alt="QR Code PIX"
-                  className="w-64 h-64 object-contain"
-                />
-              </div>
-            ) : (
-              <div className="bg-white p-8 rounded-xl shadow-lg">
-                <div className="w-64 h-64 border-4 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center bg-muted/20">
-                  <QrCode className="w-16 h-16 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground text-center px-4">
-                    QR Code não configurado
-                  </p>
-                </div>
-              </div>
-            )}
-            {pixChave && (
-              <p className="text-base font-semibold text-foreground text-center">
-                {pixChave}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <Button
-              size="lg"
-              className="w-full h-16 text-xl"
-              onClick={handleConfirmarPix}
-              disabled={loading || isProcessing}
-            >
-              {loading || isProcessing ? "Processando..." : "Confirmar Pagamento"}
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => setShowPixQR(false)}
-              disabled={loading || isProcessing}
-            >
-              Voltar
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PixPagamento
+        mercadinhoId={mercadinhoAtualId || 1}
+        tabletId={tabletId ? parseInt(tabletId) : null}
+        clienteId={clienteId}
+        itens={itensPix}
+        total={total}
+        onVoltar={() => setShowPix(false)}
+        onPago={handlePixPago}
+      />
     );
   }
 
@@ -267,7 +226,7 @@ const Checkout = () => {
             disabled={loading || isProcessing}
           >
             <Smartphone className="w-8 h-8 mr-4" />
-            Registrar compra e pagar no Pix
+            Pagar com PIX
           </Button>
         </div>
 
@@ -303,7 +262,7 @@ const Checkout = () => {
                 setConfirmPayment(null);
                 handlePixClick();
               } else {
-                handleFinalizarCompra(confirmPayment!);
+                handleFinalizarCompra("caderneta");
               }
             }}>
               Confirmar
