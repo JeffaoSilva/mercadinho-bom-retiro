@@ -113,7 +113,7 @@ function sanitizarWebhook(p: Json): Json {
   };
 }
 
-Deno.serve(async (req) => {
+async function webhookHandler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return erro("METODO_NAO_PERMITIDO", 405);
   }
